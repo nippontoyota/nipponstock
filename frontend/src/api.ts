@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api' });
+// In dev: VITE_API_URL is not set → Vite proxy rewrites /api → localhost:4000
+// In prod: VITE_API_URL = https://stockpro-backend.onrender.com
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || '/api',
+});
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');

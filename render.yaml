@@ -1,0 +1,45 @@
+services:
+  # ── Backend ──────────────────────────────────────────────────────────
+  - type: web
+    name: stockpro-backend
+    env: node
+    region: singapore
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install && npm run build && npx prisma generate
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_EXPIRY
+        value: 8h
+      - key: PORT
+        value: 4000
+      # Set these manually in Render dashboard (sensitive):
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # ── Frontend ─────────────────────────────────────────────────────────
+  - type: web
+    name: stockpro-frontend
+    env: static
+    region: singapore
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Set this to your backend URL after backend is deployed:
+      - key: VITE_API_URL
+        sync: false
