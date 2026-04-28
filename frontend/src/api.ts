@@ -15,7 +15,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401) {
+    // Only auto-logout on 401 for protected routes, NOT for the login route itself
+    const url = err.config?.url ?? '';
+    if (err.response?.status === 401 && !url.includes('/auth/')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
