@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Precision | Stock Overview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-on-surface": "#313031",
+                      "secondary": "#bcc7de",
+                      "inverse-primary": "#124af0",
+                      "on-primary-fixed": "#001356",
+                      "on-tertiary": "#690003",
+                      "surface-container-lowest": "#0e0e0f",
+                      "surface-container-high": "#2a2a2b",
+                      "primary": "#b8c3ff",
+                      "surface-dim": "#131314",
+                      "surface-bright": "#3a393a",
+                      "on-tertiary-container": "#ffece9",
+                      "outline-variant": "#434656",
+                      "on-error-container": "#ffdad6",
+                      "on-tertiary-fixed-variant": "#930005",
+                      "outline": "#8e90a2",
+                      "tertiary": "#ffb4aa",
+                      "on-surface": "#e5e2e3",
+                      "background": "#131314",
+                      "on-primary": "#002388",
+                      "on-tertiary-fixed": "#410001",
+                      "inverse-surface": "#e5e2e3",
+                      "primary-container": "#2e5bff",
+                      "on-primary-fixed-variant": "#0035be",
+                      "on-secondary-container": "#aeb9d0",
+                      "surface-variant": "#353436",
+                      "surface-container": "#201f20",
+                      "on-secondary-fixed": "#111c2d",
+                      "error-container": "#93000a",
+                      "tertiary-fixed-dim": "#ffb4aa",
+                      "secondary-container": "#3e495d",
+                      "on-secondary": "#263143",
+                      "tertiary-fixed": "#ffdad5",
+                      "secondary-fixed": "#d8e3fb",
+                      "tertiary-container": "#d71a18",
+                      "on-primary-container": "#efefff",
+                      "surface-container-highest": "#353436",
+                      "on-surface-variant": "#c4c5d9",
+                      "primary-fixed": "#dde1ff",
+                      "secondary-fixed-dim": "#bcc7de",
+                      "surface-container-low": "#1c1b1c",
+                      "on-secondary-fixed-variant": "#3c475a",
+                      "surface": "#131314",
+                      "on-background": "#e5e2e3",
+                      "error": "#ffb4ab",
+                      "primary-fixed-dim": "#b8c3ff",
+                      "surface-tint": "#b8c3ff",
+                      "on-error": "#690005"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Space Grotesk"
+                      ],
+                      "body": [
+                              "Manrope"
+                      ],
+                      "label": [
+                              "Inter"
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #131314;
+            color: #e5e2e3;
+            font-family: 'Manrope', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #131314;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2a2a2b;
+            border-radius: 10px;
+        }
+        .glass-overlay {
+            background: rgba(53, 52, 54, 0.6);
+            backdrop-filter: blur(20px);
+        }
+        .no-border {
+            border: none !important;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<aside class="hidden md:flex h-screen w-64 fixed left-0 top-0 bg-zinc-900 flex-col py-6 z-[60] shadow-2xl shadow-black/50">
+<div class="px-6 mb-8">
+<h2 class="text-indigo-300 font-['Space_Grotesk'] font-black tracking-widest text-lg">DOWNTOWN HUB</h2>
+<p class="font-['Manrope'] font-semibold text-[10px] text-zinc-500 uppercase tracking-tighter">12 Active Branches</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="bg-indigo-600/20 text-indigo-300 border-r-4 border-indigo-500 px-4 py-3 flex items-center gap-3 transition-all ease-out duration-300" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="analytics">analytics</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-wider">Live Inventory</span>
+</a>
+<a class="text-zinc-500 px-4 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all ease-out duration-300" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="directions_car">directions_car</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-wider">Reserve Vehicle</span>
+</a>
+<a class="text-zinc-500 px-4 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all ease-out duration-300" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="lock_clock">lock_clock</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-wider">Active Blockings</span>
+</a>
+<a class="text-zinc-500 px-4 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all ease-out duration-300" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="Assessment">assessment</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-wider">Branch Reports</span>
+</a>
+<a class="text-zinc-500 px-4 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all ease-out duration-300" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="settings">settings</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-wider">Sales Settings</span>
+</a>
+</nav>
+<div class="px-4 py-4 space-y-1 border-t border-zinc-800/50">
+<a class="text-zinc-500 px-4 py-3 flex items-center gap-3 hover:bg-zinc-800 transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="help">help</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase">Help Center</span>
+</a>
+<a class="text-zinc-500 px-4 py-3 flex items-center gap-3 hover:bg-zinc-800 transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="logout">logout</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Workspace -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3 no-border">
+<div class="flex items-center gap-8">
+<h1 class="text-xl font-bold tracking-tighter text-indigo-300 font-['Space_Grotesk'] uppercase">KINETIC PRECISION</h1>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-zinc-400 font-medium font-['Space_Grotesk'] tracking-tighter uppercase text-sm hover:text-indigo-100 transition-colors duration-200" href="#">Dashboard</a>
+<a class="text-indigo-300 border-b-2 border-indigo-500 pb-1 font-['Space_Grotesk'] tracking-tighter uppercase text-sm" href="#">Stock</a>
+<a class="text-zinc-400 font-medium font-['Space_Grotesk'] tracking-tighter uppercase text-sm hover:text-indigo-100 transition-colors duration-200" href="#">My Blockings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/10">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] font-['Inter'] font-bold text-on-surface-variant uppercase tracking-widest">Live Sync</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-zinc-400 hover:text-indigo-300 transition-all" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-zinc-400 hover:text-indigo-300 transition-all" data-icon="timer">timer</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 border border-outline-variant/20">
+<img alt="Profile" data-alt="Professional sales executive headshot, sharp suit, dark background, cinematic lighting, corporate authority" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZG9rXO2cQ0iOu7lf9cVcz_Lwxcl-gl-g0XaMATnVJYImAg3DVul9IwraV2_H_jy4QRCgdb877SWpa825hWAQDnjKfobVBKo_6lN9a6W-cgiMVmwcOT_o4sjZ2-hYYWAWd5pG6nRVV_y_UefO9YlJsyrSDG4IG9ki4VDdLkQMaqP5G74ikHf2p5CtmC0jzcNZYZp0_0py_95GT-rbIdq4eUpJVYmYKP_Vq7ee7gOofxtsIusIM5NpAFxN0bVpBnggLlKYqPjh1eOmD"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<main class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 bg-surface">
+<!-- Page Header & Action -->
+<section class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div>
+<h2 class="text-4xl font-['Space_Grotesk'] font-bold tracking-tighter text-on-surface uppercase mb-1">Stock Overview</h2>
+<p class="text-on-surface-variant font-['Manrope'] text-sm tracking-tight">Real-time inventory mapping across Model, Suffix, and Colour variants.</p>
+</div>
+<button class="group relative flex items-center gap-3 px-8 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm rounded-md overflow-hidden transition-transform active:scale-95 shadow-xl shadow-primary/20">
+<span class="material-symbols-outlined group-hover:rotate-90 transition-transform duration-500" data-icon="add_box">add_box</span>
+                    Block a Vehicle
+                    <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+</button>
+</section>
+<!-- Legend and Filters -->
+<section class="flex flex-wrap items-center gap-6 py-4 bg-surface-container-low px-6 rounded-xl border-l-4 border-primary">
+<div class="flex items-center gap-4 border-r border-outline-variant/30 pr-6">
+<span class="text-[10px] font-['Inter'] uppercase font-black text-zinc-500 tracking-tighter">Availability Thresholds:</span>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-sm bg-primary"></div>
+<span class="text-xs font-['Inter'] text-on-surface-variant">High</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-sm bg-secondary"></div>
+<span class="text-xs font-['Inter'] text-on-surface-variant">Medium</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-sm bg-tertiary-container"></div>
+<span class="text-xs font-['Inter'] text-on-surface-variant">Critical</span>
+</div>
+</div>
+<div class="flex-1 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+<span class="px-3 py-1 bg-surface-container-high rounded text-[10px] font-bold text-primary font-['Inter'] uppercase">All Models</span>
+<span class="px-3 py-1 bg-surface-container text-[10px] font-bold text-zinc-500 font-['Inter'] uppercase hover:text-zinc-300 cursor-pointer">SUV</span>
+<span class="px-3 py-1 bg-surface-container text-[10px] font-bold text-zinc-500 font-['Inter'] uppercase hover:text-zinc-300 cursor-pointer">Sedan</span>
+<span class="px-3 py-1 bg-surface-container text-[10px] font-bold text-zinc-500 font-['Inter'] uppercase hover:text-zinc-300 cursor-pointer">EV Core</span>
+</div>
+</section>
+<!-- Stock Grid - The Heatmap Engine -->
+<div class="grid grid-cols-1 gap-12">
+<!-- Model: KINETIC X-1 -->
+<article class="space-y-6">
+<div class="flex items-baseline gap-4 border-b border-surface-container-highest pb-4">
+<h3 class="text-2xl font-['Space_Grotesk'] font-bold tracking-tighter uppercase text-on-surface">Kinetic X-1</h3>
+<span class="text-primary font-['Inter'] text-[10px] font-black uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded">Signature Series</span>
+</div>
+<div class="space-y-4">
+<!-- Header Row -->
+<div class="grid grid-cols-12 gap-1 px-4">
+<div class="col-span-3 text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Suffix / Config</div>
+<div class="col-span-9 grid grid-cols-6 gap-1">
+<div class="text-center text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Obsidian</div>
+<div class="text-center text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Pinnacle White</div>
+<div class="text-center text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Circuit Red</div>
+<div class="text-center text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Titanium</div>
+<div class="text-center text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Velocity Blue</div>
+<div class="text-center text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Emerald</div>
+</div>
+</div>
+<!-- Suffix Row: PERFORMANCE LUX -->
+<div class="grid grid-cols-12 gap-1 items-center bg-surface-container-low p-1 rounded-lg group transition-colors hover:bg-surface-container">
+<div class="col-span-3 pl-4">
+<div class="text-sm font-bold text-on-surface uppercase tracking-tight">Performance Lux</div>
+<div class="text-[9px] font-['Inter'] text-zinc-500 uppercase tracking-widest">AWD | 550HP</div>
+</div>
+<div class="col-span-9 grid grid-cols-6 gap-1 h-14">
+<div class="bg-primary rounded-sm opacity-90 hover:opacity-100 transition-opacity flex items-center justify-center group/cell cursor-pointer relative">
+<span class="hidden group-hover/cell:block absolute -top-8 bg-zinc-800 text-[10px] px-2 py-1 rounded">High Avail.</span>
+</div>
+<div class="bg-primary rounded-sm opacity-60 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-tertiary-container rounded-sm opacity-100 animate-pulse hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-secondary rounded-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-primary rounded-sm opacity-40 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-30 hover:opacity-100 transition-opacity cursor-pointer"></div>
+</div>
+</div>
+<!-- Suffix Row: EXECUTIVE TECH -->
+<div class="grid grid-cols-12 gap-1 items-center bg-surface-container-low p-1 rounded-lg group transition-colors hover:bg-surface-container">
+<div class="col-span-3 pl-4">
+<div class="text-sm font-bold text-on-surface uppercase tracking-tight">Executive Tech</div>
+<div class="text-[9px] font-['Inter'] text-zinc-500 uppercase tracking-widest">RWD | LONG RANGE</div>
+</div>
+<div class="col-span-9 grid grid-cols-6 gap-1 h-14">
+<div class="bg-secondary rounded-sm opacity-100 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-primary rounded-sm opacity-100 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-primary rounded-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-primary rounded-sm opacity-100 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-secondary rounded-sm opacity-40 hover:opacity-100 transition-opacity cursor-pointer"></div>
+<div class="bg-secondary rounded-sm opacity-60 hover:opacity-100 transition-opacity cursor-pointer"></div>
+</div>
+</div>
+<!-- Suffix Row: URBAN CORE -->
+<div class="grid grid-cols-12 gap-1 items-center bg-surface-container-low p-1 rounded-lg group transition-colors hover:bg-surface-container">
+<div class="col-span-3 pl-4">
+<div class="text-sm font-bold text-on-surface uppercase tracking-tight">Urban Core</div>
+<div class="text-[9px] font-['Inter'] text-zinc-500 uppercase tracking-widest">FWD | COMPACT</div>
+</div>
+<div class="col-span-9 grid grid-cols-6 gap-1 h-14">
+<div class="bg-tertiary-container rounded-sm opacity-100 cursor-pointer"></div>
+<div class="bg-tertiary-container rounded-sm opacity-100 cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-20 cursor-pointer"></div>
+<div class="bg-secondary rounded-sm opacity-60 cursor-pointer"></div>
+<div class="bg-primary rounded-sm opacity-100 cursor-pointer"></div>
+<div class="bg-tertiary-container rounded-sm opacity-100 cursor-pointer"></div>
+</div>
+</div>
+</div>
+</article>
+<!-- Model: VELOCITY GTR -->
+<article class="space-y-6 opacity-80">
+<div class="flex items-baseline gap-4 border-b border-surface-container-highest pb-4">
+<h3 class="text-2xl font-['Space_Grotesk'] font-bold tracking-tighter uppercase text-on-surface">Velocity GTR</h3>
+<span class="text-tertiary font-['Inter'] text-[10px] font-black uppercase tracking-widest bg-tertiary/10 px-2 py-0.5 rounded">High Demand</span>
+</div>
+<div class="space-y-4">
+<!-- Suffix Row: TRACK SPECIAL -->
+<div class="grid grid-cols-12 gap-1 items-center bg-surface-container-low p-1 rounded-lg group transition-colors hover:bg-surface-container">
+<div class="col-span-3 pl-4">
+<div class="text-sm font-bold text-on-surface uppercase tracking-tight">Track Special</div>
+<div class="text-[9px] font-['Inter'] text-zinc-500 uppercase tracking-widest">V8 TT | MAG RIDE</div>
+</div>
+<div class="col-span-9 grid grid-cols-6 gap-1 h-14">
+<div class="bg-tertiary-container rounded-sm opacity-100 animate-pulse cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-40 cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-40 cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-40 cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-40 cursor-pointer"></div>
+<div class="bg-surface-container-highest rounded-sm opacity-40 cursor-pointer"></div>
+</div>
+</div>
+</div>
+</article>
+</div>
+<!-- Detail Analysis Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-12">
+<div class="col-span-2 bg-surface-container-low rounded-xl p-8 relative overflow-hidden group">
+<div class="relative z-10">
+<h4 class="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-4">Stock Insights</h4>
+<div class="flex gap-12">
+<div>
+<p class="text-4xl font-['Space_Grotesk'] font-extrabold text-on-surface">84%</p>
+<p class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Optimal Utilization</p>
+</div>
+<div>
+<p class="text-4xl font-['Space_Grotesk'] font-extrabold text-tertiary">12</p>
+<p class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Critical Low Levels</p>
+</div>
+<div>
+<p class="text-4xl font-['Space_Grotesk'] font-extrabold text-primary">242</p>
+<p class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Reserve Potential</p>
+</div>
+</div>
+</div>
+<div class="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[120px]" data-icon="hub">hub</span>
+</div>
+</div>
+<div class="bg-gradient-to-br from-surface-container to-surface-container-high rounded-xl p-6 flex flex-col justify-between border border-outline-variant/10">
+<div>
+<h4 class="text-sm font-bold text-on-surface mb-2">Live Activity Feed</h4>
+<div class="space-y-4">
+<div class="flex gap-3">
+<div class="w-1 h-8 bg-primary"></div>
+<div>
+<p class="text-[10px] text-zinc-400 font-bold uppercase">Blocked 2m ago</p>
+<p class="text-xs text-on-surface">X-1 Performance Lux / Obsidian</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-1 h-8 bg-zinc-700"></div>
+<div>
+<p class="text-[10px] text-zinc-400 font-bold uppercase">Inventory Sync</p>
+<p class="text-xs text-on-surface">Central Warehouse Batch #490</p>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full py-2 bg-surface-container-highest text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-on-surface transition-colors">View All Logs</button>
+</div>
+</div>
+</main>
+</div>
+<!-- Background Decoration -->
+<div class="fixed inset-0 pointer-events-none z-[-1] opacity-30">
+<div class="absolute top-1/4 -left-20 w-96 h-96 bg-primary/20 blur-[150px] rounded-full"></div>
+<div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-tertiary/10 blur-[150px] rounded-full"></div>
+</div>
+</body></html>

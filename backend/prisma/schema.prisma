@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  SALES_MANAGER
+}
+
+enum VehicleStatus {
+  OPEN
+  SOFT_BLOCKED
+  HARD_BLOCKED
+  EXPIRED
+  DELIVERED
+}
+
+enum StockStatus {
+  BND
+  MDDP
+  CTDMS
+}
+
+enum BlockType {
+  SOFT
+  HARD
+}
+
+enum BlockingStatus {
+  ACTIVE
+  EXPIRED
+  DELIVERED
+}
+
+enum PaymentMode {
+  CASH
+  FINANCE
+}
+
+model Branch {
+  id         String   @id @default(uuid())
+  name       String
+  branchCode String?  @unique
+  location   String
+  createdAt  DateTime @default(now())
+
+  users            User[]
+  blockings        BlockingRequest[]
+  physicalVehicles Vehicle[]         @relation("PhysicalStockBranch")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  loginId      String   @unique
+  passwordHash String
+  role         Role
+  fullName     String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
+
+  blockings     BlockingRequest[] @relation("UserBlockings")
+  auditLogs     AuditLog[]
+  modelConfigs  ModelConfig[]
+  globalConfigs GlobalConfig[]
+}
+
+// ── Car Catalogue ─────────────────────────────────────────────────────────────
+
+model CarModel {
+  id          String   @id @default(uuid())
+  modelCode   String   @unique
+  modelName   String
+  description String?
+  createdAt   DateTime @default(now())
+
+  suffixes CarSuffix[]
+  colours  CarColour[]
+}
+
+model CarSuffix {
+  id          String  @id @default(uuid())
+  suffix      String
+  description String?
+
+  carModel   CarModel @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  carModelId String
+
+  @@unique([carModelId, suffix])
+}
+
+model CarColour {
+  id          String  @id @default(uuid())
+  colourCode  String
+  colourName  String
+
+  carModel   CarModel @relation(fields: [carModelId], references: [id], onDelete: Cascade)
+  carModelId String
+
+  @@unique([carModelId, colourCode])
+}
+
+// ── Vehicle (Stock) ───────────────────────────────────────────────────────────
+
+model Vehicle {
+  id                String        @id @default(uuid())
+  chassisNumber     String        @unique
+  chassisYear       Int
+  model             String
+  suffix            String
+  colour            String
+  stockyardLocation   String        @default("")
+  dateOfArrival       DateTime      @default(now())
+  status              VehicleStatus @default(OPEN)
+  hiddenFromHeatmap   Boolean       @default(false)
+
+  // New stock-entry fields
+  stockStatus       StockStatus?
+  bndReportedMonth  DateTime?
+  modelDisc         String?
+  assignmentDate    DateTime?
+  yardOut           DateTime?
+
+  physicalStockBranch   Branch? @relation("PhysicalStockBranch", fields: [physicalStockBranchId], references: [id])
+  physicalStockBranchId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  blockings BlockingRequest[]
+
+  @@index([model, suffix, colour])
+  @@index([status])
+}
+
+model BlockingRequest {
+  id                  String         @id @default(uuid())
+  blockType           BlockType      @default(SOFT)
+  orderId             String?
+  customerName        String?
+  consultantName      String?
+  paymentMode         PaymentMode?
+  financierBank       String?
+  paymentStatus       String?
+  expectedBillingDate DateTime?
+  receiptUrl          String?
+  softBlockAt         DateTime       @default(now())
+  hardBlockAt         DateTime?
+  expiryAt            DateTime?
+  status              BlockingStatus @default(ACTIVE)
+  retailId            String?
+  deliveryDocUrl      String?
+  deliveredAt         DateTime?
+  extendedByAdmin     Boolean        @default(false)
+  adminNotes          String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+  vehicleId String
+
+  user   User   @relation("UserBlockings", fields: [userId], references: [id])
+  userId String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([branchId])
+  @@index([status])
+  @@index([expiryAt])
+}
+
+model ModelConfig {
+  id                   String   @id @default(uuid())
+  modelName            String   @unique
+  blockingDurationDays Int      @default(7)
+  updatedAt            DateTime @updatedAt
+
+  updatedBy   User?   @relation(fields: [updatedById], references: [id])
+  updatedById String?
+}
+
+model GlobalConfig {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+
+  updatedAt   DateTime @updatedAt
+  updatedBy   User?    @relation(fields: [updatedById], references: [id])
+  updatedById String?
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  entityType    String
+  entityId      String
+  action        String
+  previousValue Json?
+  newValue      Json?
+  performedAt   DateTime @default(now())
+
+  performedBy   User   @relation(fields: [performedById], references: [id])
+  performedById String
+
+  @@index([entityType, entityId])
+  @@index([performedAt])
+}

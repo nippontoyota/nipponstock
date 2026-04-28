@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Blockings | KINETIC PRECISION</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-on-surface": "#313031",
+                      "secondary": "#bcc7de",
+                      "inverse-primary": "#124af0",
+                      "on-primary-fixed": "#001356",
+                      "on-tertiary": "#690003",
+                      "surface-container-lowest": "#0e0e0f",
+                      "surface-container-high": "#2a2a2b",
+                      "primary": "#b8c3ff",
+                      "surface-dim": "#131314",
+                      "surface-bright": "#3a393a",
+                      "on-tertiary-container": "#ffece9",
+                      "outline-variant": "#434656",
+                      "on-error-container": "#ffdad6",
+                      "on-tertiary-fixed-variant": "#930005",
+                      "outline": "#8e90a2",
+                      "tertiary": "#ffb4aa",
+                      "on-surface": "#e5e2e3",
+                      "background": "#131314",
+                      "on-primary": "#002388",
+                      "on-tertiary-fixed": "#410001",
+                      "inverse-surface": "#e5e2e3",
+                      "primary-container": "#2e5bff",
+                      "on-primary-fixed-variant": "#0035be",
+                      "on-secondary-container": "#aeb9d0",
+                      "surface-variant": "#353436",
+                      "surface-container": "#201f20",
+                      "on-secondary-fixed": "#111c2d",
+                      "error-container": "#93000a",
+                      "tertiary-fixed-dim": "#ffb4aa",
+                      "secondary-container": "#3e495d",
+                      "on-secondary": "#263143",
+                      "tertiary-fixed": "#ffdad5",
+                      "secondary-fixed": "#d8e3fb",
+                      "tertiary-container": "#d71a18",
+                      "on-primary-container": "#efefff",
+                      "surface-container-highest": "#353436",
+                      "on-surface-variant": "#c4c5d9",
+                      "primary-fixed": "#dde1ff",
+                      "secondary-fixed-dim": "#bcc7de",
+                      "surface-container-low": "#1c1b1c",
+                      "on-secondary-fixed-variant": "#3c475a",
+                      "surface": "#131314",
+                      "on-background": "#e5e2e3",
+                      "error": "#ffb4ab",
+                      "primary-fixed-dim": "#b8c3ff",
+                      "surface-tint": "#b8c3ff",
+                      "on-error": "#690005"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Space Grotesk"],
+                      "body": ["Manrope"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .glass-panel {
+            background: rgba(53, 52, 54, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .speed-lane {
+            border-left: 2px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+        .speed-lane:hover {
+            border-left-color: #2e5bff;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0e0e0f;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #434656;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30 min-h-screen overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-zinc-950/80 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3 z-50 docked full-width top-0 sticky">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-indigo-300 font-['Space_Grotesk'] uppercase">KINETIC PRECISION</span>
+<nav class="hidden md:flex items-center gap-6 font-['Space_Grotesk'] tracking-tighter uppercase text-sm">
+<a class="text-zinc-400 font-medium hover:text-indigo-100 transition-colors duration-200" href="#">Dashboard</a>
+<a class="text-zinc-400 font-medium hover:text-indigo-100 transition-colors duration-200" href="#">Stock</a>
+<a class="text-indigo-300 border-b-2 border-indigo-500 pb-1 hover:text-indigo-100 transition-colors duration-200" href="#">My Blockings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-zinc-400 hover:text-indigo-100 transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-zinc-400 hover:text-indigo-100 transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined">timer</span>
+</button>
+</div>
+<div class="flex items-center gap-3 ml-2 pl-4 border-l border-outline-variant/20">
+<span class="text-xs font-label font-medium text-zinc-400">Sales Executive</span>
+<img alt="Profile" class="w-8 h-8 rounded-full border border-primary/20" data-alt="portrait of a professional sales manager in a dark suit with a modern architectural background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9iLfA9aLNnblspAUCXNFrgMfvJ4kir5hKXwvWQvbDZrqKAqjmiC05ssiZ6S7AJ8b4sNB4kSxzBZjprq_M3p4Aj-JZa-8LyDyk1QuV1Wz1llaQEmalo2HiU0Op8_gVYZogekgWCX0dYJmsNwDqjRQGvjLg8X4YZ2JwV_pigEEDZsq3n4aLrlZUphDKSCuhqIvd7Tpe9q6x5jHPfRnzxJ-C5kb_AUhE7kyoRYoQmyGth3xKPuuNGwAhaSeHC4LE8ZI3tM57gJRurJFc"/>
+</div>
+</div>
+</header>
+<div class="flex">
+<!-- SideNavBar -->
+<aside class="bg-zinc-900 h-screen w-64 fixed left-0 top-0 pt-16 flex flex-col hidden lg:flex border-r border-zinc-800/50">
+<div class="px-6 py-6 border-b border-zinc-800/50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-indigo-600/20 rounded-lg flex items-center justify-center text-indigo-300">
+<span class="material-symbols-outlined">hub</span>
+</div>
+<div>
+<h3 class="text-indigo-300 font-['Space_Grotesk'] font-black text-sm uppercase tracking-widest">DOWNTOWN HUB</h3>
+<p class="text-[10px] text-zinc-500 font-label">12 Active Branches</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+<a class="text-zinc-500 px-6 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">analytics</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-tight">Live Inventory</span>
+</a>
+<a class="text-zinc-500 px-6 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">directions_car</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-tight">Reserve Vehicle</span>
+</a>
+<a class="bg-indigo-600/20 text-indigo-300 border-r-4 border-indigo-500 px-6 py-3 flex items-center gap-3 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">lock_clock</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-tight">Active Blockings</span>
+</a>
+<a class="text-zinc-500 px-6 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">assessment</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-tight">Branch Reports</span>
+</a>
+<a class="text-zinc-500 px-6 py-3 flex items-center gap-3 hover:bg-zinc-800 hover:text-indigo-200 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">settings</span>
+<span class="font-['Manrope'] font-semibold text-xs uppercase tracking-tight">Sales Settings</span>
+</a>
+</nav>
+<div class="px-6 py-6 border-t border-zinc-800/50 space-y-4">
+<button class="w-full bg-primary-container text-on-primary-container py-3 rounded-lg font-headline font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+                    Quick Block
+                </button>
+<div class="space-y-1">
+<a class="text-zinc-500 py-2 flex items-center gap-3 hover:text-indigo-200 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+<span class="text-[10px] uppercase font-bold tracking-wider">Help Center</span>
+</a>
+<a class="text-zinc-500 py-2 flex items-center gap-3 hover:text-tertiary transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">logout</span>
+<span class="text-[10px] uppercase font-bold tracking-wider">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 lg:ml-64 p-6 md:p-10">
+<div class="max-w-7xl mx-auto">
+<!-- Header & Filters -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div>
+<h1 class="text-4xl font-headline font-bold tracking-tighter uppercase text-on-surface mb-2">My Blockings</h1>
+<p class="text-on-surface-variant font-body">Manage reserved inventory and pending retail conversions.</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-container-low p-1 rounded-lg flex gap-1">
+<button class="px-4 py-2 bg-surface-container-high text-primary text-xs font-bold uppercase tracking-widest rounded-md">All (12)</button>
+<button class="px-4 py-2 text-on-surface-variant hover:text-on-surface text-xs font-bold uppercase tracking-widest rounded-md transition-colors">Expiring (3)</button>
+</div>
+</div>
+</div>
+<!-- Bento Grid for Blockings -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Card 1: Normal State -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group speed-lane">
+<div class="relative h-48">
+<img alt="Vehicle" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="sleek modern electric sedan in a dark showroom with neon blue accent lighting and carbon fiber details" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5yXpuf_8di4FouEH6LQe1cxWo4wcOB6yrnEff4EZqxmoFeAp0LboHvBvakj1tnY_Bt_oxzKxgdcFW2J6CA4GuBVmeTWOm2pnuHllRdvBexN-lHpp8I5xPohO5JnHGQ0YBBu2ur_lVIy4U4WjjYjiJSrei_EiPyHIXtzRnS5CIy45RqrJkND0Cyq6CCzakGzBvn-m0eDAtufhF33LYJJEgIMFULtSloD-uAOTKNsfe2zf8JKlz7-TJLehfiKyu-oiRMsQhdoeKYTJZ"/>
+<div class="absolute top-4 left-4">
+<span class="bg-zinc-950/80 backdrop-blur-md text-primary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-widest border border-primary/20">VIN: 9K283X...42</span>
+</div>
+<div class="absolute bottom-4 right-4 bg-zinc-950/90 backdrop-blur-md p-3 rounded-xl border border-outline-variant/30">
+<p class="text-[10px] text-zinc-500 font-label uppercase tracking-widest leading-none mb-1">Days to Expiry</p>
+<div class="flex items-center gap-2">
+<span class="text-2xl font-headline font-bold text-primary tracking-tighter">06</span>
+<span class="text-xs text-primary/60 font-medium">DAYS</span>
+</div>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-xl font-headline font-bold tracking-tight text-on-surface">2024 NEXUS EV6</h3>
+<p class="text-sm text-on-surface-variant">Carbon Stealth Edition • Performance Pkg</p>
+</div>
+</div>
+<div class="bg-surface-container-high/50 p-4 rounded-lg mb-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+<div>
+<p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Customer Name</p>
+<p class="text-sm font-semibold text-on-surface">Jonathan Sterling Vance</p>
+</div>
+</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Full Form</button>
+<button class="flex-1 bg-primary text-on-primary hover:brightness-110 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Mark Delivered</button>
+</div>
+</div>
+</div>
+<!-- Card 2: Urgency State (Red) -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group speed-lane border-l-tertiary-container border-l-4">
+<div class="relative h-48">
+<img alt="Vehicle" class="w-full h-full object-cover grayscale-0 brightness-75 group-hover:brightness-100 transition-all duration-500" data-alt="high-performance sport luxury car front view in low light with glowing red taillights and aggressive grille" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCrpnU4GvinWjX4kQrLYqHuYYlxpknr2dhS3SXxVYZ_zWg0t-sr-JrS6LHdMhr-kkmzLcFmSUU-4Ei60fhYlMpr3bFZqCQOOdr-gAdAD782VI-JzxJt3CACR51Awp4JDnY1-3enbHIVZ0zYKMqadWOoXDpczVO1Sk3N8_ab90vZV-I9C6Iu4-lEY4us0Jfre9qW0PZ9gvVlhXppSNhmPcIFA2NWEE2EsfMuRk6ZRsy1lYRSL9mkJObpR7J3DrJTzO10xrlZPkX9ZzI"/>
+<div class="absolute inset-0 bg-gradient-to-t from-tertiary-container/40 to-transparent"></div>
+<div class="absolute top-4 left-4">
+<span class="bg-tertiary-container/80 backdrop-blur-md text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-widest">CRITICAL EXPIRY</span>
+</div>
+<div class="absolute bottom-4 right-4 bg-tertiary-container/90 backdrop-blur-md p-3 rounded-xl shadow-xl shadow-tertiary-container/20">
+<p class="text-[10px] text-on-tertiary-container/70 font-label uppercase tracking-widest leading-none mb-1">Days to Expiry</p>
+<div class="flex items-center gap-2">
+<span class="text-2xl font-headline font-bold text-white tracking-tighter animate-pulse">02</span>
+<span class="text-xs text-white/80 font-medium">DAYS</span>
+</div>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-xl font-headline font-bold tracking-tight text-on-surface">2024 VANGUARD X-9</h3>
+<p class="text-sm text-on-surface-variant">Matte Obsidian • Executive Interior</p>
+</div>
+</div>
+<div class="bg-tertiary-container/10 p-4 rounded-lg mb-6 border border-tertiary-container/20">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-container/20 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+<div>
+<p class="text-[10px] text-tertiary-container/80 uppercase tracking-widest font-bold">Customer Name</p>
+<p class="text-sm font-semibold text-on-surface">Elena Sofia Rodriguez</p>
+</div>
+</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Full Form</button>
+<button class="flex-1 bg-tertiary-container text-on-tertiary-container hover:brightness-110 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Mark Delivered</button>
+</div>
+</div>
+</div>
+<!-- Card 3: Form Entry State (Modal Preview) -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group speed-lane">
+<div class="relative h-48">
+<img alt="Vehicle" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="premium luxury SUV detail shot of the wheel and sleek side paneling under soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9Q_1KlA_DSeUUcAX3zhfC_jvaqhPRNoBgzP65DdR2gr_6XRRaqTtD2EcJJzG7v6etBixZIZ5XlN6jfi59CsZMYat2-3wViHTa5DrpCWs2Y3Bjxu4Pt_IiTs0xyQ-YOEP6UdlSlB4puNzok9WaJkzDhvbAczMZksoSWvuc6zy0qQzgYOQY_Opq6T6OuwjXmfh19tNqat0ylqAw3Q_3u3xbdvo0dW3EpYVsXn36pTWg7l2iW-eEbSFBaa-k5tJ_y806tWCjsZIZPEZN"/>
+<div class="absolute inset-0 bg-surface-container-low/80 backdrop-blur-sm flex items-center justify-center">
+<div class="text-center p-6 w-full">
+<span class="material-symbols-outlined text-primary text-3xl mb-2">task_alt</span>
+<h4 class="text-sm font-headline font-bold uppercase tracking-widest text-on-surface mb-4">Complete Delivery</h4>
+<div class="space-y-3">
+<input class="w-full bg-surface-container-lowest border-none rounded-lg text-[10px] font-label font-bold tracking-widest text-primary placeholder:text-zinc-600 focus:ring-1 focus:ring-primary h-10 px-4" placeholder="RETAIL ID" type="text"/>
+<label class="w-full border-2 border-dashed border-outline-variant/30 hover:border-primary/50 rounded-lg flex items-center justify-center py-4 cursor-pointer transition-colors">
+<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+<span class="material-symbols-outlined text-base">cloud_upload</span>
+                                                Upload Docs
+                                            </div>
+<input class="hidden" type="file"/>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-xl font-headline font-bold tracking-tight text-on-surface">2024 APEX QUATTRO</h3>
+<p class="text-sm text-on-surface-variant">Pearl Frost • Tech Plus Pack</p>
+</div>
+</div>
+<div class="bg-surface-container-high/50 p-4 rounded-lg mb-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+<div>
+<p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Customer Name</p>
+<p class="text-sm font-semibold text-on-surface">Dr. Marcus Thorne</p>
+</div>
+</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="w-full bg-primary-container text-on-primary-container hover:brightness-110 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Submit Delivery</button>
+</div>
+</div>
+</div>
+<!-- Card 4: Long Expiry (Green-ish focus) -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group speed-lane">
+<div class="relative h-48">
+<img alt="Vehicle" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="rear 3/4 view of a fast modern convertible sports car on a coastal road during blue hour" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_Q6Q2i0TYA432cb38v9HMWBEa67YmuAMrGpqXtny2iRteKIVxGt4wwZ9oyN7aIUWjCpsDBRWquhCiAFxSw2nGdBLxlYssy4GedZvXZ5WOwoQLhlyF2evtp-_ozO_LbXqd4Hl5OGaqEcCL9aE8C6sFlj3djXudm6JRbQHd0nNJvvx8AzSxg-NbRN7zzqUdiioeZ472bPxLUcp1_Lx7fvJIaly-4uQtRci2Rf0EDe_e5fTsBjKbN4VxwT_9MqB6cLOr7V8Bk8l5hKkp"/>
+<div class="absolute top-4 left-4">
+<span class="bg-zinc-950/80 backdrop-blur-md text-primary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-widest border border-primary/20">VIN: 2L919A...10</span>
+</div>
+<div class="absolute bottom-4 right-4 bg-zinc-950/90 backdrop-blur-md p-3 rounded-xl border border-outline-variant/30">
+<p class="text-[10px] text-zinc-500 font-label uppercase tracking-widest leading-none mb-1 text-emerald-400">Days to Expiry</p>
+<div class="flex items-center gap-2">
+<span class="text-2xl font-headline font-bold text-emerald-400 tracking-tighter">14</span>
+<span class="text-xs text-emerald-400/60 font-medium">DAYS</span>
+</div>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-xl font-headline font-bold tracking-tight text-on-surface">2024 PULSE GT-S</h3>
+<p class="text-sm text-on-surface-variant">Racing Yellow • Alcantara Dash</p>
+</div>
+</div>
+<div class="bg-surface-container-high/50 p-4 rounded-lg mb-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+<div>
+<p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Customer Name</p>
+<p class="text-sm font-semibold text-on-surface">Sarah Jane Miller</p>
+</div>
+</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Full Form</button>
+<button class="flex-1 bg-primary text-on-primary hover:brightness-110 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all">Mark Delivered</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation -->
+<div class="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-950/90 backdrop-blur-xl z-50 flex items-center justify-around py-4">
+<button class="flex flex-col items-center gap-1 text-zinc-500">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Dash</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-zinc-500">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Stock</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined">lock_clock</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Blocks</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-zinc-500">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">User</span>
+</button>
+</div>
+</body></html>
