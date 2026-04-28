@@ -1,7 +1,7 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 
 const SECRET = process.env.JWT_SECRET || 'changeme_secret';
-const EXPIRY = process.env.JWT_EXPIRY || '8h';
+const EXPIRY = (process.env.JWT_EXPIRY || '8h') as SignOptions['expiresIn'];
 
 export interface TokenPayload {
   userId: string;
