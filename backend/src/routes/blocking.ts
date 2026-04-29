@@ -78,6 +78,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
     customerName: z.string().min(1),
     consultantName: z.string().min(1),
     paymentMode: z.enum(['CASH', 'FINANCE']),
+    amountReceived: z.number().optional(),
     financierBank: z.string().optional(),
     paymentStatus: z.string().min(1),
     expectedBillingDate: z.string().datetime(),

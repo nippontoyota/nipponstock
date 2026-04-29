@@ -33,8 +33,8 @@ export async function getHeatmap(year?: number): Promise<HeatmapCell[]> {
   const cells: HeatmapCell[] = [];
   for (const [key, counts] of Array.from(map.entries())) {
     const [model, suffix, colour] = key.split('||');
-    const ratio = counts.total === 0 ? 0 : counts.open / counts.total;
-    const level: HeatmapCell['level'] = ratio >= 0.5 ? 'green' : ratio >= 0.2 ? 'yellow' : 'red';
+    // Count-based: <2 open = red, 2–4 open = yellow, ≥5 open = green
+    const level: HeatmapCell['level'] = counts.open >= 5 ? 'green' : counts.open >= 2 ? 'yellow' : 'red';
     cells.push({ model, suffix, colour, open: counts.open, total: counts.total, level });
   }
   return cells;

@@ -32,11 +32,11 @@ const steps = [
 ];
 
 const THIS_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => THIS_YEAR - 5 + i).reverse();
 
 export default function BlockPage() {
   const navigate = useNavigate();
   const [cells, setCells] = useState<HeatmapCell[]>([]);
+  const [yearOptions, setYearOptions] = useState<number[]>([]);
   const [yom, setYom] = useState<string>('');       // Year of Manufacture filter
   const [model, setModel] = useState('');
   const [suffix, setSuffix] = useState('');
@@ -52,11 +52,17 @@ export default function BlockPage() {
     customerName: '',
     consultantName: '',
     paymentMode: 'CASH' as 'CASH' | 'FINANCE',
+    amountReceived: '',
     financeType: '' as '' | 'IN_HOUSE' | 'OUTHOUSE',
     financierBank: '',
     paymentStatus: 'Full payment received',
     expectedBillingDate: '',
   });
+
+  // Fetch distinct years in stock
+  useEffect(() => {
+    api.get('/stock/years').then(({ data }) => setYearOptions(data));
+  }, []);
 
   // Fetch heatmap filtered by YOM
   useEffect(() => {
@@ -102,9 +108,11 @@ export default function BlockPage() {
       return;
     }
     setSubmitting(true);
-    // Resolve financierBank value
     const financierBank = form.paymentMode === 'FINANCE'
       ? (form.financeType === 'IN_HOUSE' ? 'In-House' : form.financierBank)
+      : undefined;
+    const amountReceived = form.paymentMode === 'CASH' && form.amountReceived
+      ? parseFloat(form.amountReceived)
       : undefined;
 
     try {
@@ -115,6 +123,7 @@ export default function BlockPage() {
         customerName: form.customerName,
         consultantName: form.consultantName,
         paymentMode: form.paymentMode,
+        amountReceived,
         financierBank,
         paymentStatus: form.paymentStatus,
         expectedBillingDate: new Date(form.expectedBillingDate).toISOString(),
@@ -134,10 +143,9 @@ export default function BlockPage() {
     form.consultantName &&
     form.paymentStatus &&
     form.expectedBillingDate &&
-    (form.paymentMode === 'CASH' ||
-      (form.paymentMode === 'FINANCE' &&
-        form.financeType !== '' &&
-        (form.financeType === 'IN_HOUSE' || form.financierBank)));
+    (form.paymentMode === 'CASH'
+      ? !!form.amountReceived
+      : form.financeType !== '' && (form.financeType === 'IN_HOUSE' || !!form.financierBank));
 
   const currentStep = step === 'select' ? 0 : 1;
 
@@ -191,7 +199,7 @@ export default function BlockPage() {
                       onChange={(e) => { setYom(e.target.value); setModel(''); setSuffix(''); setColour(''); }}
                     >
                       <option value="">All Years</option>
-                      {YEAR_OPTIONS.map((y) => <option key={y} value={String(y)}>{y}</option>)}
+                      {yearOptions.map((y) => <option key={y} value={String(y)}>{y}</option>)}
                     </select>
                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
                   </div>
@@ -368,6 +376,20 @@ export default function BlockPage() {
                   </div>
 
                   <div className="space-y-6">
+                    {form.paymentMode === 'CASH' && (
+                      <div className="space-y-2">
+                        <label className="label">Amount Received (₹) *</label>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          placeholder="Enter amount received"
+                          value={form.amountReceived}
+                          onChange={(e) => setForm((f) => ({ ...f, amountReceived: e.target.value }))}
+                          required
+                        />
+                      </div>
+                    )}
                     {form.paymentMode === 'FINANCE' && (
                       <>
                         {/* In-House / Outhouse dropdown */}

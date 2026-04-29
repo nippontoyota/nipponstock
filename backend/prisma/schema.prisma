@@ -151,6 +151,7 @@ model BlockingRequest {
   financierBank       String?
   paymentStatus       String?
   expectedBillingDate DateTime?
+  amountReceived      Float?
   receiptUrl          String?
   softBlockAt         DateTime       @default(now())
   hardBlockAt         DateTime?

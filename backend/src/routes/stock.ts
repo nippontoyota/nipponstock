@@ -16,6 +16,17 @@ router.get('/heatmap', async (req: AuthRequest, res: Response) => {
   res.json(data);
 });
 
+// Distinct chassis years in active stock — available to all authenticated users
+router.get('/years', async (_req: AuthRequest, res: Response) => {
+  const rows = await prisma.vehicle.findMany({
+    where: { status: { not: 'DELIVERED' }, hiddenFromHeatmap: false },
+    select: { chassisYear: true },
+    distinct: ['chassisYear'],
+    orderBy: { chassisYear: 'desc' },
+  });
+  res.json(rows.map((r) => r.chassisYear));
+});
+
 // All stock — admin only
 router.get('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   const { status, model, page = '1', limit = '50' } = req.query as Record<string, string>;

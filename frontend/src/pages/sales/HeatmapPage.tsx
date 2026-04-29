@@ -28,15 +28,12 @@ const cellBg = {
 
 const levelLabel = { green: 'High', yellow: 'Medium', red: 'Critical' };
 
-// Build year options: current year ± 5
-const THIS_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => THIS_YEAR - 5 + i).reverse();
-
 export default function HeatmapPage() {
   const [cells, setCells] = useState<HeatmapCell[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [yomFilter, setYomFilter] = useState<string>('');   // '' = all years
+  const [yearOptions, setYearOptions] = useState<number[]>([]);
   const navigate = useNavigate();
 
   const fetchHeatmap = useCallback(async (year?: string) => {
@@ -48,6 +45,11 @@ export default function HeatmapPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Fetch distinct years from stock on mount
+  useEffect(() => {
+    api.get('/stock/years').then(({ data }) => setYearOptions(data));
   }, []);
 
   useEffect(() => {
@@ -126,7 +128,7 @@ export default function HeatmapPage() {
               onChange={(e) => setYomFilter(e.target.value)}
             >
               <option value="">All Years</option>
-              {YEAR_OPTIONS.map((y) => (
+              {yearOptions.map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -197,14 +199,10 @@ export default function HeatmapPage() {
                           return (
                             <div
                               key={colour}
-                              title={`${colour} — ${cell.open} open / ${cell.total} total`}
-                              className={`h-14 rounded-sm cursor-pointer transition-all duration-200 relative group/cell flex items-end justify-end p-1 ${cellStyle[cell.level]}`}
+                              className={`h-14 rounded-sm cursor-pointer transition-all duration-200 flex items-end justify-end p-1 ${cellStyle[cell.level]}`}
                               style={{ backgroundColor: cellBg[cell.level] }}
                             >
                               <span className="text-[10px] font-black text-white/80 leading-none">{cell.open}</span>
-                              <span className="hidden group-hover/cell:flex absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-[10px] px-2 py-1 rounded whitespace-nowrap z-10 items-center gap-1 text-on-surface">
-                                {cell.open}/{cell.total} · {levelLabel[cell.level]}
-                              </span>
                             </div>
                           );
                         })}
