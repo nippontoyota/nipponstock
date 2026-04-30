@@ -305,7 +305,7 @@ export default function BlockPage() {
                 {/* Locked vehicle telemetry */}
                 <section className="bg-surface-container-low p-6 rounded-xl space-y-6">
                   <div className="flex justify-between items-end pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
-                    <h2 className="font-headline text-lg font-semibold tracking-tight text-on-surface">Vehicle Telemetry</h2>
+                    <h2 className="font-headline text-lg font-semibold tracking-tight text-on-surface">Vehicle Information</h2>
                     <span className="font-label text-xs text-primary bg-primary/10 px-2 py-0.5 rounded uppercase font-semibold">Locked Configuration</span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

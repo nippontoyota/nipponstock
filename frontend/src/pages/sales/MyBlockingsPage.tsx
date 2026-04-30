@@ -3,6 +3,7 @@ import { differenceInDays, differenceInHours } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import socket from '../../socket';
+import * as XLSX from 'xlsx';
 
 interface Blocking {
   id: string;
@@ -137,6 +138,29 @@ export default function MyBlockingsPage() {
           <p className="text-on-surface-variant font-body">Manage reserved inventory and pending retail conversions.</p>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              const rows = active.map((b) => ({
+                'Customer': b.customerName ?? '',
+                'Vehicle': `${b.vehicle.chassisYear} ${b.vehicle.model} ${b.vehicle.suffix}`,
+                'Colour': b.vehicle.colour,
+                'Chassis No': b.vehicle.chassisNumber,
+                'Order ID': b.orderId ?? '',
+                'Payment Mode': b.paymentMode ?? '',
+                'Payment Status': b.paymentStatus ?? '',
+                'Branch': b.branch.name,
+                'Expiry': b.expiryAt ? new Date(b.expiryAt).toLocaleDateString() : '',
+              }));
+              const ws = XLSX.utils.json_to_sheet(rows);
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, 'Blockings');
+              XLSX.writeFile(wb, 'active_blockings.xlsx');
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container text-xs font-bold uppercase tracking-widest font-headline transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">download</span>
+            Download Excel
+          </button>
           <div className="bg-surface-container-low p-1 rounded-lg flex gap-1">
             <button
               onClick={() => setTab('active')}

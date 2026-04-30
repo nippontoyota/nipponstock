@@ -23,7 +23,7 @@ export default function AdminShell() {
       {/* Side Nav */}
       <aside className="hidden lg:flex flex-col h-screen w-64 fixed left-0 top-0 bg-zinc-900 z-40 py-6 border-r border-zinc-800/50">
         <div className="px-6 mb-8">
-          <h2 className="text-primary font-headline font-black tracking-widest text-lg uppercase">AutoStock</h2>
+          <h2 className="text-primary font-headline font-black tracking-widest text-xs uppercase">Stock Blocking Application</h2>
           <p className="font-label text-[10px] text-zinc-500 uppercase tracking-tighter">Admin Portal</p>
         </div>
 

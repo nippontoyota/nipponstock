@@ -47,10 +47,10 @@ export default function LoginPage() {
             <div className="space-y-4">
               <h2 className="font-headline text-5xl font-bold tracking-tighter text-on-surface leading-none">
                 STOCK<br />
-                <span className="text-primary-container">BLOCKING</span>
+                <span className="text-primary-container">BLOCKING APPLICATION</span>
               </h2>
               <p className="max-w-md text-on-surface-variant font-body">
-                Access the live telemetry of your regional inventory. Manage blockings, reserve high-value stock, and drive branch performance with precision.
+                
               </p>
             </div>
           </div>
@@ -65,13 +65,13 @@ export default function LoginPage() {
           </div>
 
           <header className="mb-10">
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Sales Terminal</h3>
-            <p className="text-on-surface-variant font-body mt-1 text-sm">Authorized Executive Access Only</p>
+            <h3 className="font-headline text-2xl font-bold text-on-surface">Login</h3>
+            <p className="text-on-surface-variant font-body mt-1 text-sm">Authorized Access Only</p>
           </header>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-2">
-              <label className="label" htmlFor="exec-id">Sales Executive ID</label>
+              <label className="label" htmlFor="exec-id">User ID</label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors">
                   <span className="material-symbols-outlined text-lg">badge</span>
@@ -91,7 +91,7 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <label className="label" htmlFor="password">Security Cipher</label>
+                <label className="label" htmlFor="password">Password</label>
               </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors">
@@ -131,9 +131,7 @@ export default function LoginPage() {
 
             <footer className="pt-8 border-t border-outline-variant/10">
               <div className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-tertiary-container animate-pulse" />
                 <span className="font-label text-xs text-on-surface-variant opacity-70 uppercase tracking-widest">
-                  System Status: All Systems Nominal
                 </span>
               </div>
             </footer>
@@ -141,27 +139,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Floating telemetry decorations */}
-      <div className="absolute top-12 right-12 hidden xl:block glass-panel px-6 py-4 rounded-xl pointer-events-none" style={{ border: '1px solid rgba(67,70,86,0.1)' }}>
-        <div className="flex flex-col gap-1">
-          <span className="font-label text-[10px] text-primary/60 uppercase tracking-widest">Global Latency</span>
-          <span className="font-headline text-xl font-bold text-on-surface">14ms</span>
-          <div className="w-full h-1 bg-surface-container-lowest mt-2 overflow-hidden rounded-full">
-            <div className="h-full bg-primary w-2/3" />
-          </div>
-        </div>
-      </div>
-      <div className="absolute bottom-12 left-12 hidden xl:block glass-panel px-6 py-4 rounded-xl pointer-events-none" style={{ border: '1px solid rgba(67,70,86,0.1)' }}>
-        <div className="flex flex-col gap-1">
-          <span className="font-label text-[10px] text-tertiary/60 uppercase tracking-widest">Secure Handshake</span>
-          <span className="font-headline text-xl font-bold text-on-surface">AES-256</span>
-          <div className="flex gap-1 mt-2">
-            <div className="h-1 w-4 bg-tertiary rounded-full" />
-            <div className="h-1 w-4 bg-tertiary/40 rounded-full" />
-            <div className="h-1 w-4 bg-tertiary/20 rounded-full" />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

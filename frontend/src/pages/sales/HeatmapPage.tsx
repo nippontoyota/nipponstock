@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../../api';
 import socket from '../../socket';
 
@@ -95,27 +96,49 @@ export default function HeatmapPage() {
             </span>
           </p>
         </div>
-        <button
-          onClick={() => navigate('/sales/block')}
-          className="group relative flex items-center gap-3 px-8 py-4 font-headline font-bold uppercase tracking-widest text-sm rounded-lg overflow-hidden transition-transform active:scale-95 shadow-xl"
-          style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388', boxShadow: '0 8px 24px rgba(46,91,255,0.2)' }}
-        >
-          <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-500">add_box</span>
-          Block a Vehicle
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => navigate('/sales/block')}
+            className="group relative flex items-center gap-3 px-8 py-4 font-headline font-bold uppercase tracking-widest text-sm rounded-lg overflow-hidden transition-transform active:scale-95 shadow-xl"
+            style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388', boxShadow: '0 8px 24px rgba(46,91,255,0.2)' }}
+          >
+            <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-500">add_box</span>
+            Block a Vehicle
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+          <button
+            onClick={() => toast('Coming soon', { icon: '🚧' })}
+            className="flex items-center gap-2 px-6 py-4 font-headline font-bold uppercase tracking-widest text-sm rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">directions_car</span>
+            Request for a Vehicle
+          </button>
+          <button
+            onClick={() => toast('Coming soon', { icon: '🚧' })}
+            className="flex items-center gap-2 px-6 py-4 font-headline font-bold uppercase tracking-widest text-sm rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">picture_as_pdf</span>
+            Download PDF
+          </button>
+        </div>
       </section>
 
       {/* Legend + YOM filter bar */}
       <section className="flex flex-wrap items-center gap-6 py-4 bg-surface-container-low px-6 rounded-xl border-l-4 border-primary">
         <div className="flex items-center gap-4 border-r border-outline-variant/30 pr-6">
           <span className="text-[10px] font-label uppercase font-black text-zinc-500 tracking-tighter">Availability:</span>
-          {(['green', 'yellow', 'red'] as const).map((l) => (
-            <div key={l} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg[l] }} />
-              <span className="text-xs font-label text-on-surface-variant">{levelLabel[l]}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg.green }} />
+            <span className="text-xs font-label text-on-surface-variant">High <span className="text-zinc-500">(&#62;5)</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg.yellow }} />
+            <span className="text-xs font-label text-on-surface-variant">Medium <span className="text-zinc-500">(&#62;2–5)</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg.red }} />
+            <span className="text-xs font-label text-on-surface-variant">Critical <span className="text-zinc-500">(&#8804;2)</span></span>
+          </div>
         </div>
 
         {/* YOM Filter */}

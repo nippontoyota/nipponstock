@@ -24,7 +24,7 @@ export default function SalesShell() {
               <span className="material-symbols-outlined text-lg">hub</span>
             </div>
             <div>
-              <h2 className="text-primary font-headline font-black text-sm uppercase tracking-widest">AutoStock</h2>
+              <h2 className="text-primary font-headline font-black text-xs uppercase tracking-widest">Stock Blocking Application</h2>
               <p className="text-[10px] text-zinc-500 font-label">{user?.fullName}</p>
             </div>
           </div>
