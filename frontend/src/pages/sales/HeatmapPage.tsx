@@ -199,11 +199,9 @@ export default function HeatmapPage() {
                           return (
                             <div
                               key={colour}
-                              className={`h-14 rounded-sm cursor-pointer transition-all duration-200 flex items-end justify-end p-1 ${cellStyle[cell.level]}`}
+                              className={`h-14 rounded-sm cursor-pointer transition-all duration-200 ${cellStyle[cell.level]}`}
                               style={{ backgroundColor: cellBg[cell.level] }}
-                            >
-                              <span className="text-[10px] font-black text-white/80 leading-none">{cell.open}</span>
-                            </div>
+                            />
                           );
                         })}
                       </div>
