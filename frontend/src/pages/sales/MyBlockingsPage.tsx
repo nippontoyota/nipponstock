@@ -53,8 +53,22 @@ export default function MyBlockingsPage() {
   // Release modal state
   const [releaseTarget, setReleaseTarget] = useState<Blocking | null>(null);
   const [releaseReason, setReleaseReason] = useState('');
+  const [releaseRemarks, setReleaseRemarks] = useState('');
   const [releaseSalesId, setReleaseSalesId] = useState('');
   const [releasing, setReleasing] = useState(false);
+
+  const RELEASE_REASONS = [
+    'Finance Issue',
+    'Color / Model Unavailable',
+    'Lost to Competitor',
+    'Lost to Co-Dealer',
+    'Purchase Cancelled',
+    'Exchange Value Issue',
+    'Discount Issue',
+    'Purchase Postponed',
+    'OEM Direct Purchase',
+    'Others',
+  ];
 
   const fetch = async () => {
     const { data } = await api.get('/blocking/my');
@@ -84,19 +98,22 @@ export default function MyBlockingsPage() {
   };
 
   const handleRelease = async () => {
-    if (!releaseTarget || !releaseReason || !releaseSalesId) {
-      toast.error('Reason and Sales ID are required');
+    const isOthers = releaseReason === 'Others';
+    if (!releaseTarget || !releaseReason || !releaseSalesId || (isOthers && !releaseRemarks)) {
+      toast.error('All fields are required');
       return;
     }
+    const finalReason = isOthers ? `Others — ${releaseRemarks}` : releaseReason;
     setReleasing(true);
     try {
       await api.patch(`/blocking/${releaseTarget.id}/self-release`, {
-        reason: releaseReason,
+        reason: finalReason,
         salesId: releaseSalesId,
       });
       toast.success('Vehicle released back to open pool');
       setReleaseTarget(null);
       setReleaseReason('');
+      setReleaseRemarks('');
       setReleaseSalesId('');
       fetch();
     } catch (err: unknown) {
@@ -201,25 +218,19 @@ export default function MyBlockingsPage() {
                   {/* Actions */}
                   <div className="mt-auto space-y-2">
                     <div className="flex gap-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelected(b); }}
-                        className="flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline"
-                      >
-                        Full Form
-                      </button>
                       {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelected(b); }}
                           className={`flex-1 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline ${isCritical ? 'bg-tertiary-container text-on-tertiary-container hover:brightness-110' : 'bg-primary text-on-primary hover:brightness-110'}`}
                         >
-                          Mark Delivered
+                          Payment Received
                         </button>
                       )}
                     </div>
                     {/* Release button */}
                     {b.status === 'ACTIVE' && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); setReleaseTarget(b); setReleaseReason(''); setReleaseSalesId(''); }}
+                        onClick={(e) => { e.stopPropagation(); setReleaseTarget(b); setReleaseReason(''); setReleaseRemarks(''); setReleaseSalesId(''); }}
                         className="w-full py-2.5 rounded-lg border border-tertiary/30 text-tertiary hover:bg-tertiary-container/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
                       >
                         <span className="material-symbols-outlined text-sm align-middle mr-1">lock_open</span>
@@ -270,13 +281,13 @@ export default function MyBlockingsPage() {
               ))}
             </div>
 
-            {/* Delivery form */}
+            {/* Payment Received form */}
             {selected.status === 'ACTIVE' && selected.blockType === 'HARD' && (
               <div className="p-6 space-y-3 bg-surface-container" style={{ borderTop: '1px solid rgba(67,70,86,0.1)' }}>
-                <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant font-bold mb-3">Mark as Delivered</p>
+                <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant font-bold mb-3">Payment Received</p>
                 <input
                   className="input"
-                  placeholder="RETAIL ID *"
+                  placeholder="Last Payment Receipt No. *"
                   value={retailId}
                   onChange={(e) => setRetailId(e.target.value)}
                 />
@@ -286,7 +297,7 @@ export default function MyBlockingsPage() {
                   className="w-full py-3 rounded-lg font-headline font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-40"
                   style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388' }}
                 >
-                  {delivering ? 'Processing…' : 'Confirm Delivery'}
+                  {delivering ? 'Processing…' : 'Confirm Payment'}
                 </button>
               </div>
             )}
@@ -330,20 +341,39 @@ export default function MyBlockingsPage() {
 
               <div>
                 <label className="label">Reason for Release *</label>
-                <textarea
-                  className="input resize-none"
-                  rows={3}
-                  placeholder="e.g. Customer withdrew, vehicle damage found, customer switched model…"
-                  value={releaseReason}
-                  onChange={(e) => setReleaseReason(e.target.value)}
-                />
+                <div className="relative">
+                  <select
+                    className="input appearance-none pr-10"
+                    value={releaseReason}
+                    onChange={(e) => { setReleaseReason(e.target.value); setReleaseRemarks(''); }}
+                  >
+                    <option value="">Select a reason…</option>
+                    {RELEASE_REASONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+                </div>
               </div>
+
+              {releaseReason === 'Others' && (
+                <div>
+                  <label className="label">Remarks *</label>
+                  <textarea
+                    className="input resize-none"
+                    rows={3}
+                    placeholder="Please describe the reason…"
+                    value={releaseRemarks}
+                    onChange={(e) => setReleaseRemarks(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="p-6 pt-0">
               <button
                 onClick={handleRelease}
-                disabled={!releaseReason || !releaseSalesId || releasing}
+                disabled={!releaseReason || !releaseSalesId || (releaseReason === 'Others' && !releaseRemarks) || releasing}
                 className="btn-danger w-full disabled:opacity-40"
               >
                 {releasing ? 'Releasing…' : 'Confirm Release'}

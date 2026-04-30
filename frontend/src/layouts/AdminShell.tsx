@@ -71,7 +71,7 @@ export default function AdminShell() {
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3">
           <div className="flex items-center gap-8">
-            <span className="text-lg font-bold tracking-tighter text-primary font-headline uppercase">Kinetic Precision</span>
+            <img src="/nippon-logo.png" alt="Nippon Toyota" className="h-8 object-contain" />
             <nav className="hidden lg:flex items-center gap-6 font-headline tracking-tighter uppercase text-sm">
               {sideNav.slice(0, 4).map((item) => (
                 <NavLink

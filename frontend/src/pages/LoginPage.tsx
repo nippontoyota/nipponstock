@@ -41,18 +41,13 @@ export default function LoginPage() {
         {/* Left branding — 7 cols */}
         <div className="lg:col-span-7 relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
           <div className="z-10">
-            <h1 className="font-headline text-3xl font-black tracking-tighter text-primary uppercase">
-              Kinetic Precision
-            </h1>
-            <p className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant mt-2 opacity-60">
-              Sales Management Hub
-            </p>
+            <img src="/nippon-logo.png" alt="Nippon Toyota" className="h-16 object-contain" />
           </div>
           <div className="z-10 mt-auto">
             <div className="space-y-4">
               <h2 className="font-headline text-5xl font-bold tracking-tighter text-on-surface leading-none">
-                VELOCITY IS<br />
-                <span className="text-primary-container">AUTHORITY.</span>
+                STOCK<br />
+                <span className="text-primary-container">BLOCKING</span>
               </h2>
               <p className="max-w-md text-on-surface-variant font-body">
                 Access the live telemetry of your regional inventory. Manage blockings, reserve high-value stock, and drive branch performance with precision.
@@ -66,7 +61,7 @@ export default function LoginPage() {
         {/* Right form — 5 cols */}
         <div className="lg:col-span-5 bg-surface-container p-8 md:p-16 flex flex-col justify-center">
           <div className="lg:hidden mb-12">
-            <h1 className="font-headline text-2xl font-black tracking-tighter text-primary uppercase">Kinetic Precision</h1>
+            <img src="/nippon-logo.png" alt="Nippon Toyota" className="h-12 object-contain" />
           </div>
 
           <header className="mb-10">
