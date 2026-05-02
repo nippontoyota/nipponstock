@@ -111,37 +111,41 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
   const days = await getBlockingDays(existing.vehicle.model, existing.vehicle.stockStatus);
   const expiryAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-  const updated = await prisma.$transaction(async (tx) => {
-    // Update vehicle chassisYear (in case of multi-year stock)
-    await tx.vehicle.update({
-      where: { id: existing.vehicleId },
-      data: { chassisYear, status: 'HARD_BLOCKED' },
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.vehicle.update({
+        where: { id: existing.vehicleId },
+        data: { chassisYear, status: 'HARD_BLOCKED' },
+      });
+
+      return tx.blockingRequest.update({
+        where: { id: blockingId },
+        data: {
+          blockType: 'HARD',
+          hardBlockAt: new Date(),
+          expiryAt,
+          ...formData,
+          expectedBillingDate: new Date(formData.expectedBillingDate),
+        },
+        include: { vehicle: true, branch: true },
+      });
     });
 
-    return tx.blockingRequest.update({
-      where: { id: blockingId },
-      data: {
-        blockType: 'HARD',
-        hardBlockAt: new Date(),
-        expiryAt,
-        ...formData,
-        expectedBillingDate: new Date(formData.expectedBillingDate),
-      },
-      include: { vehicle: true, branch: true },
+    await logAudit({
+      entityType: 'BLOCKING',
+      entityId: blockingId,
+      action: 'HARD_BLOCKED',
+      performedById: userId,
+      newValue: { status: 'HARD_BLOCKED', expiryAt },
     });
-  });
 
-  await logAudit({
-    entityType: 'BLOCKING',
-    entityId: blockingId,
-    action: 'HARD_BLOCKED',
-    performedById: userId,
-    newValue: { status: 'HARD_BLOCKED', expiryAt },
-  });
-
-  emitHeatmapUpdate();
-  emitBlockingUpdate(blockingId);
-  res.json(updated);
+    emitHeatmapUpdate();
+    emitBlockingUpdate(blockingId);
+    res.json(updated);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(500).json({ error: 'Failed to confirm block', detail: msg });
+  }
 });
 
 // GET /blocking/my
