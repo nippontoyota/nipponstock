@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import api from '../../api';
 import socket from '../../socket';
 
@@ -13,6 +14,10 @@ interface HeatmapCell {
   total: number;
   level: 'green' | 'yellow' | 'red';
 }
+
+interface CarSuffix { id: string; suffix: string; description?: string; }
+interface CarColour { id: string; colourCode: string; colourName: string; }
+interface CarModel { id: string; modelCode: string; modelName: string; suffixes: CarSuffix[]; colours: CarColour[]; }
 
 // Real traffic-light colours for the cells
 const cellStyle = {
@@ -33,8 +38,18 @@ export default function HeatmapPage() {
   const [cells, setCells] = useState<HeatmapCell[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
-  const [yomFilter, setYomFilter] = useState<string>('');   // '' = all years
+  const [yomFilter, setYomFilter] = useState<string>('');
   const [yearOptions, setYearOptions] = useState<number[]>([]);
+
+  // Request for a Vehicle modal state
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [carModels, setCarModels] = useState<CarModel[]>([]);
+  const [reqModel, setReqModel] = useState('');
+  const [reqSuffix, setReqSuffix] = useState('');
+  const [reqColour, setReqColour] = useState('');
+  const [reqNotes, setReqNotes] = useState('');
+  const [submittingReq, setSubmittingReq] = useState(false);
+
   const navigate = useNavigate();
 
   const fetchHeatmap = useCallback(async (year?: string) => {
@@ -66,6 +81,48 @@ export default function HeatmapPage() {
       clearInterval(interval);
     };
   }, [yomFilter, fetchHeatmap]);
+
+  const downloadExcel = () => {
+    if (cells.length === 0) { toast.error('No data to export'); return; }
+    const rows = cells.map((c) => ({
+      Model: c.model,
+      Suffix: c.suffix,
+      Colour: c.colour,
+      'Open Units': c.open,
+      'Total Units': c.total,
+      Availability: c.level === 'green' ? 'High' : c.level === 'yellow' ? 'Medium' : 'Critical',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Stock Heatmap');
+    XLSX.writeFile(wb, `heatmap${yomFilter ? `_${yomFilter}` : ''}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success('Excel downloaded');
+  };
+
+  const openRequestModal = async () => {
+    if (carModels.length === 0) {
+      const { data } = await api.get('/cars');
+      setCarModels(data);
+    }
+    setReqModel(''); setReqSuffix(''); setReqColour(''); setReqNotes('');
+    setShowRequestModal(true);
+  };
+
+  const selectedModel = carModels.find((m) => m.modelName === reqModel);
+
+  const submitRequest = async () => {
+    if (!reqModel || !reqSuffix || !reqColour) { toast.error('Model, suffix, and colour are required'); return; }
+    setSubmittingReq(true);
+    try {
+      await api.post('/vehicle-requests', { model: reqModel, suffix: reqSuffix, colour: reqColour, notes: reqNotes || undefined });
+      toast.success('Request submitted successfully');
+      setShowRequestModal(false);
+    } catch {
+      toast.error('Failed to submit request');
+    } finally {
+      setSubmittingReq(false);
+    }
+  };
 
   // Group: model → suffix → colours[]
   const byModel = cells.reduce<Record<string, Record<string, HeatmapCell[]>>>((acc, c) => {
@@ -107,18 +164,18 @@ export default function HeatmapPage() {
             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
           <button
-            onClick={() => toast('Coming soon', { icon: '🚧' })}
+            onClick={openRequestModal}
             className="flex items-center gap-2 px-6 py-4 font-headline font-bold uppercase tracking-widest text-sm rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
           >
             <span className="material-symbols-outlined text-lg">directions_car</span>
             Request for a Vehicle
           </button>
           <button
-            onClick={() => toast('Coming soon', { icon: '🚧' })}
+            onClick={downloadExcel}
             className="flex items-center gap-2 px-6 py-4 font-headline font-bold uppercase tracking-widest text-sm rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
           >
-            <span className="material-symbols-outlined text-lg">picture_as_pdf</span>
-            Download PDF
+            <span className="material-symbols-outlined text-lg">table_view</span>
+            Download Excel
           </button>
         </div>
       </section>
@@ -234,6 +291,100 @@ export default function HeatmapPage() {
               </article>
             );
           })}
+        </div>
+      )}
+
+      {/* Request for a Vehicle modal */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setShowRequestModal(false)}>
+          <div className="bg-surface-container-low rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start p-6 pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
+              <div>
+                <h2 className="font-headline font-bold text-lg tracking-tighter uppercase text-on-surface">Request for a Vehicle</h2>
+                <p className="font-label text-xs text-on-surface-variant mt-0.5">Submit a vehicle requirement to the admin team.</p>
+              </div>
+              <button onClick={() => setShowRequestModal(false)} className="text-on-surface-variant hover:text-on-surface w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Model dropdown */}
+              <div>
+                <label className="label">Model</label>
+                <div className="relative">
+                  <select
+                    className="input appearance-none pr-8"
+                    value={reqModel}
+                    onChange={(e) => { setReqModel(e.target.value); setReqSuffix(''); setReqColour(''); }}
+                  >
+                    <option value="">Select model…</option>
+                    {carModels.map((m) => (
+                      <option key={m.id} value={m.modelName}>{m.modelName}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                </div>
+              </div>
+
+              {/* Suffix dropdown */}
+              <div>
+                <label className="label">Suffix / Variant</label>
+                <div className="relative">
+                  <select
+                    className="input appearance-none pr-8"
+                    value={reqSuffix}
+                    onChange={(e) => setReqSuffix(e.target.value)}
+                    disabled={!reqModel}
+                  >
+                    <option value="">Select suffix…</option>
+                    {(selectedModel?.suffixes ?? []).map((s) => (
+                      <option key={s.id} value={s.suffix}>{s.suffix}{s.description ? ` — ${s.description}` : ''}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                </div>
+              </div>
+
+              {/* Colour dropdown */}
+              <div>
+                <label className="label">Colour</label>
+                <div className="relative">
+                  <select
+                    className="input appearance-none pr-8"
+                    value={reqColour}
+                    onChange={(e) => setReqColour(e.target.value)}
+                    disabled={!reqModel}
+                  >
+                    <option value="">Select colour…</option>
+                    {(selectedModel?.colours ?? []).map((c) => (
+                      <option key={c.id} value={c.colourName}>{c.colourName}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="label">Notes <span className="text-zinc-600 normal-case font-normal">(optional)</span></label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  placeholder="Any additional requirements…"
+                  value={reqNotes}
+                  onChange={(e) => setReqNotes(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="p-6 pt-0 flex gap-3">
+              <button onClick={() => setShowRequestModal(false)} className="btn-secondary flex-1 text-xs">Cancel</button>
+              <button onClick={submitRequest} disabled={submittingReq || !reqModel || !reqSuffix || !reqColour} className="btn-primary flex-1 disabled:opacity-40">
+                {submittingReq ? 'Submitting…' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

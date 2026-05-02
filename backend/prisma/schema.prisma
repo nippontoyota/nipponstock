@@ -52,6 +52,7 @@ model Branch {
 
   users            User[]
   blockings        BlockingRequest[]
+  vehicleRequests  VehicleRequest[]
   physicalVehicles Vehicle[]         @relation("PhysicalStockBranch")
 }
 
@@ -67,10 +68,11 @@ model User {
   branch   Branch? @relation(fields: [branchId], references: [id])
   branchId String?
 
-  blockings     BlockingRequest[] @relation("UserBlockings")
-  auditLogs     AuditLog[]
-  modelConfigs  ModelConfig[]
-  globalConfigs GlobalConfig[]
+  blockings        BlockingRequest[] @relation("UserBlockings")
+  vehicleRequests  VehicleRequest[]
+  auditLogs        AuditLog[]
+  modelConfigs     ModelConfig[]
+  globalConfigs    GlobalConfig[]
 }
 
 // ── Car Catalogue ─────────────────────────────────────────────────────────────
@@ -199,6 +201,25 @@ model GlobalConfig {
   updatedAt   DateTime @updatedAt
   updatedBy   User?    @relation(fields: [updatedById], references: [id])
   updatedById String?
+}
+
+model VehicleRequest {
+  id        String   @id @default(uuid())
+  model     String
+  suffix    String
+  colour    String
+  notes     String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([status])
+  @@index([userId])
 }
 
 model AuditLog {

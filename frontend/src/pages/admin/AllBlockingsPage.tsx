@@ -26,6 +26,7 @@ export default function AllBlockingsPage() {
   const [selected, setSelected] = useState<Blocking | null>(null);
   const [editForm, setEditForm] = useState<{ customerName: string; consultantName: string; paymentStatus: string; adminNotes: string }>({ customerName: '', consultantName: '', paymentStatus: '', adminNotes: '' });
   const [extendDate, setExtendDate] = useState('');
+  const [retailId, setRetailId] = useState('');
   const [loading, setLoading] = useState(false);
   const limit = 20;
 
@@ -46,6 +47,7 @@ export default function AllBlockingsPage() {
     setSelected(b);
     setEditForm({ customerName: b.customerName ?? '', consultantName: b.consultantName ?? '', paymentStatus: b.paymentStatus ?? '', adminNotes: b.adminNotes ?? '' });
     setExtendDate('');
+    setRetailId('');
   };
 
   const handleSave = async () => {
@@ -64,6 +66,13 @@ export default function AllBlockingsPage() {
     if (!confirm('Release this block and return vehicle to open pool?')) return;
     try { await api.patch(`/blocking/${id}/release`); toast.success('Block released'); fetch(); setSelected(null); }
     catch { toast.error('Release failed'); }
+  };
+
+  const handleDeliver = async () => {
+    if (!selected || !retailId.trim()) { toast.error('Last payment receipt (Retail ID) is required'); return; }
+    if (!confirm('Mark this blocking as delivered?')) return;
+    try { await api.patch(`/blocking/${selected.id}/deliver`, { retailId: retailId.trim() }); toast.success('Marked as delivered'); fetch(); setSelected(null); }
+    catch { toast.error('Failed to mark as delivered'); }
   };
 
   return (
@@ -184,6 +193,23 @@ export default function AllBlockingsPage() {
                 </div>
               </div>
             </div>
+
+            {selected.status === 'ACTIVE' && (
+              <div className="px-6 pb-4 space-y-2" style={{ borderTop: '1px solid rgba(67,70,86,0.1)', paddingTop: '16px' }}>
+                <label className="label">Mark as Delivered — Last Payment Receipt</label>
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1"
+                    placeholder="Enter Retail ID / receipt number"
+                    value={retailId}
+                    onChange={(e) => setRetailId(e.target.value)}
+                  />
+                  <button onClick={handleDeliver} disabled={!retailId.trim()} className="btn-primary text-xs px-4 whitespace-nowrap disabled:opacity-40">
+                    Mark Delivered
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="p-6 pt-0 flex gap-3">
               {selected.status === 'ACTIVE' && (

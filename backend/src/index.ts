@@ -15,6 +15,7 @@ import configRouter from './routes/config';
 import usersRouter from './routes/users';
 import branchesRouter from './routes/branches';
 import carsRouter from './routes/cars';
+import vehicleRequestsRouter from './routes/vehicleRequests';
 
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +41,7 @@ app.use('/config', configRouter);
 app.use('/users', usersRouter);
 app.use('/branches', branchesRouter);
 app.use('/cars', carsRouter);
+app.use('/vehicle-requests', vehicleRequestsRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

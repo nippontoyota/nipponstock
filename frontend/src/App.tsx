@@ -13,6 +13,7 @@ import ConfigPage from './pages/admin/ConfigPage';
 import UsersPage from './pages/admin/UsersPage';
 import BranchesPage from './pages/admin/BranchesPage';
 import CarsPage from './pages/admin/CarsPage';
+import VehicleRequestsPage from './pages/admin/VehicleRequestsPage';
 
 import HeatmapPage from './pages/sales/HeatmapPage';
 import BlockPage from './pages/sales/BlockPage';
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="users" element={<UsersPage />} />
         <Route path="branches" element={<BranchesPage />} />
         <Route path="cars" element={<CarsPage />} />
+        <Route path="vehicle-requests" element={<VehicleRequestsPage />} />
       </Route>
 
       {/* Sales Manager routes */}
