@@ -7,7 +7,7 @@ interface Blocking {
   id: string; blockType: string; status: string; customerName: string | null; consultantName: string | null;
   paymentMode: string | null; paymentStatus: string | null; orderId: string | null; financierBank: string | null;
   expectedBillingDate: string | null; expiryAt: string | null; adminNotes: string | null;
-  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string };
+  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null };
   user: { fullName: string; loginId: string };
   branch: { name: string };
 }
@@ -100,16 +100,16 @@ export default function AllBlockingsPage() {
           <table className="w-full text-sm font-body">
             <thead className="bg-surface-container">
               <tr>
-                {['Branch', 'Sales Manager', 'Vehicle', 'Customer', 'Type', 'Status', 'Expires', ''].map((h) => (
+                {['Branch', 'Sales Manager', 'Vehicle', 'VIN', 'Stock', 'Customer', 'Type', 'Status', 'Expires', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">Loading…</td></tr>
+                <tr><td colSpan={10} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">Loading…</td></tr>
               ) : blockings.length === 0 ? (
-                <tr><td colSpan={8} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">No blockings found</td></tr>
+                <tr><td colSpan={10} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">No blockings found</td></tr>
               ) : blockings.map((b) => (
                 <tr key={b.id} className="hover:bg-surface-container transition-colors" style={{ borderBottom: '1px solid rgba(67,70,86,0.08)' }}>
                   <td className="px-4 py-3 font-bold font-headline text-xs tracking-tight text-on-surface">{b.branch.name}</td>
@@ -117,6 +117,14 @@ export default function AllBlockingsPage() {
                   <td className="px-4 py-3">
                     <p className="font-medium text-on-surface">{b.vehicle.model} {b.vehicle.suffix}</p>
                     <p className="text-[10px] text-zinc-500">{b.vehicle.colour} · {b.vehicle.chassisYear}</p>
+                  </td>
+                  <td className="px-4 py-3 text-xs font-mono text-zinc-400">{b.vehicle.chassisNumber}</td>
+                  <td className="px-4 py-3">
+                    {b.vehicle.stockStatus ? (
+                      <span className={`badge text-[10px] ${b.vehicle.stockStatus === 'BND' ? 'bg-primary/10 text-primary' : b.vehicle.stockStatus === 'CTDMS' ? 'bg-orange-900/30 text-orange-400' : 'bg-green-900/30 text-green-400'}`}>
+                        {b.vehicle.stockStatus}
+                      </span>
+                    ) : <span className="text-zinc-600 text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3 text-on-surface">{b.customerName ?? '—'}</td>
                   <td className="px-4 py-3"><span className="badge bg-surface-container-high text-zinc-400">{b.blockType}</span></td>

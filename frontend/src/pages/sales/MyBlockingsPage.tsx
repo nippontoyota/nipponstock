@@ -18,7 +18,7 @@ interface Blocking {
   expectedBillingDate: string | null;
   expiryAt: string | null;
   hardBlockAt: string | null;
-  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string };
+  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null };
   branch: { name: string };
 }
 
@@ -201,9 +201,16 @@ export default function MyBlockingsPage() {
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-headline font-bold tracking-tight text-on-surface">
-                        {b.vehicle.chassisYear} {b.vehicle.model.toUpperCase()}
-                      </h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl font-headline font-bold tracking-tight text-on-surface">
+                          {b.vehicle.chassisYear} {b.vehicle.model.toUpperCase()}
+                        </h3>
+                        {b.vehicle.stockStatus && (
+                          <span className={`badge text-[10px] ${b.vehicle.stockStatus === 'BND' ? 'bg-primary/10 text-primary' : b.vehicle.stockStatus === 'CTDMS' ? 'bg-orange-900/30 text-orange-400' : 'bg-green-900/30 text-green-400'}`}>
+                            {b.vehicle.stockStatus}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-on-surface-variant">{b.vehicle.colour} · {b.vehicle.suffix}</p>
                     </div>
                     <span className={`badge ${b.status === 'ACTIVE' ? 'bg-primary/10 text-primary' : b.status === 'DELIVERED' ? 'bg-green-900/30 text-green-400' : 'bg-tertiary-container/10 text-tertiary'}`}>

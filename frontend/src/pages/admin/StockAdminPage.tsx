@@ -55,6 +55,9 @@ export default function StockAdminPage() {
   const [importResult, setImportResult] = useState<{ total: number; success: number; rejected: { row: number; reason: string }[] } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const ctdmsFileRef = useRef<HTMLInputElement>(null);
+  const [ctdmsResult, setCtdmsResult] = useState<{ total: number; converted: number; notFound: number } | null>(null);
+  const [uploadingCtdms, setUploadingCtdms] = useState(false);
   const limit = 50;
 
   // Manual entry state
@@ -97,6 +100,21 @@ export default function StockAdminPage() {
       fetchVehicles(1); setPage(1);
     } catch { toast.error('Import failed'); }
     finally { setImporting(false); if (fileRef.current) fileRef.current.value = ''; }
+  };
+
+  const handleCtdmsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCtdms(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const { data } = await api.post('/stock/upload-ctdms', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setCtdmsResult(data);
+      toast.success(`Converted ${data.converted} MDDP → CTDMS`);
+      fetchVehicles(1); setPage(1);
+    } catch { toast.error('CTDMS upload failed'); }
+    finally { setUploadingCtdms(false); if (ctdmsFileRef.current) ctdmsFileRef.current.value = ''; }
   };
 
   const handleExport = async () => {
@@ -165,11 +183,17 @@ export default function StockAdminPage() {
           <h1 className="text-4xl font-headline font-bold tracking-tighter text-on-surface uppercase mb-1">Stock Management</h1>
           <p className="text-on-surface-variant font-body text-sm">Import, export and monitor your entire vehicle inventory.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
           <button onClick={() => fileRef.current?.click()} disabled={importing} className="btn-secondary gap-2">
             <span className="material-symbols-outlined text-sm">upload</span>
             {importing ? 'Importing…' : 'Import File'}
+          </button>
+          {/* CTDMS Upload — converts matching MDDP → CTDMS */}
+          <input ref={ctdmsFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleCtdmsUpload} />
+          <button onClick={() => ctdmsFileRef.current?.click()} disabled={uploadingCtdms} className="btn-secondary gap-2" style={{ borderColor: '#fb923c', color: '#fb923c' }}>
+            <span className="material-symbols-outlined text-sm">swap_horiz</span>
+            {uploadingCtdms ? 'Processing…' : 'Upload CTDMS Stock'}
           </button>
           <button onClick={handleExport} className="btn-secondary gap-2">
             <span className="material-symbols-outlined text-sm">download</span>
@@ -199,6 +223,19 @@ export default function StockAdminPage() {
             )}
           </div>
           <button onClick={() => setImportResult(null)} className="text-zinc-500 hover:text-on-surface"><span className="material-symbols-outlined text-lg">close</span></button>
+        </div>
+      )}
+
+      {ctdmsResult && (
+        <div className="rounded-xl p-5 flex items-start gap-4 bg-orange-900/20" style={{ borderLeft: '3px solid #fb923c' }}>
+          <span className="material-symbols-outlined text-2xl text-orange-400">swap_horiz</span>
+          <div className="flex-1">
+            <p className="font-headline font-bold uppercase tracking-tight text-on-surface">
+              CTDMS Upload: {ctdmsResult.converted} converted, {ctdmsResult.notFound} not matched
+            </p>
+            <p className="text-xs text-zinc-400 mt-1">Matching MDDP vehicles were updated to CTDMS status (earliest-booked first)</p>
+          </div>
+          <button onClick={() => setCtdmsResult(null)} className="text-zinc-500 hover:text-on-surface"><span className="material-symbols-outlined text-lg">close</span></button>
         </div>
       )}
 

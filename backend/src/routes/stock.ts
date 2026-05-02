@@ -177,6 +177,69 @@ router.get('/export', requireAdmin, async (_req: AuthRequest, res: Response) => 
   res.send(buf);
 });
 
+// Upload CTDMS stock — converts matching MDDP vehicles to CTDMS
+// Matching is by model + suffix + colour (no primary key between MDDP and CTDMS)
+// Priority: MDDP vehicles with earliest active blocking are converted first
+router.post('/upload-ctdms', requireAdmin, upload.single('file'), async (_req: AuthRequest, res: Response) => {
+  if (!_req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
+
+  const wb = XLSX.read(_req.file.buffer, { type: 'buffer' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+
+  let converted = 0;
+  let notFound = 0;
+  const details: { row: number; status: string; model?: string; suffix?: string; colour?: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    // Normalise header keys
+    const raw = rows[i];
+    const norm: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      norm[k.replace(/\s+/g, '').replace(/^(.)/, (c) => c.toLowerCase())] = v;
+    }
+
+    const model  = String(norm.model  ?? '').trim();
+    const suffix = String(norm.suffix ?? '').trim();
+    const colour = String(norm.colour ?? '').trim();
+    if (!model || !suffix || !colour) { details.push({ row: i + 2, status: 'skipped — missing fields' }); continue; }
+
+    // Find MDDP vehicles matching model/suffix/colour, with their active blockings
+    const mddpVehicles = await prisma.vehicle.findMany({
+      where: { model, suffix, colour, stockStatus: 'MDDP' },
+      include: {
+        blockings: {
+          where: { status: 'ACTIVE' },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+      },
+      orderBy: { dateOfArrival: 'asc' },
+    });
+
+    // Sort: vehicles with active blockings first (earliest booking first), then by arrival date
+    const sorted = [...mddpVehicles].sort((a, b) => {
+      const aB = a.blockings[0];
+      const bB = b.blockings[0];
+      if (aB && !bB) return -1;
+      if (!aB && bB) return 1;
+      if (aB && bB) return new Date(aB.createdAt).getTime() - new Date(bB.createdAt).getTime();
+      return 0;
+    });
+
+    if (sorted.length === 0) {
+      details.push({ row: i + 2, status: 'no matching MDDP found', model, suffix, colour });
+      notFound++;
+    } else {
+      await prisma.vehicle.update({ where: { id: sorted[0].id }, data: { stockStatus: 'CTDMS' } });
+      details.push({ row: i + 2, status: 'converted MDDP → CTDMS', model, suffix, colour });
+      converted++;
+    }
+  }
+
+  res.json({ total: rows.length, converted, notFound, details });
+});
+
 // Toggle heatmap visibility — admin only
 router.patch('/:id/toggle-visibility', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {

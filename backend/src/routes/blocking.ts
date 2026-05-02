@@ -29,12 +29,14 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   // Atomic: find an OPEN vehicle and soft-block it in a single transaction
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const vehicleWhere: Record<string, unknown> = { model, suffix, colour, status: 'OPEN', hiddenFromHeatmap: false };
-      if (chassisYear) vehicleWhere.chassisYear = chassisYear;
-      const vehicle = await tx.vehicle.findFirst({
-        where: vehicleWhere,
-        select: { id: true, model: true },
-      });
+      const baseWhere: Record<string, unknown> = { model, suffix, colour, status: 'OPEN', hiddenFromHeatmap: false };
+      if (chassisYear) baseWhere.chassisYear = chassisYear;
+
+      // Priority: BND → CTDMS → MDDP → any (no stockStatus set)
+      let vehicle = await tx.vehicle.findFirst({ where: { ...baseWhere, stockStatus: 'BND' }, select: { id: true, model: true, stockStatus: true } });
+      if (!vehicle) vehicle = await tx.vehicle.findFirst({ where: { ...baseWhere, stockStatus: 'CTDMS' }, select: { id: true, model: true, stockStatus: true } });
+      if (!vehicle) vehicle = await tx.vehicle.findFirst({ where: { ...baseWhere, stockStatus: 'MDDP' }, select: { id: true, model: true, stockStatus: true } });
+      if (!vehicle) vehicle = await tx.vehicle.findFirst({ where: baseWhere, select: { id: true, model: true, stockStatus: true } });
 
       if (!vehicle) throw new Error('NO_VEHICLE');
 
@@ -106,7 +108,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const days = await getBlockingDays(existing.vehicle.model);
+  const days = await getBlockingDays(existing.vehicle.model, existing.vehicle.stockStatus);
   const expiryAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
   const updated = await prisma.$transaction(async (tx) => {
