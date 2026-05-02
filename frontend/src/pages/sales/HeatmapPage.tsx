@@ -88,8 +88,6 @@ export default function HeatmapPage() {
       Model: c.model,
       Suffix: c.suffix,
       Colour: c.colour,
-      'Open Units': c.open,
-      'Total Units': c.total,
       Availability: c.level === 'green' ? 'High' : c.level === 'yellow' ? 'Medium' : 'Critical',
     }));
     const ws = XLSX.utils.json_to_sheet(rows);

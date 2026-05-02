@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import api from '../../api';
 
 interface Blocking {
@@ -75,6 +76,37 @@ export default function AllBlockingsPage() {
     catch { toast.error('Failed to mark as delivered'); }
   };
 
+  const downloadExcel = () => {
+    if (blockings.length === 0) { toast.error('No data to export'); return; }
+    const rows = blockings.map((b) => ({
+      Branch: b.branch.name,
+      'Sales Manager': b.user.fullName,
+      'Login ID': b.user.loginId,
+      Model: b.vehicle.model,
+      Suffix: b.vehicle.suffix,
+      Colour: b.vehicle.colour,
+      'Chassis Year': b.vehicle.chassisYear,
+      VIN: b.vehicle.chassisNumber,
+      'Stock Status': b.vehicle.stockStatus ?? '',
+      'Block Type': b.blockType,
+      Status: b.status,
+      'Order ID': b.orderId ?? '',
+      Customer: b.customerName ?? '',
+      Consultant: b.consultantName ?? '',
+      'Payment Mode': b.paymentMode ?? '',
+      'Payment Status': b.paymentStatus ?? '',
+      'Financier Bank': b.financierBank ?? '',
+      'Expected Billing': b.expectedBillingDate ? format(new Date(b.expectedBillingDate), 'dd/MM/yyyy') : '',
+      'Expires At': b.expiryAt ? format(new Date(b.expiryAt), 'dd/MM/yyyy HH:mm') : '',
+      'Admin Notes': b.adminNotes ?? '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Blockings');
+    XLSX.writeFile(wb, `blockings_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success('Excel downloaded');
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -101,6 +133,13 @@ export default function AllBlockingsPage() {
           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
         </div>
         <span className="font-label text-xs text-on-surface-variant uppercase tracking-widest">{total} results</span>
+        <button
+          onClick={downloadExcel}
+          className="ml-auto flex items-center gap-2 px-4 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
+        >
+          <span className="material-symbols-outlined text-base">table_view</span>
+          Download Excel
+        </button>
       </div>
 
       {/* Table */}
