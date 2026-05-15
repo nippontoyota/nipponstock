@@ -79,11 +79,12 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
     orderId: z.string().min(1),
     customerName: z.string().min(1),
     consultantName: z.string().min(1),
+    teamLeaderName: z.string().optional(),
     paymentMode: z.enum(['CASH', 'FINANCE']),
     amountReceived: z.number().optional(),
     financierBank: z.string().optional(),
     paymentStatus: z.string().min(1),
-    expectedBillingDate: z.string().datetime(),
+    expectedBillingDate: z.string().datetime().optional(),
   });
 
   const parsed = Schema.safeParse(req.body);
@@ -125,7 +126,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
           hardBlockAt: new Date(),
           expiryAt,
           ...formData,
-          expectedBillingDate: new Date(formData.expectedBillingDate),
+          expectedBillingDate: formData.expectedBillingDate ? new Date(formData.expectedBillingDate) : undefined,
         },
         include: { vehicle: true, branch: true },
       });
@@ -146,6 +147,39 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
     const msg = e instanceof Error ? e.message : String(e);
     res.status(500).json({ error: 'Failed to confirm block', detail: msg });
   }
+});
+
+// PATCH /blocking/:id/payment-status — owner updates their own booking's payment status
+router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
+  const Schema = z.object({ paymentStatus: z.string().min(1) });
+  const parsed = Schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const existing = await prisma.blockingRequest.findUnique({ where: { id: req.params.id } });
+  if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
+
+  const isOwner = existing.userId === req.user!.userId;
+  const isAdmin = req.user!.role === 'ADMIN';
+  if (!isOwner && !isAdmin) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
+
+  const updated = await prisma.blockingRequest.update({
+    where: { id: req.params.id },
+    data: { paymentStatus: parsed.data.paymentStatus },
+  });
+
+  await logAudit({
+    entityType: 'BLOCKING',
+    entityId: req.params.id,
+    action: 'PAYMENT_STATUS_UPDATED',
+    performedById: req.user!.userId,
+    previousValue: { paymentStatus: existing.paymentStatus },
+    newValue: { paymentStatus: parsed.data.paymentStatus },
+  });
+
+  emitBlockingUpdate(req.params.id);
+  res.json(updated);
 });
 
 // GET /blocking/my

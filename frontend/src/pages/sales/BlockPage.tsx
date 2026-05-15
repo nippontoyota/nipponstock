@@ -51,6 +51,7 @@ export default function BlockPage() {
     orderId: '',
     customerName: '',
     consultantName: '',
+    teamLeaderName: '',
     paymentMode: 'CASH' as 'CASH' | 'FINANCE',
     amountReceived: '',
     financeType: '' as '' | 'IN_HOUSE' | 'OUTHOUSE',
@@ -122,11 +123,12 @@ export default function BlockPage() {
         orderId: form.orderId,
         customerName: form.customerName,
         consultantName: form.consultantName,
+        teamLeaderName: form.teamLeaderName || undefined,
         paymentMode: form.paymentMode,
         amountReceived,
         financierBank,
         paymentStatus: form.paymentStatus,
-        expectedBillingDate: new Date(form.expectedBillingDate).toISOString(),
+        expectedBillingDate: form.expectedBillingDate ? new Date(form.expectedBillingDate).toISOString() : undefined,
       });
       toast.success('Vehicle blocked successfully!');
       navigate('/sales/my-blockings');
@@ -142,10 +144,9 @@ export default function BlockPage() {
     form.customerName &&
     form.consultantName &&
     form.paymentStatus &&
-    form.expectedBillingDate &&
     (form.paymentMode === 'CASH'
       ? !!form.amountReceived
-      : form.financeType !== '' && (form.financeType === 'IN_HOUSE' || !!form.financierBank));
+      : form.financeType !== '' && !!form.financierBank);
 
   const currentStep = step === 'select' ? 0 : 1;
 
@@ -344,9 +345,15 @@ export default function BlockPage() {
                       <input className="input" placeholder="Enter full legal name" value={form.customerName} onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))} required />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="label">Sales Consultant Name *</label>
-                    <input className="input" placeholder="Consultant handling this deal" value={form.consultantName} onChange={(e) => setForm((f) => ({ ...f, consultantName: e.target.value }))} required />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="label">Sales Consultant Name *</label>
+                      <input className="input" placeholder="Consultant handling this deal" value={form.consultantName} onChange={(e) => setForm((f) => ({ ...f, consultantName: e.target.value }))} required />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label">Team Leader Name</label>
+                      <input className="input" placeholder="Team leader (optional)" value={form.teamLeaderName} onChange={(e) => setForm((f) => ({ ...f, teamLeaderName: e.target.value }))} />
+                    </div>
                   </div>
                 </section>
               </div>
@@ -408,11 +415,11 @@ export default function BlockPage() {
                             <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
                           </div>
                         </div>
-                        {/* Bank name — only when Outhouse */}
-                        {form.financeType === 'OUTHOUSE' && (
+                        {/* Bank name — shown for both In-House and Outhouse */}
+                        {form.financeType !== '' && (
                           <div className="space-y-2">
                             <label className="label">Financier Bank *</label>
-                            <input className="input" placeholder="Bank name" value={form.financierBank} onChange={(e) => setForm((f) => ({ ...f, financierBank: e.target.value }))} required />
+                            <input className="input" placeholder={form.financeType === 'IN_HOUSE' ? 'e.g. Nippon In-House Finance' : 'Bank name'} value={form.financierBank} onChange={(e) => setForm((f) => ({ ...f, financierBank: e.target.value }))} required />
                           </div>
                         )}
                       </>
@@ -431,8 +438,8 @@ export default function BlockPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="label">Expected Tally Billing Date *</label>
-                      <input className="input" type="date" value={form.expectedBillingDate} onChange={(e) => setForm((f) => ({ ...f, expectedBillingDate: e.target.value }))} required style={{ colorScheme: 'dark' }} />
+                      <label className="label">Expected Tally Billing Date <span className="text-zinc-600 normal-case font-normal">(optional)</span></label>
+                      <input className="input" type="date" value={form.expectedBillingDate} onChange={(e) => setForm((f) => ({ ...f, expectedBillingDate: e.target.value }))} style={{ colorScheme: 'dark' }} />
                     </div>
                   </div>
 

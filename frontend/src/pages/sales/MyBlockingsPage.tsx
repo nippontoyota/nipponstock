@@ -11,6 +11,7 @@ interface Blocking {
   status: string;
   customerName: string | null;
   consultantName: string | null;
+  teamLeaderName: string | null;
   paymentMode: string | null;
   paymentStatus: string | null;
   orderId: string | null;
@@ -57,6 +58,18 @@ export default function MyBlockingsPage() {
   const [releaseRemarks, setReleaseRemarks] = useState('');
   const [releaseSalesId, setReleaseSalesId] = useState('');
   const [releasing, setReleasing] = useState(false);
+
+  // Update payment status state
+  const [payStatusTarget, setPayStatusTarget] = useState<Blocking | null>(null);
+  const [newPayStatus, setNewPayStatus] = useState('');
+  const [updatingPayStatus, setUpdatingPayStatus] = useState(false);
+
+  const PAYMENT_STATUSES = [
+    'Full payment received',
+    'Only Booking Received',
+    'Part payment received',
+    'Ready for Disbursement',
+  ];
 
   const RELEASE_REASONS = [
     'Finance Issue',
@@ -124,6 +137,22 @@ export default function MyBlockingsPage() {
     }
   };
 
+  const handlePayStatusUpdate = async () => {
+    if (!payStatusTarget || !newPayStatus) return;
+    setUpdatingPayStatus(true);
+    try {
+      await api.patch(`/blocking/${payStatusTarget.id}/payment-status`, { paymentStatus: newPayStatus });
+      toast.success('Payment status updated');
+      setPayStatusTarget(null);
+      setNewPayStatus('');
+      fetch();
+    } catch {
+      toast.error('Failed to update payment status');
+    } finally {
+      setUpdatingPayStatus(false);
+    }
+  };
+
   const active = blockings.filter((b) => b.status === 'ACTIVE' && b.blockType === 'HARD');
   const expiring = active.filter((b) => b.expiryAt && differenceInDays(new Date(b.expiryAt), new Date()) <= 3);
   const history = blockings.filter((b) => b.status !== 'ACTIVE' || b.blockType === 'SOFT');
@@ -140,17 +169,24 @@ export default function MyBlockingsPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
-              const rows = active.map((b) => ({
-                'Customer': b.customerName ?? '',
-                'Vehicle': `${b.vehicle.chassisYear} ${b.vehicle.model} ${b.vehicle.suffix}`,
-                'Colour': b.vehicle.colour,
-                'Chassis No': b.vehicle.chassisNumber,
-                'Order ID': b.orderId ?? '',
-                'Payment Mode': b.paymentMode ?? '',
-                'Payment Status': b.paymentStatus ?? '',
-                'Branch': b.branch.name,
-                'Expiry': b.expiryAt ? new Date(b.expiryAt).toLocaleDateString() : '',
-              }));
+              const rows = active.map((b) => {
+                const daysLeft = b.expiryAt ? Math.max(0, Math.floor(differenceInHours(new Date(b.expiryAt), new Date()) / 24)) : '';
+                return {
+                  'Customer': b.customerName ?? '',
+                  'Vehicle': `${b.vehicle.chassisYear} ${b.vehicle.model} ${b.vehicle.suffix}`,
+                  'Colour': b.vehicle.colour,
+                  'Chassis No': b.vehicle.chassisNumber,
+                  'Order ID': b.orderId ?? '',
+                  'Consultant': b.consultantName ?? '',
+                  'Team Leader': b.teamLeaderName ?? '',
+                  'Payment Mode': b.paymentMode ?? '',
+                  'Payment Status': b.paymentStatus ?? '',
+                  'Branch': b.branch.name,
+                  'Blocked Date': b.hardBlockAt ? new Date(b.hardBlockAt).toLocaleDateString('en-GB') : '',
+                  'Days Left': daysLeft,
+                  'Expiry': b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : '',
+                };
+              });
               const ws = XLSX.utils.json_to_sheet(rows);
               const wb = XLSX.utils.book_new();
               XLSX.utils.book_append_sheet(wb, ws, 'Blockings');
@@ -258,6 +294,16 @@ export default function MyBlockingsPage() {
                         </button>
                       )}
                     </div>
+                    {/* Update Payment Status button */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPayStatusTarget(b); setNewPayStatus(b.paymentStatus ?? ''); }}
+                        className="w-full py-2.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
+                      >
+                        <span className="material-symbols-outlined text-sm align-middle mr-1">payments</span>
+                        Update Payment Status
+                      </button>
+                    )}
                     {/* Release button */}
                     {b.status === 'ACTIVE' && (
                       <button
@@ -332,6 +378,51 @@ export default function MyBlockingsPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Update Payment Status modal */}
+      {payStatusTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setPayStatusTarget(null)}>
+          <div className="bg-surface-container-low rounded-xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
+              <div>
+                <h2 className="font-headline font-bold text-lg tracking-tighter uppercase text-on-surface">Update Payment Status</h2>
+                <p className="font-label text-xs text-on-surface-variant mt-0.5">
+                  {payStatusTarget.vehicle.chassisYear} {payStatusTarget.vehicle.model} · {payStatusTarget.customerName ?? '—'}
+                </p>
+              </div>
+              <button onClick={() => setPayStatusTarget(null)} className="text-on-surface-variant hover:text-on-surface w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="label">Payment Status</label>
+                <div className="relative">
+                  <select
+                    className="input appearance-none pr-10"
+                    value={newPayStatus}
+                    onChange={(e) => setNewPayStatus(e.target.value)}
+                  >
+                    <option value="">Select status…</option>
+                    {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 pt-0 flex gap-3">
+              <button onClick={() => setPayStatusTarget(null)} className="btn-secondary flex-1 text-xs">Cancel</button>
+              <button
+                onClick={handlePayStatusUpdate}
+                disabled={!newPayStatus || updatingPayStatus}
+                className="btn-primary flex-1 disabled:opacity-40"
+              >
+                {updatingPayStatus ? 'Updating…' : 'Update'}
+              </button>
+            </div>
           </div>
         </div>
       )}
