@@ -7,7 +7,7 @@ import api from '../../api';
 interface Blocking {
   id: string; blockType: string; status: string; customerName: string | null; consultantName: string | null;
   paymentMode: string | null; paymentStatus: string | null; orderId: string | null; financierBank: string | null;
-  expectedBillingDate: string | null; expiryAt: string | null; adminNotes: string | null;
+  expectedBillingDate: string | null; expiryAt: string | null; hardBlockAt: string | null; adminNotes: string | null;
   vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null };
   user: { fullName: string; loginId: string };
   branch: { name: string };
@@ -23,7 +23,7 @@ export default function AllBlockingsPage() {
   const [blockings, setBlockings] = useState<Blocking[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ status: '', search: '' });
+  const [filters, setFilters] = useState({ status: '', search: '', chassis: '', blockedFrom: '', blockedTo: '' });
   const [selected, setSelected] = useState<Blocking | null>(null);
   const [editForm, setEditForm] = useState<{ customerName: string; consultantName: string; paymentStatus: string; adminNotes: string }>({ customerName: '', consultantName: '', paymentStatus: '', adminNotes: '' });
   const [extendDate, setExtendDate] = useState('');
@@ -31,16 +31,23 @@ export default function AllBlockingsPage() {
   const [loading, setLoading] = useState(false);
   const limit = 20;
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const buildParams = (overrides: Record<string, string> = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit), ...overrides });
     if (filters.status) params.set('status', filters.status);
     if (filters.search) params.set('search', filters.search);
-    const { data } = await api.get(`/blocking/all?${params}`);
+    if (filters.chassis) params.set('chassis', filters.chassis);
+    if (filters.blockedFrom) params.set('blockedFrom', filters.blockedFrom);
+    if (filters.blockedTo) params.set('blockedTo', filters.blockedTo);
+    return params;
+  };
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const { data } = await api.get(`/blocking/all?${buildParams()}`);
     setBlockings(data.blockings);
     setTotal(data.total);
     setLoading(false);
-  }, [page, filters]);
+  }, [page, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -76,35 +83,53 @@ export default function AllBlockingsPage() {
     catch { toast.error('Failed to mark as delivered'); }
   };
 
-  const downloadExcel = () => {
-    if (blockings.length === 0) { toast.error('No data to export'); return; }
-    const rows = blockings.map((b) => ({
-      Branch: b.branch.name,
-      'Sales Manager': b.user.fullName,
-      'Login ID': b.user.loginId,
-      Model: b.vehicle.model,
-      Suffix: b.vehicle.suffix,
-      Colour: b.vehicle.colour,
-      'Chassis Year': b.vehicle.chassisYear,
-      VIN: b.vehicle.chassisNumber,
-      'Stock Status': b.vehicle.stockStatus ?? '',
-      'Block Type': b.blockType,
-      Status: b.status,
-      'Order ID': b.orderId ?? '',
-      Customer: b.customerName ?? '',
-      Consultant: b.consultantName ?? '',
-      'Payment Mode': b.paymentMode ?? '',
-      'Payment Status': b.paymentStatus ?? '',
-      'Financier Bank': b.financierBank ?? '',
-      'Expected Billing': b.expectedBillingDate ? format(new Date(b.expectedBillingDate), 'dd/MM/yyyy') : '',
-      'Expires At': b.expiryAt ? format(new Date(b.expiryAt), 'dd/MM/yyyy HH:mm') : '',
-      'Admin Notes': b.adminNotes ?? '',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Blockings');
-    XLSX.writeFile(wb, `blockings_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success('Excel downloaded');
+  const downloadExcel = async () => {
+    const tid = toast.loading('Fetching all records…');
+    try {
+      // Fetch ALL records matching current filters (no pagination)
+      const allParams = new URLSearchParams({ page: '1', limit: '99999' });
+      if (filters.status) allParams.set('status', filters.status);
+      if (filters.search) allParams.set('search', filters.search);
+      if (filters.chassis) allParams.set('chassis', filters.chassis);
+      if (filters.blockedFrom) allParams.set('blockedFrom', filters.blockedFrom);
+      if (filters.blockedTo) allParams.set('blockedTo', filters.blockedTo);
+      const { data } = await api.get(`/blocking/all?${allParams}`);
+      const all: Blocking[] = data.blockings;
+      if (all.length === 0) { toast.dismiss(tid); toast.error('No data to export'); return; }
+
+      const rows = all.map((b) => ({
+        Branch: b.branch.name,
+        'Sales Manager': b.user.fullName,
+        'Login ID': b.user.loginId,
+        Model: b.vehicle.model,
+        Suffix: b.vehicle.suffix,
+        Colour: b.vehicle.colour,
+        'Chassis Year': b.vehicle.chassisYear,
+        VIN: b.vehicle.chassisNumber,
+        'Stock Status': b.vehicle.stockStatus ?? '',
+        'Block Type': b.blockType,
+        Status: b.status,
+        'Order ID': b.orderId ?? '',
+        Customer: b.customerName ?? '',
+        Consultant: b.consultantName ?? '',
+        'Payment Mode': b.paymentMode ?? '',
+        'Payment Status': b.paymentStatus ?? '',
+        'Financier Bank': b.financierBank ?? '',
+        'Date of Blocking': b.hardBlockAt ? format(new Date(b.hardBlockAt), 'dd/MM/yyyy') : '',
+        'Expected Billing': b.expectedBillingDate ? format(new Date(b.expectedBillingDate), 'dd/MM/yyyy') : '',
+        'Expires At': b.expiryAt ? format(new Date(b.expiryAt), 'dd/MM/yyyy HH:mm') : '',
+        'Admin Notes': b.adminNotes ?? '',
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Blockings');
+      XLSX.writeFile(wb, `blockings_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      toast.dismiss(tid);
+      toast.success(`${all.length} records exported`);
+    } catch {
+      toast.dismiss(tid);
+      toast.error('Export failed');
+    }
   };
 
   return (
@@ -119,18 +144,36 @@ export default function AllBlockingsPage() {
         <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
           <input
-            className="input pl-10 w-72"
-            placeholder="Customer, chassis, order ID…"
+            className="input pl-10 w-60"
+            placeholder="Customer / Order ID…"
             value={filters.search}
             onChange={(e) => { setFilters((f) => ({ ...f, search: e.target.value })); setPage(1); }}
           />
         </div>
         <div className="relative">
-          <select className="input appearance-none pr-8 w-44" value={filters.status} onChange={(e) => { setFilters((f) => ({ ...f, status: e.target.value })); setPage(1); }}>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">pin</span>
+          <input
+            className="input pl-10 w-48"
+            placeholder="Chassis Number…"
+            value={filters.chassis}
+            onChange={(e) => { setFilters((f) => ({ ...f, chassis: e.target.value })); setPage(1); }}
+          />
+        </div>
+        <div className="relative">
+          <select className="input appearance-none pr-8 w-40" value={filters.status} onChange={(e) => { setFilters((f) => ({ ...f, status: e.target.value })); setPage(1); }}>
             <option value="">All Statuses</option>
             <option>ACTIVE</option><option>EXPIRED</option><option>DELIVERED</option>
           </select>
           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-label font-black text-zinc-500 uppercase tracking-wider">Blocked</span>
+          <input type="date" className="input text-xs px-3 py-2 w-36" style={{ colorScheme: 'dark' }} value={filters.blockedFrom} onChange={(e) => { setFilters((f) => ({ ...f, blockedFrom: e.target.value })); setPage(1); }} />
+          <span className="text-zinc-600 text-xs">to</span>
+          <input type="date" className="input text-xs px-3 py-2 w-36" style={{ colorScheme: 'dark' }} value={filters.blockedTo} onChange={(e) => { setFilters((f) => ({ ...f, blockedTo: e.target.value })); setPage(1); }} />
+          {(filters.blockedFrom || filters.blockedTo) && (
+            <button onClick={() => { setFilters((f) => ({ ...f, blockedFrom: '', blockedTo: '' })); setPage(1); }} className="text-tertiary hover:text-on-surface text-xs font-bold font-label uppercase tracking-wider transition-colors">Clear</button>
+          )}
         </div>
         <span className="font-label text-xs text-on-surface-variant uppercase tracking-widest">{total} results</span>
         <button
@@ -148,16 +191,16 @@ export default function AllBlockingsPage() {
           <table className="w-full text-sm font-body">
             <thead className="bg-surface-container">
               <tr>
-                {['Branch', 'Sales Manager', 'Vehicle', 'VIN', 'Stock', 'Customer', 'Type', 'Status', 'Expires', ''].map((h) => (
+                {['Branch', 'Sales Manager', 'Vehicle', 'VIN', 'Stock', 'Customer', 'Type', 'Status', 'Blocked Date', 'Expires', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">Loading…</td></tr>
+                <tr><td colSpan={11} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">Loading…</td></tr>
               ) : blockings.length === 0 ? (
-                <tr><td colSpan={10} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">No blockings found</td></tr>
+                <tr><td colSpan={11} className="py-16 text-center text-on-surface-variant font-label uppercase tracking-widest text-xs">No blockings found</td></tr>
               ) : blockings.map((b) => (
                 <tr key={b.id} className="hover:bg-surface-container transition-colors" style={{ borderBottom: '1px solid rgba(67,70,86,0.08)' }}>
                   <td className="px-4 py-3 font-bold font-headline text-xs tracking-tight text-on-surface">{b.branch.name}</td>
@@ -177,6 +220,7 @@ export default function AllBlockingsPage() {
                   <td className="px-4 py-3 text-on-surface">{b.customerName ?? '—'}</td>
                   <td className="px-4 py-3"><span className="badge bg-surface-container-high text-zinc-400">{b.blockType}</span></td>
                   <td className="px-4 py-3"><span className={`badge ${statusColor[b.status] ?? 'bg-surface-container text-zinc-500'}`}>{b.status}</span></td>
+                  <td className="px-4 py-3 text-xs text-on-surface-variant whitespace-nowrap">{b.hardBlockAt ? format(new Date(b.hardBlockAt), 'dd/MM/yyyy') : '—'}</td>
                   <td className="px-4 py-3 text-xs text-on-surface-variant">{b.expiryAt ? formatDistanceToNow(new Date(b.expiryAt), { addSuffix: true }) : '—'}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => openEdit(b)} className="text-primary hover:text-on-primary-container font-label text-xs font-bold uppercase tracking-widest transition-colors">Edit</button>

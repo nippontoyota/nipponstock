@@ -222,12 +222,18 @@ router.get('/my', async (req: AuthRequest, res: Response) => {
 
 // GET /blocking/all — admin
 router.get('/all', requireAdmin, async (req: AuthRequest, res: Response) => {
-  const { branchId, status, model, search, from, to, page = '1', limit = '50' } = req.query as Record<string, string>;
+  const { branchId, status, model, chassis, search, from, to, blockedFrom, blockedTo, page = '1', limit = '50' } = req.query as Record<string, string>;
 
   const where: Record<string, unknown> = {};
   if (branchId) where.branchId = branchId;
   if (status) where.status = status;
-  if (model) where.vehicle = { model: { contains: model, mode: 'insensitive' } };
+
+  // Vehicle filter — model and/or chassis
+  const vehicleFilter: Record<string, unknown> = {};
+  if (model) vehicleFilter.model = { contains: model, mode: 'insensitive' };
+  if (chassis) vehicleFilter.chassisNumber = { contains: chassis, mode: 'insensitive' };
+  if (Object.keys(vehicleFilter).length > 0) where.vehicle = vehicleFilter;
+
   if (search) {
     where.OR = [
       { customerName: { contains: search, mode: 'insensitive' } },
@@ -239,6 +245,12 @@ router.get('/all', requireAdmin, async (req: AuthRequest, res: Response) => {
     where.createdAt = {
       ...(from ? { gte: new Date(from) } : {}),
       ...(to ? { lte: new Date(to) } : {}),
+    };
+  }
+  if (blockedFrom || blockedTo) {
+    where.hardBlockAt = {
+      ...(blockedFrom ? { gte: new Date(blockedFrom) } : {}),
+      ...(blockedTo ? { lte: new Date(new Date(blockedTo).setHours(23, 59, 59, 999)) } : {}),
     };
   }
 
