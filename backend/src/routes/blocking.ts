@@ -51,20 +51,14 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
         (v) => clean(v.model) === clean(model) && clean(v.suffix) === clean(suffix) && clean(v.colour) === clean(colour),
       );
 
-      // Debug: log first DB candidate values as char codes so we can see invisible chars
-      if (matching.length === 0 && candidates.length > 0) {
-        const sample = candidates.slice(0, 3).map((v) => ({
-          model: [...v.model].map((c) => c.charCodeAt(0)).join(','),
-          suffix: [...v.suffix].map((c) => c.charCodeAt(0)).join(','),
-          colour: [...v.colour].map((c) => c.charCodeAt(0)).join(','),
-        }));
-        const queryChars = {
-          model: [...model].map((c) => c.charCodeAt(0)).join(','),
-          suffix: [...suffix].map((c) => c.charCodeAt(0)).join(','),
-          colour: [...colour].map((c) => c.charCodeAt(0)).join(','),
-        };
-        console.log('[soft-block] NO MATCH — query char codes:', queryChars);
-        console.log('[soft-block] sample DB char codes:', JSON.stringify(sample));
+      // Debug: when no match, do an unfiltered lookup to see vehicle's actual state
+      if (matching.length === 0) {
+        const unfiltered = await tx.vehicle.findMany({
+          where: { model, suffix, colour },
+          select: { id: true, model: true, suffix: true, colour: true, status: true, hiddenFromHeatmap: true, chassisYear: true },
+        });
+        console.log(`[soft-block] NO MATCH — unfiltered lookup for "${model}/${suffix}/${colour}":`, JSON.stringify(unfiltered));
+        if (chassisYear) console.log('[soft-block] chassisYear filter active:', chassisYear);
       }
 
       // Priority: BND → CTDMS → MDDP → any
