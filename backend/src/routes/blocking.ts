@@ -44,9 +44,28 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
         select: { id: true, model: true, suffix: true, colour: true, stockStatus: true },
       });
 
+      // Strip ALL unicode whitespace (including non-breaking spaces  , zero-width, etc.)
+      const clean = (s: string) => s.replace(/[ ​﻿\s]+/g, ' ').trim();
+
       const matching = candidates.filter(
-        (v) => v.model.trim() === model && v.suffix.trim() === suffix && v.colour.trim() === colour,
+        (v) => clean(v.model) === clean(model) && clean(v.suffix) === clean(suffix) && clean(v.colour) === clean(colour),
       );
+
+      // Debug: log first DB candidate values as char codes so we can see invisible chars
+      if (matching.length === 0 && candidates.length > 0) {
+        const sample = candidates.slice(0, 3).map((v) => ({
+          model: [...v.model].map((c) => c.charCodeAt(0)).join(','),
+          suffix: [...v.suffix].map((c) => c.charCodeAt(0)).join(','),
+          colour: [...v.colour].map((c) => c.charCodeAt(0)).join(','),
+        }));
+        const queryChars = {
+          model: [...model].map((c) => c.charCodeAt(0)).join(','),
+          suffix: [...suffix].map((c) => c.charCodeAt(0)).join(','),
+          colour: [...colour].map((c) => c.charCodeAt(0)).join(','),
+        };
+        console.log('[soft-block] NO MATCH — query char codes:', queryChars);
+        console.log('[soft-block] sample DB char codes:', JSON.stringify(sample));
+      }
 
       // Priority: BND → CTDMS → MDDP → any
       const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
