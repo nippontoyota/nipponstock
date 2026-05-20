@@ -33,15 +33,31 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   // Atomic: find an OPEN vehicle and soft-block it in a single transaction
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Use contains with exact match to be resilient against stored whitespace
-      const baseWhere: Record<string, unknown> = { model, suffix, colour, status: 'OPEN', hiddenFromHeatmap: false };
-      if (chassisYear) baseWhere.chassisYear = chassisYear;
+      // Fetch all OPEN candidates for this year (if specified) and filter with trim
+      // so that trailing spaces in Excel-imported data never block a booking
+      const candidates = await tx.vehicle.findMany({
+        where: {
+          status: 'OPEN',
+          hiddenFromHeatmap: false,
+          ...(chassisYear ? { chassisYear } : {}),
+        },
+        select: { id: true, model: true, suffix: true, colour: true, stockStatus: true },
+      });
 
-      // Priority: BND → CTDMS → MDDP → any (no stockStatus set)
-      let vehicle = await tx.vehicle.findFirst({ where: { ...baseWhere, stockStatus: 'BND' }, select: { id: true, model: true, stockStatus: true } });
-      if (!vehicle) vehicle = await tx.vehicle.findFirst({ where: { ...baseWhere, stockStatus: 'CTDMS' }, select: { id: true, model: true, stockStatus: true } });
-      if (!vehicle) vehicle = await tx.vehicle.findFirst({ where: { ...baseWhere, stockStatus: 'MDDP' }, select: { id: true, model: true, stockStatus: true } });
-      if (!vehicle) vehicle = await tx.vehicle.findFirst({ where: baseWhere, select: { id: true, model: true, stockStatus: true } });
+      const matching = candidates.filter(
+        (v) => v.model.trim() === model && v.suffix.trim() === suffix && v.colour.trim() === colour,
+      );
+
+      // Priority: BND → CTDMS → MDDP → any
+      const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
+      let vehicle: { id: string; model: string; suffix: string; colour: string; stockStatus: string | null } | null = null;
+      for (const ss of PRIORITY) {
+        vehicle = matching.find((v) => v.stockStatus === ss) ?? null;
+        if (vehicle) break;
+      }
+      if (!vehicle) vehicle = matching[0] ?? null;
+
+      console.log(`[soft-block] query="${model}/${suffix}/${colour}" candidates=${candidates.length} matching=${matching.length} picked=${vehicle?.id ?? 'NONE'}`);
 
       if (!vehicle) throw new Error('NO_VEHICLE');
 
