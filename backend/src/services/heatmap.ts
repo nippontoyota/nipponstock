@@ -32,9 +32,11 @@ export async function getHeatmap(year?: number): Promise<HeatmapCell[]> {
 
   const cells: HeatmapCell[] = [];
   for (const [key, counts] of Array.from(map.entries())) {
+    // Only show cells that have at least one open unit — fully blocked variants are hidden
+    if (counts.open === 0) continue;
     const [model, suffix, colour] = key.split('||');
-    // Count-based: <2 open = red, 2–4 open = yellow, ≥5 open = green
-    const level: HeatmapCell['level'] = counts.open >= 5 ? 'green' : counts.open >= 2 ? 'yellow' : 'red';
+    // Count-based: ≤2 open = red, 3–4 open = yellow, ≥5 open = green
+    const level: HeatmapCell['level'] = counts.open >= 5 ? 'green' : counts.open >= 3 ? 'yellow' : 'red';
     cells.push({ model, suffix, colour, open: counts.open, total: counts.total, level });
   }
   return cells;
