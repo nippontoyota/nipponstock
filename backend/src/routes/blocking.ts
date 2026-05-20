@@ -51,15 +51,6 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
         (v) => clean(v.model) === clean(model) && clean(v.suffix) === clean(suffix) && clean(v.colour) === clean(colour),
       );
 
-      // Debug: when no match, do an unfiltered lookup to see vehicle's actual state
-      if (matching.length === 0) {
-        const unfiltered = await tx.vehicle.findMany({
-          where: { model, suffix, colour },
-          select: { id: true, model: true, suffix: true, colour: true, status: true, hiddenFromHeatmap: true, chassisYear: true },
-        });
-        console.log(`[soft-block] NO MATCH — unfiltered lookup for "${model}/${suffix}/${colour}":`, JSON.stringify(unfiltered));
-        if (chassisYear) console.log('[soft-block] chassisYear filter active:', chassisYear);
-      }
 
       // Priority: BND → CTDMS → MDDP → any
       const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
@@ -72,7 +63,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
 
       console.log(`[soft-block] query="${model}/${suffix}/${colour}" candidates=${candidates.length} matching=${matching.length} picked=${vehicle?.id ?? 'NONE'}`);
 
-      if (!vehicle) throw new Error('NO_VEHICLE');
+      if (!vehicle) throw new Error(chassisYear ? `NO_VEHICLE_YEAR_${chassisYear}` : 'NO_VEHICLE');
 
       await tx.vehicle.update({
         where: { id: vehicle.id },
@@ -98,7 +89,10 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg === 'NO_VEHICLE') {
-      res.status(409).json({ error: 'This vehicle was just taken — please select again' });
+      res.status(409).json({ error: 'No open vehicle found for this combination — please select again' });
+    } else if (msg.startsWith('NO_VEHICLE_YEAR_')) {
+      const yr = msg.split('_').pop();
+      res.status(409).json({ error: `No open ${yr} unit available for this variant. Try clearing the YOM filter to see all years.` });
     } else {
       res.status(500).json({ error: 'Internal error' });
     }
