@@ -82,7 +82,8 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
     const normalised: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(raw)) {
       const key = k.replace(/\s+/g, '').replace(/^(.)/, (c) => c.toLowerCase());
-      normalised[key] = v;
+      // Trim string values to remove trailing spaces from Excel cells
+      normalised[key] = typeof v === 'string' ? v.trim() : v;
     }
 
     const parsed = RowSchema.safeParse(normalised);

@@ -20,7 +20,11 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const { model, suffix, colour, chassisYear } = parsed.data;
+  // Trim to guard against trailing spaces from Excel-imported data
+  const model = parsed.data.model.trim();
+  const suffix = parsed.data.suffix.trim();
+  const colour = parsed.data.colour.trim();
+  const { chassisYear } = parsed.data;
   const userId = req.user!.userId;
   const branchId = req.user!.branchId;
 
@@ -29,6 +33,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   // Atomic: find an OPEN vehicle and soft-block it in a single transaction
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Use contains with exact match to be resilient against stored whitespace
       const baseWhere: Record<string, unknown> = { model, suffix, colour, status: 'OPEN', hiddenFromHeatmap: false };
       if (chassisYear) baseWhere.chassisYear = chassisYear;
 
