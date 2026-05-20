@@ -51,6 +51,7 @@ export default function MyBlockingsPage() {
   const [retailId, setRetailId] = useState('');
   const [delivering, setDelivering] = useState(false);
   const [tab, setTab] = useState<'active' | 'history'>('active');
+  const [search, setSearch] = useState('');
 
   // Release modal state
   const [releaseTarget, setReleaseTarget] = useState<Blocking | null>(null);
@@ -156,7 +157,18 @@ export default function MyBlockingsPage() {
   const active = blockings.filter((b) => b.status === 'ACTIVE' && b.blockType === 'HARD');
   const expiring = active.filter((b) => b.expiryAt && differenceInDays(new Date(b.expiryAt), new Date()) <= 3);
   const history = blockings.filter((b) => b.status !== 'ACTIVE' || b.blockType === 'SOFT');
-  const displayed = tab === 'active' ? active : history;
+
+  const applySearch = (list: Blocking[]) => {
+    if (!search.trim()) return list;
+    const q = search.trim().toLowerCase();
+    return list.filter(
+      (b) =>
+        b.vehicle.chassisNumber.toLowerCase().includes(q) ||
+        (b.customerName ?? '').toLowerCase().includes(q),
+    );
+  };
+
+  const displayed = applySearch(tab === 'active' ? active : history);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -212,6 +224,22 @@ export default function MyBlockingsPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mb-6 max-w-sm">
+        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+        <input
+          className="input pl-10 w-full"
+          placeholder="Search by chassis no. or customer name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        )}
       </div>
 
       {/* Bento grid */}
