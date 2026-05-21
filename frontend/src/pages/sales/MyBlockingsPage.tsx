@@ -19,7 +19,7 @@ interface Blocking {
   expectedBillingDate: string | null;
   expiryAt: string | null;
   hardBlockAt: string | null;
-  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null };
+  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
   branch: { name: string };
 }
 
@@ -371,6 +371,7 @@ export default function MyBlockingsPage() {
             <div className="p-6 space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
               {[
                 ['Chassis No.', selected.vehicle.chassisNumber],
+                ['Stockyard Location', selected.vehicle.stockyardLocation || '—'],
                 ['Customer', selected.customerName],
                 ['Consultant', selected.consultantName],
                 ['Order ID', selected.orderId],
