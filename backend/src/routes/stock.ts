@@ -29,10 +29,12 @@ router.get('/years', async (_req: AuthRequest, res: Response) => {
 
 // All stock — admin only
 router.get('/', requireAdmin, async (req: AuthRequest, res: Response) => {
-  const { status, model, page = '1', limit = '50' } = req.query as Record<string, string>;
+  const { status, model, chassis, stockStatus, page = '1', limit = '50' } = req.query as Record<string, string>;
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
   if (model) where.model = { contains: model, mode: 'insensitive' };
+  if (chassis) where.chassisNumber = { contains: chassis, mode: 'insensitive' };
+  if (stockStatus) where.stockStatus = stockStatus;
 
   const [vehicles, total] = await Promise.all([
     prisma.vehicle.findMany({
@@ -239,6 +241,101 @@ router.post('/upload-ctdms', requireAdmin, upload.single('file'), async (_req: A
   }
 
   res.json({ total: rows.length, converted, notFound, details });
+});
+
+// Tally Done — bulk deliver vehicles from Tally export
+// Excel columns: ChassisNumber | Tally Invoice No | Tally Done branch
+router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: AuthRequest, res: Response) => {
+  if (!_req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
+
+  const wb = XLSX.read(_req.file.buffer, { type: 'buffer' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+
+  let successful = 0;
+  let notFound = 0;
+  let noBlocking = 0;
+  let branchMismatch = 0;
+
+  interface TallyDetail {
+    row: number;
+    chassisNumber: string;
+    status: 'success' | 'not_found' | 'no_blocking' | 'branch_mismatch' | 'skipped';
+    note?: string;
+  }
+  const details: TallyDetail[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const raw = rows[i];
+    // Normalise header keys: strip spaces, lowercase first char
+    const norm: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      norm[k.replace(/\s+/g, '').replace(/^(.)/, (c) => c.toLowerCase())] = typeof v === 'string' ? v.trim() : v;
+    }
+
+    const chassisNumber = String(norm.chassisNumber ?? '').trim().toUpperCase();
+    const tallyInvoiceNo = String(norm.tallyInvoiceNo ?? '').trim();
+    const tallyBranch    = String(norm.tallyDonebranch ?? norm.tallyDoneBranch ?? norm.branch ?? '').trim().toLowerCase();
+
+    if (!chassisNumber) {
+      details.push({ row: i + 2, chassisNumber: '', status: 'skipped', note: 'Missing chassis number' });
+      continue;
+    }
+
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { chassisNumber },
+      include: {
+        blockings: {
+          where: { status: 'ACTIVE' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: { branch: { select: { name: true } } },
+        },
+      },
+    });
+
+    if (!vehicle) {
+      details.push({ row: i + 2, chassisNumber, status: 'not_found' });
+      notFound++;
+      continue;
+    }
+
+    // Always mark vehicle as DELIVERED
+    await prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: 'DELIVERED' } });
+
+    const activeBlocking = vehicle.blockings[0] ?? null;
+
+    if (!activeBlocking) {
+      details.push({ row: i + 2, chassisNumber, status: 'no_blocking', note: 'Vehicle delivered — no active blocking found' });
+      noBlocking++;
+      continue;
+    }
+
+    // Mark blocking as DELIVERED and fill in Tally Invoice No as retailId
+    await prisma.blockingRequest.update({
+      where: { id: activeBlocking.id },
+      data: { status: 'DELIVERED', retailId: tallyInvoiceNo || null },
+    });
+
+    // Compare branches (flexible: either contains the other, case-insensitive)
+    const blockingBranchLower = activeBlocking.branch.name.toLowerCase();
+    const branchMatch = !tallyBranch ||
+      blockingBranchLower.includes(tallyBranch) ||
+      tallyBranch.includes(blockingBranchLower);
+
+    if (branchMatch) {
+      successful++;
+      details.push({ row: i + 2, chassisNumber, status: 'success', note: `Invoice: ${tallyInvoiceNo || '—'}` });
+    } else {
+      branchMismatch++;
+      details.push({
+        row: i + 2, chassisNumber, status: 'branch_mismatch',
+        note: `Booking branch: ${activeBlocking.branch.name} | Tally branch: ${tallyBranch}`,
+      });
+    }
+  }
+
+  res.json({ total: rows.length, successful, notFound, noBlocking, branchMismatch, details });
 });
 
 // Toggle heatmap visibility — admin only

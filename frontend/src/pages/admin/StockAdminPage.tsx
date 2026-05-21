@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
@@ -14,6 +14,21 @@ interface Branch { id: string; name: string; branchCode: string | null; }
 interface CarSuffix { id: string; suffix: string; }
 interface CarColour { id: string; colourCode: string; colourName: string; }
 interface CarModel { id: string; modelCode: string; modelName: string; suffixes: CarSuffix[]; colours: CarColour[]; }
+
+interface TallyDetail {
+  row: number;
+  chassisNumber: string;
+  status: 'success' | 'not_found' | 'no_blocking' | 'branch_mismatch' | 'skipped';
+  note?: string;
+}
+interface TallyResult {
+  total: number;
+  successful: number;
+  notFound: number;
+  noBlocking: number;
+  branchMismatch: number;
+  details: TallyDetail[];
+}
 
 const statusColor: Record<string, string> = {
   OPEN: 'bg-green-900/30 text-green-400',
@@ -58,7 +73,14 @@ export default function StockAdminPage() {
   const ctdmsFileRef = useRef<HTMLInputElement>(null);
   const [ctdmsResult, setCtdmsResult] = useState<{ total: number; converted: number; notFound: number } | null>(null);
   const [uploadingCtdms, setUploadingCtdms] = useState(false);
+  const tallyFileRef = useRef<HTMLInputElement>(null);
+  const [tallyResult, setTallyResult] = useState<TallyResult | null>(null);
+  const [uploadingTally, setUploadingTally] = useState(false);
+  const [showTallyReport, setShowTallyReport] = useState(false);
   const limit = 50;
+
+  // Filters
+  const [filters, setFilters] = useState({ chassis: '', model: '', stockStatus: '' });
 
   // Manual entry state
   const [showManual, setShowManual] = useState(false);
@@ -67,12 +89,17 @@ export default function StockAdminPage() {
   const [carModels, setCarModels] = useState<CarModel[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
 
-  const fetchVehicles = async (p = page) => {
-    const { data } = await api.get(`/stock?page=${p}&limit=${limit}`);
+  const fetchVehicles = useCallback(async (p = page) => {
+    const params = new URLSearchParams({ page: String(p), limit: String(limit) });
+    if (filters.chassis) params.set('chassis', filters.chassis);
+    if (filters.model) params.set('model', filters.model);
+    if (filters.stockStatus) params.set('stockStatus', filters.stockStatus);
+    const { data } = await api.get(`/stock?${params}`);
     setVehicles(data.vehicles);
     setTotal(data.total);
-  };
-  useEffect(() => { fetchVehicles(); }, [page]);
+  }, [page, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchVehicles(); }, [fetchVehicles]);
 
   const openManual = async () => {
     setManualForm(emptyManualForm);
@@ -115,6 +142,22 @@ export default function StockAdminPage() {
       fetchVehicles(1); setPage(1);
     } catch { toast.error('CTDMS upload failed'); }
     finally { setUploadingCtdms(false); if (ctdmsFileRef.current) ctdmsFileRef.current.value = ''; }
+  };
+
+  const handleTallyUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingTally(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const { data } = await api.post('/stock/tally-done', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setTallyResult(data);
+      setShowTallyReport(true);
+      toast.success(`Tally Done: ${data.successful} delivered successfully`);
+      fetchVehicles(1); setPage(1);
+    } catch { toast.error('Tally Done upload failed'); }
+    finally { setUploadingTally(false); if (tallyFileRef.current) tallyFileRef.current.value = ''; }
   };
 
   const handleExport = async () => {
@@ -195,6 +238,18 @@ export default function StockAdminPage() {
             <span className="material-symbols-outlined text-sm">swap_horiz</span>
             {uploadingCtdms ? 'Processing…' : 'Upload CTDMS Stock'}
           </button>
+          {/* Tally Done — bulk deliver from Tally invoice export */}
+          <input ref={tallyFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleTallyUpload} />
+          <button onClick={() => tallyFileRef.current?.click()} disabled={uploadingTally} className="btn-secondary gap-2" style={{ borderColor: '#34d399', color: '#34d399' }}>
+            <span className="material-symbols-outlined text-sm">receipt_long</span>
+            {uploadingTally ? 'Processing…' : 'Tally Done'}
+          </button>
+          {tallyResult && (
+            <button onClick={() => setShowTallyReport(true)} className="btn-secondary gap-2 text-xs" style={{ borderColor: '#34d399', color: '#34d399' }}>
+              <span className="material-symbols-outlined text-sm">summarize</span>
+              View Report
+            </button>
+          )}
           <button onClick={handleExport} className="btn-secondary gap-2">
             <span className="material-symbols-outlined text-sm">download</span>
             Export Excel
@@ -238,6 +293,50 @@ export default function StockAdminPage() {
           <button onClick={() => setCtdmsResult(null)} className="text-zinc-500 hover:text-on-surface"><span className="material-symbols-outlined text-lg">close</span></button>
         </div>
       )}
+
+      {/* Filters */}
+      <div className="flex gap-3 flex-wrap items-center">
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">pin</span>
+          <input
+            className="input pl-10 w-52"
+            placeholder="Chassis Number…"
+            value={filters.chassis}
+            onChange={(e) => { setFilters((f) => ({ ...f, chassis: e.target.value })); setPage(1); }}
+          />
+        </div>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+          <input
+            className="input pl-10 w-44"
+            placeholder="Model…"
+            value={filters.model}
+            onChange={(e) => { setFilters((f) => ({ ...f, model: e.target.value })); setPage(1); }}
+          />
+        </div>
+        <div className="relative">
+          <select
+            className="input appearance-none pr-8 w-40"
+            value={filters.stockStatus}
+            onChange={(e) => { setFilters((f) => ({ ...f, stockStatus: e.target.value })); setPage(1); }}
+          >
+            <option value="">All Stock Status</option>
+            <option value="BND">BND</option>
+            <option value="CTDMS">CTDMS</option>
+            <option value="MDDP">MDDP</option>
+          </select>
+          <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+        </div>
+        {(filters.chassis || filters.model || filters.stockStatus) && (
+          <button
+            onClick={() => { setFilters({ chassis: '', model: '', stockStatus: '' }); setPage(1); }}
+            className="text-tertiary hover:text-on-surface text-xs font-bold font-label uppercase tracking-wider transition-colors"
+          >
+            Clear Filters
+          </button>
+        )}
+        <span className="font-label text-xs text-on-surface-variant uppercase tracking-widest ml-auto">{total} vehicles</span>
+      </div>
 
       {/* Table */}
       <div className="bg-surface-container-low rounded-xl overflow-hidden">
@@ -302,6 +401,83 @@ export default function StockAdminPage() {
           </div>
         )}
       </div>
+
+      {/* Tally Done Report Modal */}
+      {showTallyReport && tallyResult && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setShowTallyReport(false)}>
+          <div className="bg-surface-container-low rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(67,70,86,0.12)' }}>
+              <div>
+                <h2 className="font-headline font-bold text-lg tracking-tighter uppercase text-on-surface">Tally Done Report</h2>
+                <p className="text-xs text-on-surface-variant font-label mt-0.5">{tallyResult.total} rows processed</p>
+              </div>
+              <button onClick={() => setShowTallyReport(false)} className="text-on-surface-variant hover:text-on-surface w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-4 gap-3 p-6 flex-shrink-0">
+              <div className="bg-green-900/20 rounded-xl p-4 text-center" style={{ border: '1px solid rgba(52,211,153,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-green-400">{tallyResult.successful}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-green-400/70 mt-1">Successful</p>
+              </div>
+              <div className="bg-tertiary-container/10 rounded-xl p-4 text-center" style={{ border: '1px solid rgba(215,26,24,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-tertiary">{tallyResult.notFound}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-tertiary/70 mt-1">Not Found</p>
+              </div>
+              <div className="bg-surface-container rounded-xl p-4 text-center" style={{ border: '1px solid rgba(67,70,86,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-zinc-400">{tallyResult.noBlocking}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-zinc-500 mt-1">No Blocking</p>
+              </div>
+              <div className="bg-orange-900/20 rounded-xl p-4 text-center" style={{ border: '1px solid rgba(251,146,60,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-orange-400">{tallyResult.branchMismatch}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-orange-400/70 mt-1">Branch Mismatch</p>
+              </div>
+            </div>
+
+            {/* Detail rows */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 px-6 pb-6">
+              <table className="w-full text-xs font-body">
+                <thead className="sticky top-0 bg-surface-container-low">
+                  <tr>
+                    {['Row', 'Chassis No.', 'Result', 'Note'].map((h) => (
+                      <th key={h} className="py-2 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest pr-4">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tallyResult.details.map((d) => {
+                    const colorMap = {
+                      success: 'text-green-400',
+                      not_found: 'text-tertiary',
+                      no_blocking: 'text-zinc-400',
+                      branch_mismatch: 'text-orange-400',
+                      skipped: 'text-zinc-600',
+                    };
+                    const labelMap = {
+                      success: 'Delivered ✓',
+                      not_found: 'Not Found',
+                      no_blocking: 'No Blocking',
+                      branch_mismatch: 'Branch Mismatch',
+                      skipped: 'Skipped',
+                    };
+                    return (
+                      <tr key={d.row} style={{ borderBottom: '1px solid rgba(67,70,86,0.06)' }}>
+                        <td className="py-2 pr-4 text-zinc-600">{d.row}</td>
+                        <td className="py-2 pr-4 font-mono text-on-surface-variant">{d.chassisNumber || '—'}</td>
+                        <td className={`py-2 pr-4 font-bold font-label uppercase tracking-wider ${colorMap[d.status]}`}>{labelMap[d.status]}</td>
+                        <td className="py-2 text-zinc-500">{d.note ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Manual Entry Modal */}
       {showManual && (
