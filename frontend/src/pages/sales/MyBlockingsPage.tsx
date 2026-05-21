@@ -189,6 +189,7 @@ export default function MyBlockingsPage() {
                   'Colour': b.vehicle.colour,
                   'Chassis No': b.vehicle.chassisNumber,
                   'Stock Status': b.vehicle.stockStatus ?? '',
+                  'Stockyard Location': b.vehicle.stockyardLocation ?? '',
                   'Order ID': b.orderId ?? '',
                   'Consultant': b.consultantName ?? '',
                   'Team Leader': b.teamLeaderName ?? '',

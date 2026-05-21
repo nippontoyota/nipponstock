@@ -13,6 +13,7 @@ interface HeatmapCell {
   open: number;
   total: number;
   level: 'green' | 'yellow' | 'red';
+  hasPhysical: boolean;
 }
 
 interface CarSuffix { id: string; suffix: string; description?: string; }
@@ -89,6 +90,7 @@ export default function HeatmapPage() {
       Suffix: c.suffix,
       Colour: c.colour,
       Availability: c.level === 'green' ? 'High' : c.level === 'yellow' ? 'Medium' : 'Critical',
+      'Physical Status': c.hasPhysical ? 'Yes' : 'No',
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -194,6 +196,10 @@ export default function HeatmapPage() {
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg.red }} />
             <span className="text-xs font-label text-on-surface-variant">Critical <span className="text-zinc-500">(&#8804;2)</span></span>
           </div>
+          <div className="flex items-center gap-2 border-l border-outline-variant/30 pl-4">
+            <span className="text-xs font-black text-zinc-400">P</span>
+            <span className="text-xs font-label text-on-surface-variant">Physical Stock <span className="text-zinc-500">(BND / CTDMS)</span></span>
+          </div>
         </div>
 
         {/* YOM Filter */}
@@ -277,9 +283,13 @@ export default function HeatmapPage() {
                           return (
                             <div
                               key={colour}
-                              className={`h-14 rounded-sm cursor-pointer transition-all duration-200 ${cellStyle[cell.level]}`}
+                              className={`h-14 rounded-sm cursor-pointer transition-all duration-200 relative ${cellStyle[cell.level]}`}
                               style={{ backgroundColor: cellBg[cell.level] }}
-                            />
+                            >
+                              {cell.hasPhysical && (
+                                <span className="absolute bottom-1 left-1.5 text-[11px] font-black text-black/70 leading-none select-none">P</span>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
