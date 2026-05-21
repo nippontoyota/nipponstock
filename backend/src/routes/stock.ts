@@ -338,6 +338,108 @@ router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: Aut
   res.json({ total: rows.length, successful, notFound, noBlocking, branchMismatch, details });
 });
 
+// CTDMS ↔ FEM — swap MDDP chassis with FEM chassis number and convert to CTDMS
+// Excel columns: Chassis Number | New Chassis Number | Stockyard Location
+router.post('/ctdms-fem', requireAdmin, upload.single('file'), async (_req: AuthRequest, res: Response) => {
+  if (!_req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
+
+  const wb = XLSX.read(_req.file.buffer, { type: 'buffer' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+
+  let successful = 0;
+  let failed = 0;
+
+  interface FemDetail {
+    row: number;
+    chassisNumber: string;
+    status: 'success' | 'not_found' | 'wrong_status' | 'duplicate_chassis' | 'skipped';
+    note?: string;
+  }
+  const details: FemDetail[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const raw = rows[i];
+    const norm: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      norm[k.replace(/\s+/g, '').replace(/^(.)/, (c) => c.toLowerCase())] = typeof v === 'string' ? v.trim() : v;
+    }
+
+    const chassisNumber     = String(norm.chassisNumber    ?? '').trim().toUpperCase();
+    const newChassisNumber  = String(norm.newChassisNumber ?? '').trim().toUpperCase();
+    const stockyardLocation = String(norm.stockyardLocation ?? '').trim();
+
+    if (!chassisNumber || !newChassisNumber) {
+      details.push({ row: i + 2, chassisNumber: chassisNumber || '—', status: 'skipped', note: 'Missing chassis number or new chassis number' });
+      failed++;
+      continue;
+    }
+
+    // Find the vehicle with its active blocking
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { chassisNumber },
+      include: {
+        blockings: { where: { status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    if (!vehicle) {
+      details.push({ row: i + 2, chassisNumber, status: 'not_found', note: 'Vehicle not found' });
+      failed++;
+      continue;
+    }
+
+    if (vehicle.stockStatus !== 'MDDP') {
+      details.push({ row: i + 2, chassisNumber, status: 'wrong_status', note: `Stock status is ${vehicle.stockStatus ?? 'null'} — expected MDDP` });
+      failed++;
+      continue;
+    }
+
+    // Ensure new chassis number is not already taken
+    const duplicate = await prisma.vehicle.findUnique({ where: { chassisNumber: newChassisNumber }, select: { id: true } });
+    if (duplicate) {
+      details.push({ row: i + 2, chassisNumber, status: 'duplicate_chassis', note: `New chassis ${newChassisNumber} already exists in system` });
+      failed++;
+      continue;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.vehicle.update({
+          where: { id: vehicle.id },
+          data: {
+            chassisNumber: newChassisNumber,
+            stockStatus: 'CTDMS',
+            ...(stockyardLocation ? { stockyardLocation } : {}),
+          },
+        });
+
+        // Extend active blocking expiry to today + 10 days
+        if (vehicle.blockings[0]) {
+          const newExpiry = new Date();
+          newExpiry.setDate(newExpiry.getDate() + 10);
+          await tx.blockingRequest.update({
+            where: { id: vehicle.blockings[0].id },
+            data: { expiryAt: newExpiry },
+          });
+        }
+      });
+
+      const hasBlocking = !!vehicle.blockings[0];
+      details.push({
+        row: i + 2, chassisNumber, status: 'success',
+        note: `→ ${newChassisNumber} · MDDP→CTDMS${hasBlocking ? ' · Expiry +10d' : ''}`,
+      });
+      successful++;
+    } catch (e) {
+      details.push({ row: i + 2, chassisNumber, status: 'skipped', note: String(e) });
+      failed++;
+    }
+  }
+
+  res.json({ total: rows.length, successful, failed, details });
+});
+
 // Toggle heatmap visibility — admin only
 router.patch('/:id/toggle-visibility', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {

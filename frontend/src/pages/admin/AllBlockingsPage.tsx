@@ -1,8 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import api from '../../api';
+
+interface FemDetail {
+  row: number;
+  chassisNumber: string;
+  status: 'success' | 'not_found' | 'wrong_status' | 'duplicate_chassis' | 'skipped';
+  note?: string;
+}
+interface FemResult { total: number; successful: number; failed: number; details: FemDetail[]; }
 
 interface Blocking {
   id: string; blockType: string; status: string; customerName: string | null; consultantName: string | null;
@@ -29,6 +37,10 @@ export default function AllBlockingsPage() {
   const [extendDate, setExtendDate] = useState('');
   const [retailId, setRetailId] = useState('');
   const [loading, setLoading] = useState(false);
+  const femFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingFem, setUploadingFem] = useState(false);
+  const [femResult, setFemResult] = useState<FemResult | null>(null);
+  const [showFemReport, setShowFemReport] = useState(false);
   const limit = 20;
 
   const buildParams = (overrides: Record<string, string> = {}) => {
@@ -81,6 +93,22 @@ export default function AllBlockingsPage() {
     if (!confirm('Mark this blocking as delivered?')) return;
     try { await api.patch(`/blocking/${selected.id}/deliver`, { retailId: retailId.trim() }); toast.success('Marked as delivered'); fetch(); setSelected(null); }
     catch { toast.error('Failed to mark as delivered'); }
+  };
+
+  const handleFemUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFem(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const { data } = await api.post('/stock/ctdms-fem', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setFemResult(data);
+      setShowFemReport(true);
+      toast.success(`FEM: ${data.successful} updated, ${data.failed} failed`);
+      fetch();
+    } catch { toast.error('CTDMS FEM upload failed'); }
+    finally { setUploadingFem(false); if (femFileRef.current) femFileRef.current.value = ''; }
   };
 
   const downloadExcel = async () => {
@@ -176,13 +204,36 @@ export default function AllBlockingsPage() {
           )}
         </div>
         <span className="font-label text-xs text-on-surface-variant uppercase tracking-widest">{total} results</span>
-        <button
-          onClick={downloadExcel}
-          className="ml-auto flex items-center gap-2 px-4 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
-        >
-          <span className="material-symbols-outlined text-base">table_view</span>
-          Download Excel
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {/* CTDMS ↔ FEM upload */}
+          <input ref={femFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFemUpload} />
+          <button
+            onClick={() => femFileRef.current?.click()}
+            disabled={uploadingFem}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border transition-colors disabled:opacity-50"
+            style={{ borderColor: '#fb923c', color: '#fb923c' }}
+          >
+            <span className="material-symbols-outlined text-base">swap_horiz</span>
+            {uploadingFem ? 'Processing…' : 'CTDMS ↔ FEM'}
+          </button>
+          {femResult && (
+            <button
+              onClick={() => setShowFemReport(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border transition-colors"
+              style={{ borderColor: '#fb923c', color: '#fb923c' }}
+            >
+              <span className="material-symbols-outlined text-base">summarize</span>
+              Report
+            </button>
+          )}
+          <button
+            onClick={downloadExcel}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">table_view</span>
+            Download Excel
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -239,6 +290,79 @@ export default function AllBlockingsPage() {
           </div>
         )}
       </div>
+
+      {/* CTDMS FEM Report Modal */}
+      {showFemReport && femResult && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setShowFemReport(false)}>
+          <div className="bg-surface-container-low rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(67,70,86,0.12)' }}>
+              <div>
+                <h2 className="font-headline font-bold text-lg tracking-tighter uppercase text-on-surface">CTDMS ↔ FEM Report</h2>
+                <p className="text-xs text-on-surface-variant font-label mt-0.5">{femResult.total} rows processed</p>
+              </div>
+              <button onClick={() => setShowFemReport(false)} className="text-on-surface-variant hover:text-on-surface w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-3 p-6 flex-shrink-0">
+              <div className="bg-surface-container rounded-xl p-4 text-center" style={{ border: '1px solid rgba(67,70,86,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-on-surface">{femResult.total}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-zinc-500 mt-1">Total Processed</p>
+              </div>
+              <div className="bg-green-900/20 rounded-xl p-4 text-center" style={{ border: '1px solid rgba(52,211,153,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-green-400">{femResult.successful}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-green-400/70 mt-1">Successfully Updated</p>
+              </div>
+              <div className="bg-tertiary-container/10 rounded-xl p-4 text-center" style={{ border: '1px solid rgba(215,26,24,0.2)' }}>
+                <p className="text-3xl font-headline font-extrabold text-tertiary">{femResult.failed}</p>
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-tertiary/70 mt-1">Failed / Skipped</p>
+              </div>
+            </div>
+
+            {/* Detail table */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 px-6 pb-6">
+              <table className="w-full text-xs font-body">
+                <thead className="sticky top-0 bg-surface-container-low">
+                  <tr>
+                    {['Row', 'Chassis No.', 'Result', 'Note'].map((h) => (
+                      <th key={h} className="py-2 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest pr-4">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {femResult.details.map((d) => {
+                    const colorMap: Record<FemDetail['status'], string> = {
+                      success: 'text-green-400',
+                      not_found: 'text-tertiary',
+                      wrong_status: 'text-orange-400',
+                      duplicate_chassis: 'text-yellow-400',
+                      skipped: 'text-zinc-500',
+                    };
+                    const labelMap: Record<FemDetail['status'], string> = {
+                      success: 'Updated ✓',
+                      not_found: 'Not Found',
+                      wrong_status: 'Wrong Status',
+                      duplicate_chassis: 'Duplicate VIN',
+                      skipped: 'Skipped',
+                    };
+                    return (
+                      <tr key={d.row} style={{ borderBottom: '1px solid rgba(67,70,86,0.06)' }}>
+                        <td className="py-2 pr-4 text-zinc-600">{d.row}</td>
+                        <td className="py-2 pr-4 font-mono text-on-surface-variant">{d.chassisNumber || '—'}</td>
+                        <td className={`py-2 pr-4 font-bold font-label uppercase tracking-wider ${colorMap[d.status]}`}>{labelMap[d.status]}</td>
+                        <td className="py-2 text-zinc-500 text-[11px]">{d.note ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit modal */}
       {selected && (
