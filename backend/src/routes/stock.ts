@@ -171,6 +171,7 @@ router.get('/export', requireAdmin, async (_req: AuthRequest, res: Response) => 
     model: v.model,
     suffix: v.suffix,
     colour: v.colour,
+    stockStatus: v.stockStatus ?? '',
     stockyardLocation: v.stockyardLocation,
     dateOfArrival: v.dateOfArrival.toISOString().split('T')[0],
     status: v.status,
