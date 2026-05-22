@@ -185,7 +185,9 @@ export default function MyBlockingsPage() {
                 const daysLeft = b.expiryAt ? Math.max(0, Math.floor(differenceInHours(new Date(b.expiryAt), new Date()) / 24)) : '';
                 return {
                   'Customer': b.customerName ?? '',
-                  'Vehicle': `${b.vehicle.chassisYear} ${b.vehicle.model} ${b.vehicle.suffix}`,
+                  'Chassis Year': b.vehicle.chassisYear,
+                  'Model': b.vehicle.model,
+                  'Suffix': b.vehicle.suffix,
                   'Colour': b.vehicle.colour,
                   'Chassis No': b.vehicle.chassisNumber,
                   'Stock Status': b.vehicle.stockStatus ?? '',
