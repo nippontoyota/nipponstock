@@ -177,6 +177,83 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// POST /blocking/admin-block — admin creates a hard block directly on behalf of a sales manager
+router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response) => {
+  const Schema = z.object({
+    vehicleId: z.string().uuid(),
+    onBehalfOfUserId: z.string().uuid(),
+    orderId: z.string().regex(/^\d{7}$/, 'Order ID must be exactly 7 digits'),
+    customerName: z.string().min(1),
+    consultantName: z.string().min(1),
+    teamLeaderName: z.string().optional(),
+    paymentMode: z.enum(['CASH', 'FINANCE']),
+    amountReceived: z.number().optional(),
+    financierBank: z.string().optional(),
+    paymentStatus: z.string().min(1),
+    expectedBillingDate: z.string().datetime().optional(),
+  });
+
+  const parsed = Schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const { vehicleId, onBehalfOfUserId, ...formData } = parsed.data;
+
+  // Verify vehicle is OPEN
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicle) { res.status(404).json({ error: 'Vehicle not found' }); return; }
+  if (vehicle.status !== 'OPEN') { res.status(409).json({ error: 'Vehicle is not open — it may have just been taken' }); return; }
+
+  // Get the user and their branch
+  const onBehalfUser = await prisma.user.findUnique({ where: { id: onBehalfOfUserId }, select: { id: true, branchId: true, fullName: true } });
+  if (!onBehalfUser) { res.status(404).json({ error: 'User not found' }); return; }
+  if (!onBehalfUser.branchId) { res.status(400).json({ error: 'Selected user has no branch assigned' }); return; }
+
+  const days = await getBlockingDays(vehicle.model, vehicle.stockStatus);
+  const now = new Date();
+  const expiryAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+  try {
+    const blocking = await prisma.$transaction(async (tx) => {
+      await tx.vehicle.update({ where: { id: vehicleId }, data: { status: 'HARD_BLOCKED' } });
+      return tx.blockingRequest.create({
+        data: {
+          vehicleId,
+          userId: onBehalfUser.id,
+          branchId: onBehalfUser.branchId!,
+          blockType: 'HARD',
+          softBlockAt: now,
+          hardBlockAt: now,
+          expiryAt,
+          orderId: formData.orderId,
+          customerName: formData.customerName,
+          consultantName: formData.consultantName,
+          teamLeaderName: formData.teamLeaderName,
+          paymentMode: formData.paymentMode,
+          amountReceived: formData.amountReceived,
+          financierBank: formData.financierBank,
+          paymentStatus: formData.paymentStatus,
+          expectedBillingDate: formData.expectedBillingDate ? new Date(formData.expectedBillingDate) : undefined,
+        },
+        include: { vehicle: true, branch: true },
+      });
+    });
+
+    await logAudit({
+      entityType: 'BLOCKING',
+      entityId: blocking.id,
+      action: 'ADMIN_HARD_BLOCKED',
+      performedById: req.user!.userId,
+      newValue: { onBehalfOf: onBehalfUser.fullName, vehicleId, expiryAt },
+    });
+
+    emitHeatmapUpdate();
+    emitBlockingUpdate(blocking.id);
+    res.status(201).json(blocking);
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Failed to create block', detail: String(e) });
+  }
+});
+
 // PATCH /blocking/:id/payment-status — owner updates their own booking's payment status
 router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({ paymentStatus: z.string().min(1) });

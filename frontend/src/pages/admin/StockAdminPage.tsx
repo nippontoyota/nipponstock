@@ -11,6 +11,7 @@ interface Vehicle {
 }
 
 interface Branch { id: string; name: string; branchCode: string | null; }
+interface SalesUser { id: string; fullName: string; loginId: string; role: string; isActive: boolean; branchId: string | null; branch?: { name: string } | null; }
 interface CarSuffix { id: string; suffix: string; }
 interface CarColour { id: string; colourCode: string; colourName: string; }
 interface CarModel { id: string; modelCode: string; modelName: string; suffixes: CarSuffix[]; colours: CarColour[]; }
@@ -81,6 +82,23 @@ export default function StockAdminPage() {
 
   // Filters
   const [filters, setFilters] = useState({ chassis: '', model: '', stockStatus: '' });
+
+  // Admin block on behalf of user
+  const [adminBlockVehicle, setAdminBlockVehicle] = useState<Vehicle | null>(null);
+  const [adminBlockStep, setAdminBlockStep] = useState<1 | 2>(1);
+  const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [adminBlockForm, setAdminBlockForm] = useState({
+    orderId: '', customerName: '', consultantName: '', teamLeaderName: '',
+    paymentMode: 'CASH' as 'CASH' | 'FINANCE',
+    amountReceived: '',
+    financeType: '' as '' | 'IN_HOUSE' | 'OUTHOUSE',
+    financierBank: '',
+    paymentStatus: 'Full payment received',
+    expectedBillingDate: '',
+  });
+  const [submittingAdminBlock, setSubmittingAdminBlock] = useState(false);
+  const [orderIdError, setOrderIdError] = useState('');
 
   // Manual entry state
   const [showManual, setShowManual] = useState(false);
@@ -219,6 +237,58 @@ export default function StockAdminPage() {
   const setMF = (partial: Partial<typeof emptyManualForm>) =>
     setManualForm((f) => ({ ...f, ...partial }));
 
+  const openAdminBlock = async (v: Vehicle) => {
+    setAdminBlockVehicle(v);
+    setAdminBlockStep(1);
+    setSelectedUserId('');
+    setAdminBlockForm({ orderId: '', customerName: '', consultantName: '', teamLeaderName: '', paymentMode: 'CASH', amountReceived: '', financeType: '', financierBank: '', paymentStatus: 'Full payment received', expectedBillingDate: '' });
+    setOrderIdError('');
+    if (salesUsers.length === 0) {
+      const { data } = await api.get('/users');
+      setSalesUsers((data as SalesUser[]).filter((u) => u.role === 'SALES_MANAGER' && u.isActive !== false));
+    }
+  };
+
+  const handleAdminBlockSubmit = async () => {
+    if (!/^\d{7}$/.test(adminBlockForm.orderId)) { setOrderIdError('Order ID must be exactly 7 digits'); return; }
+    if (!adminBlockVehicle || !selectedUserId) return;
+    setSubmittingAdminBlock(true);
+    const financierBank = adminBlockForm.paymentMode === 'FINANCE'
+      ? (adminBlockForm.financeType === 'IN_HOUSE' ? 'In-House' : adminBlockForm.financierBank)
+      : undefined;
+    try {
+      await api.post('/blocking/admin-block', {
+        vehicleId: adminBlockVehicle.id,
+        onBehalfOfUserId: selectedUserId,
+        orderId: adminBlockForm.orderId,
+        customerName: adminBlockForm.customerName,
+        consultantName: adminBlockForm.consultantName,
+        teamLeaderName: adminBlockForm.teamLeaderName || undefined,
+        paymentMode: adminBlockForm.paymentMode,
+        amountReceived: adminBlockForm.paymentMode === 'CASH' && adminBlockForm.amountReceived ? parseFloat(adminBlockForm.amountReceived) : undefined,
+        financierBank,
+        paymentStatus: adminBlockForm.paymentStatus,
+        expectedBillingDate: adminBlockForm.expectedBillingDate ? new Date(adminBlockForm.expectedBillingDate).toISOString() : undefined,
+      });
+      toast.success('Vehicle blocked successfully');
+      setAdminBlockVehicle(null);
+      fetchVehicles(1); setPage(1);
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Block failed');
+    } finally { setSubmittingAdminBlock(false); }
+  };
+
+  const abf = (partial: Partial<typeof adminBlockForm>) => setAdminBlockForm((f) => ({ ...f, ...partial }));
+
+  const adminBlockFormValid =
+    /^\d{7}$/.test(adminBlockForm.orderId) &&
+    adminBlockForm.customerName &&
+    adminBlockForm.consultantName &&
+    adminBlockForm.paymentStatus &&
+    (adminBlockForm.paymentMode === 'CASH'
+      ? !!adminBlockForm.amountReceived
+      : adminBlockForm.financeType !== '' && !!adminBlockForm.financierBank);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -349,7 +419,7 @@ export default function StockAdminPage() {
           <table className="w-full text-sm font-body">
             <thead className="bg-surface-container">
               <tr>
-                {['Chassis No.', 'Year', 'Model', 'Suffix', 'Colour', 'Stock Status', 'Yard Location', 'Arrived', 'Status', 'Blocked By', 'Heatmap'].map((h) => (
+                {['Chassis No.', 'Year', 'Model', 'Suffix', 'Colour', 'Stock Status', 'Yard Location', 'Arrived', 'Status', 'Blocked By', '', 'Heatmap'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -357,7 +427,7 @@ export default function StockAdminPage() {
             <tbody>
               {vehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-20 text-center">
+                  <td colSpan={12} className="py-20 text-center">
                     <span className="material-symbols-outlined text-4xl text-zinc-700 block mb-3">inventory_2</span>
                     <p className="text-on-surface-variant font-label text-xs uppercase tracking-widest">No stock found. Import a file or add a vehicle manually.</p>
                   </td>
@@ -378,6 +448,17 @@ export default function StockAdminPage() {
                   <td className="px-4 py-3 text-xs text-on-surface-variant">{new Date(v.dateOfArrival).toLocaleDateString()}</td>
                   <td className="px-4 py-3"><span className={`badge ${statusColor[v.status] ?? 'bg-surface-container text-zinc-500'}`}>{v.status}</span></td>
                   <td className="px-4 py-3 text-xs text-on-surface-variant">{v.blockings[0]?.user.fullName ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    {v.status === 'OPEN' && (
+                      <button
+                        onClick={() => openAdminBlock(v)}
+                        className="flex items-center gap-1 text-[10px] font-label font-bold uppercase tracking-wider px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">lock</span>
+                        Block
+                      </button>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => handleToggleVisibility(v)}
@@ -406,6 +487,149 @@ export default function StockAdminPage() {
           </div>
         )}
       </div>
+
+      {/* Admin Block on Behalf Modal */}
+      {adminBlockVehicle && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setAdminBlockVehicle(null)}>
+          <div className="bg-surface-container-low rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" style={{ maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="flex justify-between items-start px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(67,70,86,0.12)' }}>
+              <div>
+                <h2 className="font-headline font-bold text-lg tracking-tighter uppercase text-on-surface">Block Vehicle</h2>
+                <p className="font-label text-xs text-on-surface-variant mt-0.5">
+                  {adminBlockVehicle.model} {adminBlockVehicle.suffix} · {adminBlockVehicle.colour} · <span className="font-mono">{adminBlockVehicle.chassisNumber}</span>
+                </p>
+              </div>
+              <button onClick={() => setAdminBlockVehicle(null)} className="text-on-surface-variant hover:text-on-surface w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Step indicator */}
+            <div className="flex px-6 pt-4 gap-3 flex-shrink-0">
+              {[{ n: 1, label: 'Select User' }, { n: 2, label: 'Block Details' }].map((s) => (
+                <div key={s.n} className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black font-headline ${adminBlockStep >= s.n ? 'bg-primary text-on-primary' : 'bg-surface-container text-zinc-500'}`}>{s.n}</div>
+                  <span className={`text-[10px] font-label uppercase tracking-wider ${adminBlockStep >= s.n ? 'text-primary' : 'text-zinc-600'}`}>{s.label}</span>
+                  {s.n < 2 && <span className="text-zinc-700 text-xs ml-1">›</span>}
+                </div>
+              ))}
+            </div>
+
+            {/* Step 1: Select User */}
+            {adminBlockStep === 1 && (
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                <p className="text-xs text-on-surface-variant font-label">Select the sales manager this block will be created under:</p>
+                <div className="space-y-2">
+                  {salesUsers.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => setSelectedUserId(u.id)}
+                      className={`w-full text-left px-4 py-3 rounded-lg transition-all border ${selectedUserId === u.id ? 'border-primary bg-primary/10' : 'border-zinc-700/50 hover:border-zinc-500 bg-surface-container'}`}
+                    >
+                      <p className={`font-headline font-bold text-sm uppercase tracking-tight ${selectedUserId === u.id ? 'text-primary' : 'text-on-surface'}`}>{u.fullName}</p>
+                      <p className="text-[10px] font-label text-zinc-500 mt-0.5">{u.loginId}{u.branch ? ` · ${u.branch.name}` : ' · No branch'}</p>
+                    </button>
+                  ))}
+                  {salesUsers.length === 0 && <p className="text-xs text-zinc-500 font-label">No active sales managers found.</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Block Details Form */}
+            {adminBlockStep === 2 && (
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                {/* Order ID */}
+                <div>
+                  <label className="label">Order ID * <span className="text-zinc-500 normal-case font-normal">(7 digits)</span></label>
+                  <input
+                    className={`input font-mono ${orderIdError ? 'border-red-500' : ''}`}
+                    placeholder="0000000" maxLength={7}
+                    value={adminBlockForm.orderId}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 7); abf({ orderId: v }); setOrderIdError(v.length > 0 && !/^\d{7}$/.test(v) ? 'Must be exactly 7 digits' : ''); }}
+                  />
+                  {orderIdError && <p className="text-xs text-red-400 mt-1">{orderIdError}</p>}
+                </div>
+                {/* Customer + Consultant */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="label">Customer Name *</label><input className="input" value={adminBlockForm.customerName} onChange={(e) => abf({ customerName: e.target.value })} /></div>
+                  <div><label className="label">Consultant Name *</label><input className="input" value={adminBlockForm.consultantName} onChange={(e) => abf({ consultantName: e.target.value })} /></div>
+                </div>
+                {/* Team Leader */}
+                <div><label className="label">Team Leader <span className="text-zinc-500 normal-case font-normal">(optional)</span></label><input className="input" value={adminBlockForm.teamLeaderName} onChange={(e) => abf({ teamLeaderName: e.target.value })} /></div>
+                {/* Payment Mode */}
+                <div>
+                  <label className="label">Payment Method</label>
+                  <div className="grid grid-cols-2 p-1 bg-surface-container-lowest rounded-xl">
+                    {(['CASH', 'FINANCE'] as const).map((mode) => (
+                      <button key={mode} type="button" onClick={() => abf({ paymentMode: mode, financeType: '', financierBank: '' })}
+                        className={`py-2 rounded-lg text-xs font-headline font-bold tracking-tight transition-all ${adminBlockForm.paymentMode === mode ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {adminBlockForm.paymentMode === 'CASH' && (
+                  <div><label className="label">Amount Received (₹) *</label><input className="input" type="number" min="0" value={adminBlockForm.amountReceived} onChange={(e) => abf({ amountReceived: e.target.value })} /></div>
+                )}
+                {adminBlockForm.paymentMode === 'FINANCE' && (
+                  <>
+                    <div>
+                      <label className="label">Finance Type *</label>
+                      <div className="relative">
+                        <select className="input appearance-none pr-8" value={adminBlockForm.financeType} onChange={(e) => abf({ financeType: e.target.value as '' | 'IN_HOUSE' | 'OUTHOUSE', financierBank: '' })}>
+                          <option value="">Select finance type…</option>
+                          <option value="IN_HOUSE">In-House</option>
+                          <option value="OUTHOUSE">Outhouse</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                      </div>
+                    </div>
+                    {adminBlockForm.financeType !== '' && (
+                      <div><label className="label">Financier Bank *</label><input className="input" placeholder={adminBlockForm.financeType === 'IN_HOUSE' ? 'e.g. Nippon In-House Finance' : 'Bank name'} value={adminBlockForm.financierBank} onChange={(e) => abf({ financierBank: e.target.value })} /></div>
+                    )}
+                  </>
+                )}
+                {/* Payment Status */}
+                <div>
+                  <label className="label">Payment Status *</label>
+                  <div className="relative">
+                    <select className="input appearance-none pr-8" value={adminBlockForm.paymentStatus} onChange={(e) => abf({ paymentStatus: e.target.value })}>
+                      <option>Full payment received</option>
+                      <option>Only Booking Received</option>
+                      <option>Part payment received</option>
+                      <option>Ready for Disbursement</option>
+                    </select>
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                  </div>
+                </div>
+                {/* Billing Date */}
+                <div><label className="label">Expected Billing Date <span className="text-zinc-500 normal-case font-normal">(optional)</span></label><input className="input" type="date" style={{ colorScheme: 'dark' }} value={adminBlockForm.expectedBillingDate} onChange={(e) => abf({ expectedBillingDate: e.target.value })} /></div>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="px-6 py-4 flex gap-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(67,70,86,0.12)' }}>
+              {adminBlockStep === 1 ? (
+                <>
+                  <button onClick={() => setAdminBlockVehicle(null)} className="btn-secondary flex-1 text-xs">Cancel</button>
+                  <button disabled={!selectedUserId} onClick={() => setAdminBlockStep(2)} className="btn-primary flex-1 disabled:opacity-40">
+                    Next →
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setAdminBlockStep(1)} className="btn-secondary flex-1 text-xs">← Back</button>
+                  <button disabled={!adminBlockFormValid || submittingAdminBlock} onClick={handleAdminBlockSubmit} className="btn-primary flex-1 disabled:opacity-40">
+                    {submittingAdminBlock ? 'Blocking…' : 'Confirm Block'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tally Done Report Modal */}
       {showTallyReport && tallyResult && (
