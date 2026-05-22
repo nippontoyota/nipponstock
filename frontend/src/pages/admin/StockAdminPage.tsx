@@ -67,7 +67,7 @@ export default function StockAdminPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [importResult, setImportResult] = useState<{ total: number; success: number; rejected: { row: number; reason: string }[] } | null>(null);
+  const [importResult, setImportResult] = useState<{ total: number; success: number; created: number; updated: number; rejected: { row: number; reason: string }[] } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const ctdmsFileRef = useRef<HTMLInputElement>(null);
@@ -268,6 +268,11 @@ export default function StockAdminPage() {
             <p className="font-headline font-bold uppercase tracking-tight text-on-surface">
               Import Result: {importResult.success} / {importResult.total} rows imported
             </p>
+            <div className="flex gap-4 mt-1">
+              <span className="text-xs font-label text-green-400">✚ {importResult.created} new</span>
+              <span className="text-xs font-label text-primary">↺ {importResult.updated} already in stock (updated)</span>
+              {importResult.rejected.length > 0 && <span className="text-xs font-label text-tertiary">✕ {importResult.rejected.length} rejected</span>}
+            </div>
             {importResult.rejected.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {importResult.rejected.slice(0, 5).map((r) => (

@@ -77,6 +77,8 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
   });
 
   let success = 0;
+  let created = 0;
+  let updated = 0;
   const rejected: { row: number; reason: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -96,18 +98,23 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
     }
 
     try {
+      const existing = await prisma.vehicle.findUnique({
+        where: { chassisNumber: parsed.data.chassisNumber },
+        select: { id: true },
+      });
       await prisma.vehicle.upsert({
         where: { chassisNumber: parsed.data.chassisNumber },
         update: { ...parsed.data },
         create: { ...parsed.data, status: 'OPEN' },
       });
       success++;
+      if (existing) updated++; else created++;
     } catch (e) {
       rejected.push({ row: i + 2, reason: String(e) });
     }
   }
 
-  res.json({ total: rows.length, success, rejected });
+  res.json({ total: rows.length, success, created, updated, rejected });
 });
 
 // Manual single-vehicle entry
