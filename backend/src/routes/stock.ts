@@ -71,8 +71,9 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
     model: z.string().min(1),
     suffix: z.string().min(1),
     colour: z.string().min(1),
-    stockyardLocation: z.string().min(1),
+    stockyardLocation: z.string().default(''),
     dateOfArrival: z.coerce.date(),
+    stockStatus: z.enum(['BND', 'MDDP', 'CTDMS']).optional(),
   });
 
   let success = 0;
