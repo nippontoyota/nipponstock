@@ -274,7 +274,13 @@ export default function StockAdminPage() {
       setAdminBlockVehicle(null);
       fetchVehicles(1); setPage(1);
     } catch (err: unknown) {
-      toast.error((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Block failed');
+      const errData = (err as { response?: { data?: { error?: unknown } } }).response?.data?.error;
+      const errMsg = typeof errData === 'string'
+        ? errData
+        : errData && typeof errData === 'object'
+          ? Object.values((errData as { fieldErrors?: Record<string, string[]> }).fieldErrors ?? {}).flat().join(', ') || JSON.stringify(errData)
+          : 'Block failed';
+      toast.error(errMsg);
     } finally { setSubmittingAdminBlock(false); }
   };
 

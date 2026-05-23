@@ -194,7 +194,12 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
   });
 
   const parsed = Schema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  if (!parsed.success) {
+    const fields = parsed.error.flatten().fieldErrors;
+    const message = Object.values(fields).flat().join(', ') || 'Invalid request';
+    res.status(400).json({ error: message });
+    return;
+  }
 
   const { vehicleId, onBehalfOfUserId, ...formData } = parsed.data;
 
