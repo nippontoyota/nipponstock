@@ -193,10 +193,12 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
     expectedBillingDate: z.string().datetime().optional(),
   });
 
+  console.log('[admin-block] body:', JSON.stringify(req.body));
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) {
     const fields = parsed.error.flatten().fieldErrors;
-    const message = Object.values(fields).flat().join(', ') || 'Invalid request';
+    const message = Object.entries(fields).map(([k, v]) => `${k}: ${v?.join(', ')}`).join(' | ') || 'Invalid request';
+    console.log('[admin-block] validation failed:', message);
     res.status(400).json({ error: message });
     return;
   }
