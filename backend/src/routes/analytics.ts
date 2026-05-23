@@ -136,9 +136,15 @@ router.get('/dashboard-reports', async (_req: AuthRequest, res: Response) => {
   });
 
   // 3. Blocking by Payment Status
+  // Normalise payment status: trim whitespace + title-case so "full payment received"
+  // and "Full Payment Received" collapse into the same column.
+  const normalisePaymentStatus = (s: string | null | undefined): string => {
+    if (!s || !s.trim()) return 'Not Set';
+    return s.trim().replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  };
   const bpMap = new Map<string, number>();
   for (const b of blockingPaymentRaw) {
-    const k = `${b.vehicle.model}\x01${b.paymentStatus ?? 'Not Set'}`;
+    const k = `${b.vehicle.model}\x01${normalisePaymentStatus(b.paymentStatus)}`;
     bpMap.set(k, (bpMap.get(k) ?? 0) + 1);
   }
   const blockingByPayment = Array.from(bpMap.entries()).map(([k, count]) => {
