@@ -28,7 +28,7 @@ export async function getHeatmap(year?: number): Promise<HeatmapCell[]> {
     const existing = map.get(key) ?? { open: 0, total: 0, hasPhysical: false };
     existing.total++;
     if (v.status === 'OPEN') existing.open++;
-    if (v.stockStatus === 'BND' || v.stockStatus === 'CTDMS') existing.hasPhysical = true;
+    if (v.status === 'OPEN' && (v.stockStatus === 'BND' || v.stockStatus === 'CTDMS')) existing.hasPhysical = true;
     map.set(key, existing);
   }
 
