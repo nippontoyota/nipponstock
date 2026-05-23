@@ -180,8 +180,8 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
 // POST /blocking/admin-block — admin creates a hard block directly on behalf of a sales manager
 router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
-    vehicleId: z.string().uuid(),
-    onBehalfOfUserId: z.string().uuid(),
+    vehicleId: z.string().min(1),
+    onBehalfOfUserId: z.string().min(1),
     orderId: z.string().regex(/^\d{7}$/, 'Order ID must be exactly 7 digits'),
     customerName: z.string().min(1),
     consultantName: z.string().min(1),
