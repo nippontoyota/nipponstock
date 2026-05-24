@@ -26,3 +26,11 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
   }
   next();
 }
+
+export function requireFinanceOfficer(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'FINANCE_OFFICER') {
+    res.status(403).json({ error: 'Finance Officer access required' });
+    return;
+  }
+  next();
+}

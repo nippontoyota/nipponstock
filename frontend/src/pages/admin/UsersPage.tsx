@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
-interface User { id: string; loginId: string; fullName: string; role: string; branchId: string | null; isActive: boolean; branch?: { name: string } | null; }
+interface User { id: string; loginId: string; fullName: string; role: 'ADMIN' | 'SALES_MANAGER' | 'FINANCE_OFFICER'; branchId: string | null; isActive: boolean; branch?: { name: string } | null; }
 interface Branch { id: string; name: string; }
 
 export default function UsersPage() {
@@ -111,12 +111,13 @@ export default function UsersPage() {
                 <div className="relative">
                   <select className="input appearance-none pr-8" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, branchId: '' }))}>
                     <option value="SALES_MANAGER">Sales Manager</option>
+                    <option value="FINANCE_OFFICER">Finance Officer</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                 </div>
               </div>
-              {form.role === 'SALES_MANAGER' && (
+              {(form.role === 'SALES_MANAGER' || form.role === 'FINANCE_OFFICER') && (
                 <div>
                   <label className="label">Branch</label>
                   <div className="relative">

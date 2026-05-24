@@ -11,6 +11,7 @@ datasource db {
 enum Role {
   ADMIN
   SALES_MANAGER
+  FINANCE_OFFICER
 }
 
 enum VehicleStatus {
@@ -177,11 +178,31 @@ model BlockingRequest {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
+  financeRecord FinanceRecord?
+
   @@index([vehicleId])
   @@index([userId])
   @@index([branchId])
   @@index([status])
   @@index([expiryAt])
+}
+
+// ── Finance Record ────────────────────────────────────────────────────────────
+
+model FinanceRecord {
+  id                       String    @id @default(uuid())
+  blockingRequestId        String    @unique
+  blockingRequest          BlockingRequest @relation(fields: [blockingRequestId], references: [id], onDelete: Cascade)
+
+  purchaseMode             String?   // Cash, Direct, In House, No Idea
+  bankName                 String?
+  loanAmount               Float?
+  financeStatus            String?   // Approved, Disbursed, etc.
+  expectedDisbursementDate DateTime?
+  otherRemarks             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ModelConfig {

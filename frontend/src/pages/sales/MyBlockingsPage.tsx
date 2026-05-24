@@ -5,6 +5,15 @@ import api from '../../api';
 import socket from '../../socket';
 import * as XLSX from 'xlsx';
 
+interface FinanceRecord {
+  purchaseMode: string | null;
+  bankName: string | null;
+  loanAmount: number | null;
+  financeStatus: string | null;
+  expectedDisbursementDate: string | null;
+  otherRemarks: string | null;
+}
+
 interface Blocking {
   id: string;
   blockType: string;
@@ -21,6 +30,7 @@ interface Blocking {
   hardBlockAt: string | null;
   vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
   branch: { name: string };
+  financeRecord: FinanceRecord | null;
 }
 
 function expiryDays(expiryAt: string | null): { days: number; hours: number; expired: boolean } {
@@ -201,6 +211,15 @@ export default function MyBlockingsPage() {
                   'Blocked Date': b.hardBlockAt ? new Date(b.hardBlockAt).toLocaleDateString('en-GB') : '',
                   'Days Left': daysLeft,
                   'Expiry': b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : '',
+                  // Finance Officer fields
+                  'FO Purchase Mode': b.financeRecord?.purchaseMode ?? '',
+                  'FO Bank Name': b.financeRecord?.bankName ?? '',
+                  'FO Loan Amount': b.financeRecord?.loanAmount ?? '',
+                  'FO Finance Status': b.financeRecord?.financeStatus ?? '',
+                  'FO Expected Disbursement': b.financeRecord?.expectedDisbursementDate
+                    ? new Date(b.financeRecord.expectedDisbursementDate).toLocaleDateString('en-GB')
+                    : '',
+                  'FO Remarks': b.financeRecord?.otherRemarks ?? '',
                 };
               });
               const ws = XLSX.utils.json_to_sheet(rows);

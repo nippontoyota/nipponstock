@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import AdminShell from './layouts/AdminShell';
 import SalesShell from './layouts/SalesShell';
+import FinanceShell from './layouts/FinanceShell';
 
 import AdminHomePage from './pages/admin/AdminHomePage';
 import AllBlockingsPage from './pages/admin/AllBlockingsPage';
@@ -19,10 +20,15 @@ import HeatmapPage from './pages/sales/HeatmapPage';
 import BlockPage from './pages/sales/BlockPage';
 import MyBlockingsPage from './pages/sales/MyBlockingsPage';
 
-function RequireAuth({ children, role }: { children: JSX.Element; role?: string }) {
+import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
+
+function RequireAuth({ children, role }: { children: JSX.Element; role?: string | string[] }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) return <Navigate to="/" replace />;
+  if (role) {
+    const allowed = Array.isArray(role) ? role : [role];
+    if (!allowed.includes(user.role)) return <Navigate to="/" replace />;
+  }
   return children;
 }
 
@@ -67,12 +73,28 @@ export default function App() {
         <Route path="my-blockings" element={<MyBlockingsPage />} />
       </Route>
 
-      {/* Root redirect */}
+      {/* Finance Officer routes */}
+      <Route
+        path="/finance"
+        element={
+          <RequireAuth role="FINANCE_OFFICER">
+            <FinanceShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<FinanceDashboardPage />} />
+      </Route>
+
+      {/* Root redirect — role-aware */}
       <Route
         path="/"
         element={
           user ? (
-            user.role === 'ADMIN' ? <Navigate to="/admin" replace /> : <Navigate to="/sales" replace />
+            user.role === 'ADMIN'
+              ? <Navigate to="/admin" replace />
+              : user.role === 'FINANCE_OFFICER'
+                ? <Navigate to="/finance" replace />
+                : <Navigate to="/sales" replace />
           ) : (
             <Navigate to="/login" replace />
           )

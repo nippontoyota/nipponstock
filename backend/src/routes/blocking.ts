@@ -299,7 +299,7 @@ router.get('/my', async (req: AuthRequest, res: Response) => {
   const blockings = await prisma.blockingRequest.findMany({
     where: { userId: req.user!.userId },
     orderBy: { createdAt: 'desc' },
-    include: { vehicle: true, branch: { select: { name: true } } },
+    include: { vehicle: true, branch: { select: { name: true } }, financeRecord: true },
   });
   res.json(blockings);
 });
