@@ -37,13 +37,21 @@ interface Blocking {
 interface Summary { mtdCount: number; untouchedCount: number; }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const PURCHASE_MODES = ['Cash', 'Direct', 'In House', 'No Idea'] as const;
+const PURCHASE_MODES = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea'] as const;
+
+const BANK_NAMES = [
+  'SFL', 'Canara', 'TFS', 'UCO', 'SBI', 'FBL', 'HDFC', 'SIB', 'BOB', 'Chola',
+  'AXIS', 'ICICI', 'Union', 'DLB', 'GRAMIN', 'PNB', 'BOI', 'SUNDARAM', 'IOB',
+  'Indian Bank', 'IBL', 'TNB', 'Kotak', 'IOC', 'ESAF', 'Central Bank', 'Others',
+] as const;
+
 const FINANCE_STATUSES = [
-  'Approved',
-  'Disbursed',
-  'Logged, Approval Pending',
-  'Logged, Documents Pending',
   'Login Pending',
+  'Logged Document Pending',
+  'Logged Approval Pending',
+  'Approved',
+  'Agreement Done',
+  'Disbursed',
   'Rejected',
 ] as const;
 
@@ -64,9 +72,12 @@ function ageDays(hardBlockAt: string | null): number {
 
 function statusColor(s: string | null): string {
   if (!s) return 'bg-zinc-800 text-zinc-400';
-  if (s === 'Disbursed') return 'bg-green-900/40 text-green-400';
-  if (s === 'Approved') return 'bg-primary/10 text-primary';
-  if (s === 'Rejected') return 'bg-red-900/40 text-red-400';
+  if (s === 'Disbursed')               return 'bg-green-900/40 text-green-400';
+  if (s === 'Approved')                return 'bg-primary/10 text-primary';
+  if (s === 'Agreement Done')          return 'bg-teal-900/40 text-teal-400';
+  if (s === 'Rejected')                return 'bg-red-900/40 text-red-400';
+  if (s === 'Login Pending')           return 'bg-yellow-900/40 text-yellow-400';
+  if (s.startsWith('Logged'))         return 'bg-orange-900/40 text-orange-400';
   return 'bg-secondary-container/20 text-secondary';
 }
 
@@ -307,83 +318,104 @@ export default function FinanceDashboardPage() {
 
             {/* Form */}
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              {/* Purchase Mode */}
+
+              {/* Step 1 — Purchase Mode */}
               <div>
                 <label className="label">Purchase Mode</label>
                 <div className="relative">
                   <select
                     className="input appearance-none pr-8"
                     value={form.purchaseMode}
-                    onChange={(e) => setForm((f) => ({ ...f, purchaseMode: e.target.value }))}
+                    onChange={(e) => {
+                      const mode = e.target.value;
+                      // Clear In House fields when switching away
+                      if (mode !== 'In House') {
+                        setForm((f) => ({ ...f, purchaseMode: mode, bankName: '', loanAmount: '', financeStatus: '', expectedDisbursementDate: '' }));
+                      } else {
+                        setForm((f) => ({ ...f, purchaseMode: mode }));
+                      }
+                    }}
                   >
-                    <option value="">Select…</option>
+                    <option value="">Select purchase mode…</option>
                     {PURCHASE_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                 </div>
               </div>
 
-              {/* Bank Name */}
-              <div>
-                <label className="label">Bank Name</label>
-                <input
-                  className="input"
-                  placeholder="e.g. SBI, HDFC, Federal Bank…"
-                  value={form.bankName}
-                  onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
-                />
-              </div>
+              {/* Steps 2–6 — only shown when In House */}
+              {form.purchaseMode === 'In House' && (
+                <>
+                  {/* Step 2 — Bank Name */}
+                  <div>
+                    <label className="label">Bank Name</label>
+                    <div className="relative">
+                      <select
+                        className="input appearance-none pr-8"
+                        value={form.bankName}
+                        onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
+                      >
+                        <option value="">Select bank…</option>
+                        {BANK_NAMES.map((b) => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                    </div>
+                  </div>
 
-              {/* Loan Amount */}
-              <div>
-                <label className="label">Loan Amount (₹)</label>
-                <input
-                  className="input"
-                  type="number"
-                  placeholder="e.g. 850000"
-                  value={form.loanAmount}
-                  onChange={(e) => setForm((f) => ({ ...f, loanAmount: e.target.value }))}
-                />
-              </div>
+                  {/* Step 3 — Loan Amount */}
+                  <div>
+                    <label className="label">Loan Amount (₹)</label>
+                    <input
+                      className="input"
+                      type="number"
+                      placeholder="e.g. 850000"
+                      value={form.loanAmount}
+                      onChange={(e) => setForm((f) => ({ ...f, loanAmount: e.target.value }))}
+                    />
+                  </div>
 
-              {/* Finance Status */}
-              <div>
-                <label className="label">Status</label>
-                <div className="relative">
-                  <select
-                    className="input appearance-none pr-8"
-                    value={form.financeStatus}
-                    onChange={(e) => setForm((f) => ({ ...f, financeStatus: e.target.value }))}
-                  >
-                    <option value="">Select…</option>
-                    {FINANCE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                  {/* Step 4 — Finance Status */}
+                  <div>
+                    <label className="label">Finance Status</label>
+                    <div className="relative">
+                      <select
+                        className="input appearance-none pr-8"
+                        value={form.financeStatus}
+                        onChange={(e) => setForm((f) => ({ ...f, financeStatus: e.target.value }))}
+                      >
+                        <option value="">Select status…</option>
+                        {FINANCE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                    </div>
+                  </div>
+
+                  {/* Step 5 — Expected Disbursement Date */}
+                  <div>
+                    <label className="label">Expected Disbursement Date</label>
+                    <input
+                      className="input"
+                      type="date"
+                      value={form.expectedDisbursementDate}
+                      onChange={(e) => setForm((f) => ({ ...f, expectedDisbursementDate: e.target.value }))}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Other Remarks — always visible once a mode is picked */}
+              {form.purchaseMode && (
+                <div>
+                  <label className="label">Other Remarks</label>
+                  <textarea
+                    className="input resize-none"
+                    rows={3}
+                    placeholder="Any additional notes…"
+                    value={form.otherRemarks}
+                    onChange={(e) => setForm((f) => ({ ...f, otherRemarks: e.target.value }))}
+                  />
                 </div>
-              </div>
-
-              {/* Expected Disbursement Date */}
-              <div>
-                <label className="label">Expected Disbursement Date</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={form.expectedDisbursementDate}
-                  onChange={(e) => setForm((f) => ({ ...f, expectedDisbursementDate: e.target.value }))}
-                />
-              </div>
-
-              {/* Other Remarks */}
-              <div>
-                <label className="label">Other Remarks</label>
-                <textarea
-                  className="input resize-none"
-                  rows={3}
-                  placeholder="Any additional notes…"
-                  value={form.otherRemarks}
-                  onChange={(e) => setForm((f) => ({ ...f, otherRemarks: e.target.value }))}
-                />
-              </div>
+              )}
             </div>
 
             {/* Footer */}
