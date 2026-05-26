@@ -62,6 +62,7 @@ const FINANCE_STATUSES = [
 const emptyForm = {
   purchaseMode: '' as string,
   bankName: '',
+  bankNameCustom: '',   // used when bankName === 'Others'
   loanAmount: '' as string | number,
   financeStatus: '' as string,
   expectedDisbursementDate: '',
@@ -116,9 +117,12 @@ export default function FinanceDashboardPage() {
   const openRecord = (b: Blocking) => {
     setSelected(b);
     const r = b.financeRecord;
+    const existingBank = r?.bankName ?? '';
+    const bankInList = BANK_NAMES.some((n) => n === existingBank);
     setForm({
       purchaseMode: r?.purchaseMode ?? '',
-      bankName: r?.bankName ?? '',
+      bankName: existingBank && !bankInList ? 'Others' : existingBank,
+      bankNameCustom: existingBank && !bankInList ? existingBank : '',
       loanAmount: r?.loanAmount ?? '',
       financeStatus: r?.financeStatus ?? '',
       expectedDisbursementDate: r?.expectedDisbursementDate
@@ -132,9 +136,14 @@ export default function FinanceDashboardPage() {
     if (!selected) return;
     setSaving(true);
     try {
+      const resolvedBank =
+        form.bankName === 'Others'
+          ? form.bankNameCustom.trim() || null
+          : form.bankName || null;
+
       await api.put(`/finance/blockings/${selected.id}/record`, {
         purchaseMode: form.purchaseMode || null,
-        bankName: form.bankName || null,
+        bankName: resolvedBank,
         loanAmount: form.loanAmount !== '' ? Number(form.loanAmount) : null,
         financeStatus: form.financeStatus || null,
         expectedDisbursementDate: form.expectedDisbursementDate
@@ -142,6 +151,17 @@ export default function FinanceDashboardPage() {
           : null,
         otherRemarks: form.otherRemarks || null,
       });
+
+      // If Full Payment Received — also sync payment status on the blocking
+      if (form.financeStatus === 'Full Payment Received') {
+        const { data } = await api.patch(`/finance/blockings/${selected.id}/payment-status`, {
+          paymentStatus: 'Full Payment Received',
+        });
+        setBlockings((prev) =>
+          prev.map((b) => b.id === selected!.id ? { ...b, paymentStatus: data.paymentStatus } : b)
+        );
+      }
+
       toast.success('Finance record saved');
       setSelected(null);
       fetchAll();
@@ -390,13 +410,24 @@ export default function FinanceDashboardPage() {
                       <select
                         className="input appearance-none pr-8"
                         value={form.bankName}
-                        onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, bankName: e.target.value, bankNameCustom: '' }))
+                        }
                       >
                         <option value="">Select bank…</option>
                         {BANK_NAMES.map((b) => <option key={b} value={b}>{b}</option>)}
                       </select>
                       <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                     </div>
+                    {form.bankName === 'Others' && (
+                      <input
+                        className="input mt-2"
+                        placeholder="Enter bank name…"
+                        value={form.bankNameCustom}
+                        onChange={(e) => setForm((f) => ({ ...f, bankNameCustom: e.target.value }))}
+                        autoFocus
+                      />
+                    )}
                   </div>
 
                   {/* Step 3 — Loan Amount */}
@@ -418,14 +449,7 @@ export default function FinanceDashboardPage() {
                       <select
                         className="input appearance-none pr-8"
                         value={form.financeStatus}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setForm((f) => ({ ...f, financeStatus: val }));
-                          // Auto-update payment status when Full Payment Received is selected
-                          if (val === 'Full Payment Received' && selected) {
-                            handlePayStatusChange(selected.id, 'Full Payment Received');
-                          }
-                        }}
+                        onChange={(e) => setForm((f) => ({ ...f, financeStatus: e.target.value }))}
                       >
                         <option value="">Select status…</option>
                         {FINANCE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -435,7 +459,7 @@ export default function FinanceDashboardPage() {
                     {form.financeStatus === 'Full Payment Received' && (
                       <p className="text-[10px] text-green-400 font-label mt-1 flex items-center gap-1">
                         <span className="material-symbols-outlined text-xs">check_circle</span>
-                        Payment status will be set to Full Payment Received
+                        Payment status will also be updated on Save
                       </p>
                     )}
                   </div>

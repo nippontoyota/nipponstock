@@ -16,34 +16,30 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     loggedDocsPending,
     approved,
     disbursed,
+    fullPaymentCollected,
   ] = await Promise.all([
-    // All active hard blockings
     prisma.blockingRequest.count({ where: { blockType: 'HARD', status: 'ACTIVE' } }),
-    // No finance record at all
     prisma.blockingRequest.count({ where: { blockType: 'HARD', status: 'ACTIVE', financeRecord: null } }),
-    // Purchase mode = In House
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, purchaseMode: 'In House' },
     }),
-    // Finance status = Login Pending
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Login Pending' },
     }),
-    // Finance status = Logged Approval Pending
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Logged Approval Pending' },
     }),
-    // Finance status = Logged Document Pending
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Logged Document Pending' },
     }),
-    // Finance status = Approved
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Approved' },
     }),
-    // Finance status = Disbursed
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Disbursed' },
+    }),
+    prisma.financeRecord.count({
+      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Full Payment Received' },
     }),
   ]);
 
@@ -56,6 +52,7 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     loggedDocsPending,
     approved,
     disbursed,
+    fullPaymentCollected,
   });
 });
 
