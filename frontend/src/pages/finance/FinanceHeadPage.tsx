@@ -42,13 +42,15 @@ interface RawBlocking {
 }
 
 // ── Pivot helpers ─────────────────────────────────────────────────────────────
-const PURCHASE_COLS = ['Cash', 'Direct', 'In House', 'No Idea', 'Not Set', 'Not Updated'];
+const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
 const STATUS_COLS   = [
   'Login Pending',
-  'Logged, Approval Pending',
-  'Logged, Documents Pending',
+  'Logged Approval Pending',
+  'Logged Document Pending',
   'Approved',
+  'Agreement Done',
   'Disbursed',
+  'Full Payment Received',
   'Rejected',
 ];
 
@@ -91,11 +93,13 @@ function cell(v: number | undefined) {
 
 // ── Status colour ─────────────────────────────────────────────────────────────
 function statusColour(s: string): string {
+  if (s === 'Full Payment Received')      return 'text-green-300';
   if (s === 'Disbursed')                  return 'text-green-400';
   if (s === 'Approved')                   return 'text-primary';
+  if (s === 'Agreement Done')             return 'text-teal-400';
   if (s === 'Rejected')                   return 'text-red-400';
   if (s === 'Login Pending')              return 'text-yellow-400';
-  if (s.startsWith('Logged'))            return 'text-orange-400';
+  if (s.startsWith('Logged'))             return 'text-orange-400';
   return 'text-zinc-400';
 }
 

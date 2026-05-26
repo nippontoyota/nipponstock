@@ -29,13 +29,13 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Login Pending' },
     }),
-    // Finance status = Logged, Approval Pending
+    // Finance status = Logged Approval Pending
     prisma.financeRecord.count({
-      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Logged, Approval Pending' },
+      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Logged Approval Pending' },
     }),
-    // Finance status = Logged, Documents Pending
+    // Finance status = Logged Document Pending
     prisma.financeRecord.count({
-      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Logged, Documents Pending' },
+      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Logged Document Pending' },
     }),
     // Finance status = Approved
     prisma.financeRecord.count({
