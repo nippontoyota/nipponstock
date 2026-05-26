@@ -17,6 +17,30 @@ interface Summary {
 interface PurchaseRow { branch: string; purchaseMode: string; count: number; }
 interface StatusRow   { branch: string; financeStatus: string; count: number; }
 
+interface RawBlocking {
+  id: string;
+  customerName: string | null;
+  orderId: string | null;
+  consultantName: string | null;
+  teamLeaderName: string | null;
+  paymentMode: string | null;
+  paymentStatus: string | null;
+  hardBlockAt: string | null;
+  expiryAt: string | null;
+  expectedBillingDate: string | null;
+  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
+  branch: { name: string };
+  user: { fullName: string };
+  financeRecord: {
+    purchaseMode: string | null;
+    bankName: string | null;
+    loanAmount: number | null;
+    financeStatus: string | null;
+    expectedDisbursementDate: string | null;
+    otherRemarks: string | null;
+  } | null;
+}
+
 // ── Pivot helpers ─────────────────────────────────────────────────────────────
 const PURCHASE_COLS = ['Cash', 'Direct', 'In House', 'No Idea', 'Not Set', 'Not Updated'];
 const STATUS_COLS   = [
@@ -90,20 +114,23 @@ function KPI({ label, value, color, icon }: { label: string; value: number | und
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function FinanceHeadPage() {
-  const [summary, setSummary]     = useState<Summary | null>(null);
-  const [purchase, setPurchase]   = useState<PurchaseRow[]>([]);
-  const [status, setStatus]       = useState<StatusRow[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [summary, setSummary]         = useState<Summary | null>(null);
+  const [purchase, setPurchase]       = useState<PurchaseRow[]>([]);
+  const [status, setStatus]           = useState<StatusRow[]>([]);
+  const [rawBlockings, setRawBlockings] = useState<RawBlocking[]>([]);
+  const [loading, setLoading]         = useState(true);
 
   const fetchAll = useCallback(async () => {
-    const [s, p, st] = await Promise.all([
+    const [s, p, st, rb] = await Promise.all([
       api.get('/finance-head/summary'),
       api.get('/finance-head/branch-purchase'),
       api.get('/finance-head/branch-status'),
+      api.get('/finance-head/all-blockings'),
     ]);
     setSummary(s.data);
     setPurchase(p.data);
     setStatus(st.data);
+    setRawBlockings(rb.data);
     setLoading(false);
   }, []);
 
@@ -172,6 +199,48 @@ export default function FinanceHeadPage() {
     const wsStatus = XLSX.utils.aoa_to_sheet([statusHeader, ...statusData, statusTotals]);
     wsStatus['!cols'] = [{ wch: 20 }, ...activeStatusCols.map(() => ({ wch: 26 })), { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, wsStatus, 'Branch vs Finance Status');
+
+    // Sheet 4 — Raw All Blockings with FO Inputs
+    const rawHeader = [
+      'Branch', 'Customer Name', 'Order ID', 'Chassis Year', 'Model', 'Suffix', 'Colour',
+      'Chassis No.', 'Stock Status', 'Stockyard Location',
+      'Sales Manager', 'Consultant', 'Team Leader',
+      'Payment Mode', 'Payment Status', 'Hard Blocked On', 'Expiry Date', 'Expected Billing',
+      'FO Purchase Mode', 'FO Bank Name', 'FO Loan Amount', 'FO Finance Status',
+      'FO Expected Disbursement', 'FO Remarks',
+    ];
+    const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+    const rawData = rawBlockings.map(b => [
+      b.branch.name,
+      b.customerName ?? '',
+      b.orderId ?? '',
+      b.vehicle.chassisYear,
+      b.vehicle.model,
+      b.vehicle.suffix,
+      b.vehicle.colour,
+      b.vehicle.chassisNumber,
+      b.vehicle.stockStatus ?? '',
+      b.vehicle.stockyardLocation ?? '',
+      b.user.fullName,
+      b.consultantName ?? '',
+      b.teamLeaderName ?? '',
+      b.paymentMode ?? '',
+      b.paymentStatus ?? '',
+      fmt(b.hardBlockAt),
+      fmt(b.expiryAt),
+      fmt(b.expectedBillingDate),
+      b.financeRecord?.purchaseMode ?? '',
+      b.financeRecord?.bankName ?? '',
+      b.financeRecord?.loanAmount ?? '',
+      b.financeRecord?.financeStatus ?? '',
+      fmt(b.financeRecord?.expectedDisbursementDate ?? null),
+      b.financeRecord?.otherRemarks ?? '',
+    ]);
+    const wsRaw = XLSX.utils.aoa_to_sheet([rawHeader, ...rawData]);
+    wsRaw['!cols'] = rawHeader.map((h) =>
+      ({ wch: Math.max(h.length, 14) })
+    );
+    XLSX.utils.book_append_sheet(wb, wsRaw, 'All Blockings (Raw)');
 
     const date = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `finance_overview_${date}.xlsx`);

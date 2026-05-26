@@ -129,4 +129,19 @@ router.get('/branch-status', async (_req: AuthRequest, res: Response) => {
   res.json(rows);
 });
 
+// ── Raw blocking data with FO inputs ─────────────────────────────────────────
+router.get('/all-blockings', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: { blockType: 'HARD', status: 'ACTIVE' },
+    orderBy: { hardBlockAt: 'desc' },
+    include: {
+      vehicle: { select: { model: true, suffix: true, colour: true, chassisYear: true, chassisNumber: true, stockStatus: true, stockyardLocation: true } },
+      branch: { select: { name: true } },
+      user: { select: { fullName: true } },
+      financeRecord: true,
+    },
+  });
+  res.json(blockings);
+});
+
 export default router;
