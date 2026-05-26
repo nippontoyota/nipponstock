@@ -53,7 +53,6 @@ const FINANCE_STATUSES = [
   'Approved',
   'Agreement Done',
   'Disbursed',
-  'Full Payment Received',
   'Rejected',
 ] as const;
 
@@ -148,16 +147,6 @@ export default function FinanceDashboardPage() {
           : null,
         otherRemarks: form.otherRemarks || null,
       });
-
-      // If Full Payment Received — also sync payment status on the blocking
-      if (form.financeStatus === 'Full Payment Received') {
-        const { data } = await api.patch(`/finance/blockings/${selected.id}/payment-status`, {
-          paymentStatus: 'Full Payment Received',
-        });
-        setBlockings((prev) =>
-          prev.map((b) => b.id === selected!.id ? { ...b, paymentStatus: data.paymentStatus } : b)
-        );
-      }
 
       toast.success('Finance record saved');
       setSelected(null);
@@ -422,12 +411,6 @@ export default function FinanceDashboardPage() {
                       </select>
                       <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                     </div>
-                    {form.financeStatus === 'Full Payment Received' && (
-                      <p className="text-[10px] text-green-400 font-label mt-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">check_circle</span>
-                        Payment status will also be updated on Save
-                      </p>
-                    )}
                   </div>
 
                   {/* Step 5 — Expected Disbursement Date */}

@@ -12,7 +12,6 @@ interface Summary {
   loggedDocsPending: number;
   approved: number;
   disbursed: number;
-  fullPaymentCollected: number;
 }
 
 interface PurchaseRow { branch: string; purchaseMode: string; count: number; }
@@ -51,7 +50,6 @@ const STATUS_COLS   = [
   'Approved',
   'Agreement Done',
   'Disbursed',
-  'Full Payment Received',
   'Rejected',
 ];
 
@@ -272,11 +270,11 @@ export default function FinanceHeadPage() {
 
       {/* KPIs */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3">
-          {Array.from({ length: 9 }).map((_, i) => <div key={i} className="h-24 bg-surface-container-low rounded-xl animate-pulse" />)}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-24 bg-surface-container-low rounded-xl animate-pulse" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           <KPI label="Total Blockings"          value={summary?.totalBlockings}        color="#b8c3ff" icon="lock" />
           <KPI label="Untouched"                value={summary?.untouched}             color="#d71a18" icon="pending_actions" />
           <KPI label="In House"                 value={summary?.inHouse}               color="#bcc7de" icon="home" />
@@ -285,7 +283,6 @@ export default function FinanceHeadPage() {
           <KPI label="Logged Docs Pending"      value={summary?.loggedDocsPending}     color="#fb923c" icon="description" />
           <KPI label="Approved"                 value={summary?.approved}              color="#34d399" icon="verified" />
           <KPI label="Disbursed"                value={summary?.disbursed}             color="#4ade80" icon="payments" />
-          <KPI label="Full Pymt Collected"      value={summary?.fullPaymentCollected}  color="#86efac" icon="currency_rupee" />
         </div>
       )}
 

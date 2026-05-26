@@ -16,7 +16,6 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     loggedDocsPending,
     approved,
     disbursed,
-    fullPaymentCollected,
   ] = await Promise.all([
     prisma.blockingRequest.count({ where: { blockType: 'HARD', status: 'ACTIVE' } }),
     prisma.blockingRequest.count({ where: { blockType: 'HARD', status: 'ACTIVE', financeRecord: null } }),
@@ -38,9 +37,6 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     prisma.financeRecord.count({
       where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Disbursed' },
     }),
-    prisma.financeRecord.count({
-      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, financeStatus: 'Full Payment Received' },
-    }),
   ]);
 
   res.json({
@@ -52,7 +48,6 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     loggedDocsPending,
     approved,
     disbursed,
-    fullPaymentCollected,
   });
 });
 
