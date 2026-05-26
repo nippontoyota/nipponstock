@@ -63,6 +63,11 @@ export default function MyBlockingsPage() {
   const [tab, setTab] = useState<'active' | 'history'>('active');
   const [search, setSearch] = useState('');
 
+  // Edit details state
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ customerName: '', orderId: '', expectedBillingDate: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Release modal state
   const [releaseTarget, setReleaseTarget] = useState<Blocking | null>(null);
   const [releaseReason, setReleaseReason] = useState('');
@@ -161,6 +166,30 @@ export default function MyBlockingsPage() {
       toast.error('Failed to update payment status');
     } finally {
       setUpdatingPayStatus(false);
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    if (!selected) return;
+    setSavingEdit(true);
+    try {
+      const payload: Record<string, string | null> = {};
+      if (editForm.customerName.trim()) payload.customerName = editForm.customerName.trim();
+      if (editForm.orderId !== undefined) payload.orderId = editForm.orderId.trim() || selected.orderId ?? '';
+      if (editForm.expectedBillingDate) {
+        payload.expectedBillingDate = new Date(editForm.expectedBillingDate).toISOString();
+      }
+      const { data } = await api.patch(`/blocking/${selected.id}/details`, payload);
+      // Merge updated fields back into selected and blockings list
+      const merged = { ...selected, ...data };
+      setSelected(merged);
+      setBlockings((prev) => prev.map((b) => b.id === selected.id ? merged : b));
+      setEditMode(false);
+      toast.success('Details updated');
+    } catch {
+      toast.error('Failed to update details');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -282,7 +311,7 @@ export default function MyBlockingsPage() {
                 key={b.id}
                 className="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group speed-lane cursor-pointer"
                 style={{ borderLeftColor: borderColor, borderLeftWidth: '3px', borderLeftStyle: 'solid' }}
-                onClick={() => setSelected(b)}
+                onClick={() => { setSelected(b); setEditMode(false); setEditForm({ customerName: b.customerName ?? '', orderId: b.orderId ?? '', expectedBillingDate: b.expectedBillingDate ? new Date(b.expectedBillingDate).toISOString().slice(0, 10) : '' }); }}
               >
                 {/* Card top info */}
                 <div className="p-6 flex-1 flex flex-col">
@@ -338,7 +367,7 @@ export default function MyBlockingsPage() {
                     <div className="flex gap-3">
                       {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); setSelected(b); }}
+                          onClick={(e) => { e.stopPropagation(); setSelected(b); setEditMode(false); setEditForm({ customerName: b.customerName ?? '', orderId: b.orderId ?? '', expectedBillingDate: b.expectedBillingDate ? new Date(b.expectedBillingDate).toISOString().slice(0, 10) : '' }); }}
                           className={`flex-1 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline ${isCritical ? 'bg-tertiary-container text-on-tertiary-container hover:brightness-110' : 'bg-primary text-on-primary hover:brightness-110'}`}
                         >
                           Payment Received
@@ -375,7 +404,7 @@ export default function MyBlockingsPage() {
 
       {/* Detail / Delivery modal */}
       {selected && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => { setSelected(null); setRetailId(''); }}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => { setSelected(null); setRetailId(''); setEditMode(false); }}>
           <div className="bg-surface-container-low rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Modal header */}
             <div className="flex justify-between items-start p-6 pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
@@ -385,22 +414,42 @@ export default function MyBlockingsPage() {
                 </h2>
                 <p className="font-label text-xs text-on-surface-variant mt-0.5">{selected.vehicle.suffix} · {selected.vehicle.colour}</p>
               </div>
-              <button onClick={() => { setSelected(null); setRetailId(''); }} className="text-on-surface-variant hover:text-on-surface transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
-                <span className="material-symbols-outlined text-xl">close</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {selected.status === 'ACTIVE' && selected.blockType === 'HARD' && (
+                  <button
+                    onClick={() => {
+                      if (editMode) {
+                        setEditMode(false);
+                      } else {
+                        setEditForm({
+                          customerName: selected.customerName ?? '',
+                          orderId: selected.orderId ?? '',
+                          expectedBillingDate: selected.expectedBillingDate ? new Date(selected.expectedBillingDate).toISOString().slice(0, 10) : '',
+                        });
+                        setEditMode(true);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all font-headline ${editMode ? 'bg-surface-container-high text-on-surface-variant' : 'border border-primary/30 text-primary hover:bg-primary/10'}`}
+                  >
+                    <span className="material-symbols-outlined text-sm">{editMode ? 'close' : 'edit'}</span>
+                    {editMode ? 'Cancel' : 'Edit'}
+                  </button>
+                )}
+                <button onClick={() => { setSelected(null); setRetailId(''); setEditMode(false); }} className="text-on-surface-variant hover:text-on-surface transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              </div>
             </div>
 
             {/* Details */}
             <div className="p-6 space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+              {/* Non-editable fields */}
               {[
                 ['Chassis No.', selected.vehicle.chassisNumber],
                 ['Stockyard Location', selected.vehicle.stockyardLocation || '—'],
-                ['Customer', selected.customerName],
                 ['Consultant', selected.consultantName],
-                ['Order ID', selected.orderId],
                 ['Payment', `${selected.paymentMode}${selected.financierBank ? ` — ${selected.financierBank}` : ''}`],
                 ['Payment Status', selected.paymentStatus],
-                ['Expected Billing', selected.expectedBillingDate ? new Date(selected.expectedBillingDate).toLocaleDateString() : '—'],
                 ['Status', selected.status],
               ].map(([k, v]) => (
                 <div key={String(k)} className="flex justify-between items-center py-1.5">
@@ -408,10 +457,67 @@ export default function MyBlockingsPage() {
                   <dd className="text-sm font-body font-medium text-on-surface text-right">{String(v ?? '—')}</dd>
                 </div>
               ))}
+
+              {/* Editable fields */}
+              {editMode ? (
+                <div className="mt-4 space-y-3 bg-surface-container rounded-xl p-4" style={{ border: '1px solid rgba(184,195,255,0.15)' }}>
+                  <p className="text-[10px] font-label uppercase tracking-widest text-primary font-bold mb-2">Edit Details</p>
+                  <div>
+                    <label className="label">Customer Name</label>
+                    <input
+                      className="input"
+                      value={editForm.customerName}
+                      onChange={(e) => setEditForm((f) => ({ ...f, customerName: e.target.value }))}
+                      placeholder="Customer name"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Order ID</label>
+                    <input
+                      className="input font-mono"
+                      value={editForm.orderId}
+                      onChange={(e) => setEditForm((f) => ({ ...f, orderId: e.target.value }))}
+                      placeholder="Order ID"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Expected Tally Billing Date</label>
+                    <input
+                      className="input"
+                      type="date"
+                      value={editForm.expectedBillingDate}
+                      onChange={(e) => setEditForm((f) => ({ ...f, expectedBillingDate: e.target.value }))}
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={savingEdit}
+                    className="w-full py-2.5 rounded-lg font-headline font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388' }}
+                  >
+                    {savingEdit ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center py-1.5">
+                    <dt className="text-xs font-label uppercase tracking-widest text-on-surface-variant">Customer</dt>
+                    <dd className="text-sm font-body font-medium text-on-surface text-right">{selected.customerName ?? '—'}</dd>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <dt className="text-xs font-label uppercase tracking-widest text-on-surface-variant">Order ID</dt>
+                    <dd className="text-sm font-body font-medium text-on-surface text-right">{selected.orderId ?? '—'}</dd>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <dt className="text-xs font-label uppercase tracking-widest text-on-surface-variant">Expected Billing</dt>
+                    <dd className="text-sm font-body font-medium text-on-surface text-right">{selected.expectedBillingDate ? new Date(selected.expectedBillingDate).toLocaleDateString() : '—'}</dd>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Payment Received form */}
-            {selected.status === 'ACTIVE' && selected.blockType === 'HARD' && (
+            {selected.status === 'ACTIVE' && selected.blockType === 'HARD' && !editMode && (
               <div className="p-6 space-y-3 bg-surface-container" style={{ borderTop: '1px solid rgba(67,70,86,0.1)' }}>
                 <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant font-bold mb-3">Payment Received</p>
                 <input

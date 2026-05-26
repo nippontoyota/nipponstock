@@ -261,6 +261,47 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
   }
 });
 
+// PATCH /blocking/:id/details — owner updates customer name, order ID, expected billing date
+router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
+  const Schema = z.object({
+    customerName: z.string().min(1).optional(),
+    orderId: z.string().optional(),
+    expectedBillingDate: z.string().datetime().nullable().optional(),
+  });
+  const parsed = Schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const existing = await prisma.blockingRequest.findUnique({ where: { id: req.params.id } });
+  if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
+
+  const isOwner = existing.userId === req.user!.userId;
+  const isAdmin = req.user!.role === 'ADMIN';
+  if (!isOwner && !isAdmin) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
+
+  const data: Record<string, unknown> = {};
+  if (parsed.data.customerName !== undefined) data.customerName = parsed.data.customerName;
+  if (parsed.data.orderId !== undefined) data.orderId = parsed.data.orderId;
+  if (parsed.data.expectedBillingDate !== undefined) {
+    data.expectedBillingDate = parsed.data.expectedBillingDate ? new Date(parsed.data.expectedBillingDate) : null;
+  }
+
+  const updated = await prisma.blockingRequest.update({ where: { id: req.params.id }, data });
+
+  await logAudit({
+    entityType: 'BLOCKING',
+    entityId: req.params.id,
+    action: 'DETAILS_UPDATED',
+    performedById: req.user!.userId,
+    previousValue: { customerName: existing.customerName, orderId: existing.orderId, expectedBillingDate: existing.expectedBillingDate },
+    newValue: data,
+  });
+
+  emitBlockingUpdate(req.params.id);
+  res.json(updated);
+});
+
 // PATCH /blocking/:id/payment-status — owner updates their own booking's payment status
 router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({ paymentStatus: z.string().min(1) });
