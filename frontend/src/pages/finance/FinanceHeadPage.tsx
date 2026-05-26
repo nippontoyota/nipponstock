@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../../api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -119,12 +120,80 @@ export default function FinanceHeadPage() {
   const purchasePivot = buildPivot(purchase, r => r.purchaseMode, activePurchaseCols);
   const statusPivot   = buildPivot(status,   r => r.financeStatus, activeStatusCols);
 
+  const downloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1 — KPI Summary
+    if (summary) {
+      const kpiRows = [
+        ['Metric', 'Count'],
+        ['Total Blockings',          summary.totalBlockings],
+        ['Untouched',                summary.untouched],
+        ['In House',                 summary.inHouse],
+        ['Login Pending',            summary.loginPending],
+        ['Logged, Approval Pending', summary.loggedApprovalPending],
+        ['Logged, Documents Pending',summary.loggedDocsPending],
+        ['Approved',                 summary.approved],
+        ['Disbursed',                summary.disbursed],
+      ];
+      const wsKPI = XLSX.utils.aoa_to_sheet(kpiRows);
+      wsKPI['!cols'] = [{ wch: 30 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsKPI, 'KPI Summary');
+    }
+
+    // Sheet 2 — Branch × Purchase Mode
+    const purchaseHeader = ['Branch', ...activePurchaseCols, 'Total'];
+    const purchaseData = purchasePivot.branches.map(branch => [
+      branch,
+      ...activePurchaseCols.map(c => purchasePivot.lookup.get(`${branch}\x01${c}`) ?? 0),
+      purchasePivot.rowTotals.get(branch) ?? 0,
+    ]);
+    const purchaseTotals = [
+      'Total',
+      ...activePurchaseCols.map(c => purchasePivot.colTotals.get(c) ?? 0),
+      purchasePivot.grand,
+    ];
+    const wsPurchase = XLSX.utils.aoa_to_sheet([purchaseHeader, ...purchaseData, purchaseTotals]);
+    wsPurchase['!cols'] = [{ wch: 20 }, ...activePurchaseCols.map(() => ({ wch: 12 })), { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, wsPurchase, 'Branch vs Purchase Mode');
+
+    // Sheet 3 — Branch × Finance Status
+    const statusHeader = ['Branch', ...activeStatusCols, 'Total'];
+    const statusData = statusPivot.branches.map(branch => [
+      branch,
+      ...activeStatusCols.map(c => statusPivot.lookup.get(`${branch}\x01${c}`) ?? 0),
+      statusPivot.rowTotals.get(branch) ?? 0,
+    ]);
+    const statusTotals = [
+      'Total',
+      ...activeStatusCols.map(c => statusPivot.colTotals.get(c) ?? 0),
+      statusPivot.grand,
+    ];
+    const wsStatus = XLSX.utils.aoa_to_sheet([statusHeader, ...statusData, statusTotals]);
+    wsStatus['!cols'] = [{ wch: 20 }, ...activeStatusCols.map(() => ({ wch: 26 })), { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, wsStatus, 'Branch vs Finance Status');
+
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `finance_overview_${date}.xlsx`);
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-headline font-bold tracking-tighter text-on-surface uppercase mb-1">Finance Overview</h1>
-        <p className="text-on-surface-variant font-body text-sm">Live finance analytics across all branches.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-headline font-bold tracking-tighter text-on-surface uppercase mb-1">Finance Overview</h1>
+          <p className="text-on-surface-variant font-body text-sm">Live finance analytics across all branches.</p>
+        </div>
+        {!loading && (
+          <button
+            onClick={downloadExcel}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container text-xs font-bold uppercase tracking-widest font-headline transition-colors self-start sm:self-auto"
+          >
+            <span className="material-symbols-outlined text-lg">download</span>
+            Download Excel
+          </button>
+        )}
       </div>
 
       {/* KPIs */}
