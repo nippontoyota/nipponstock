@@ -94,6 +94,7 @@ const RecordSchema = z.object({
     'Approved',
     'Agreement Done',
     'Disbursed',
+    'Full Payment Received',
     'Rejected',
   ]).optional().nullable(),
   expectedDisbursementDate: z.string().datetime().optional().nullable(),

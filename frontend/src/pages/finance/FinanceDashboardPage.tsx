@@ -40,13 +40,7 @@ interface Summary { mtdCount: number; untouchedCount: number; }
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PURCHASE_MODES = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea'] as const;
 
-const PAYMENT_STATUSES = [
-  'Down Payment Received',
-  'Only Booking Received',
-  'Part payment received',
-  'Ready for Disbursement',
-  'Regd. In Progress',
-] as const;
+const PAYMENT_STATUSES = ['Full Payment Received'] as const;
 
 const BANK_NAMES = [
   'SFL', 'Canara', 'TFS', 'UCO', 'SBI', 'FBL', 'HDFC', 'SIB', 'BOB', 'Chola',
@@ -61,6 +55,7 @@ const FINANCE_STATUSES = [
   'Approved',
   'Agreement Done',
   'Disbursed',
+  'Full Payment Received',
   'Rejected',
 ] as const;
 
@@ -81,6 +76,7 @@ function ageDays(hardBlockAt: string | null): number {
 
 function statusColor(s: string | null): string {
   if (!s) return 'bg-zinc-800 text-zinc-400';
+  if (s === 'Full Payment Received')   return 'bg-green-900/60 text-green-300';
   if (s === 'Disbursed')               return 'bg-green-900/40 text-green-400';
   if (s === 'Approved')                return 'bg-primary/10 text-primary';
   if (s === 'Agreement Done')          return 'bg-teal-900/40 text-teal-400';
@@ -422,13 +418,26 @@ export default function FinanceDashboardPage() {
                       <select
                         className="input appearance-none pr-8"
                         value={form.financeStatus}
-                        onChange={(e) => setForm((f) => ({ ...f, financeStatus: e.target.value }))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm((f) => ({ ...f, financeStatus: val }));
+                          // Auto-update payment status when Full Payment Received is selected
+                          if (val === 'Full Payment Received' && selected) {
+                            handlePayStatusChange(selected.id, 'Full Payment Received');
+                          }
+                        }}
                       >
                         <option value="">Select status…</option>
                         {FINANCE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                       <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                     </div>
+                    {form.financeStatus === 'Full Payment Received' && (
+                      <p className="text-[10px] text-green-400 font-label mt-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">check_circle</span>
+                        Payment status will be set to Full Payment Received
+                      </p>
+                    )}
                   </div>
 
                   {/* Step 5 — Expected Disbursement Date */}
