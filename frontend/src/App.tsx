@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import AdminShell from './layouts/AdminShell';
 import SalesShell from './layouts/SalesShell';
 import FinanceShell from './layouts/FinanceShell';
+import FinanceHeadShell from './layouts/FinanceHeadShell';
 
 import AdminHomePage from './pages/admin/AdminHomePage';
 import AllBlockingsPage from './pages/admin/AllBlockingsPage';
@@ -21,6 +22,7 @@ import BlockPage from './pages/sales/BlockPage';
 import MyBlockingsPage from './pages/sales/MyBlockingsPage';
 
 import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
+import FinanceHeadPage from './pages/finance/FinanceHeadPage';
 
 function RequireAuth({ children, role }: { children: JSX.Element; role?: string | string[] }) {
   const { user } = useAuth();
@@ -85,16 +87,27 @@ export default function App() {
         <Route index element={<FinanceDashboardPage />} />
       </Route>
 
+      {/* Finance Head routes */}
+      <Route
+        path="/finance-head"
+        element={
+          <RequireAuth role="FINANCE_HEAD">
+            <FinanceHeadShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<FinanceHeadPage />} />
+      </Route>
+
       {/* Root redirect — role-aware */}
       <Route
         path="/"
         element={
           user ? (
-            user.role === 'ADMIN'
-              ? <Navigate to="/admin" replace />
-              : user.role === 'FINANCE_OFFICER'
-                ? <Navigate to="/finance" replace />
-                : <Navigate to="/sales" replace />
+            user.role === 'ADMIN'            ? <Navigate to="/admin"        replace /> :
+            user.role === 'FINANCE_OFFICER'  ? <Navigate to="/finance"      replace /> :
+            user.role === 'FINANCE_HEAD'     ? <Navigate to="/finance-head" replace /> :
+                                               <Navigate to="/sales"        replace />
           ) : (
             <Navigate to="/login" replace />
           )

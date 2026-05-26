@@ -17,6 +17,7 @@ import branchesRouter from './routes/branches';
 import carsRouter from './routes/cars';
 import vehicleRequestsRouter from './routes/vehicleRequests';
 import financeRouter from './routes/finance';
+import financeHeadRouter from './routes/financeHead';
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,7 @@ app.use('/branches', branchesRouter);
 app.use('/cars', carsRouter);
 app.use('/vehicle-requests', vehicleRequestsRouter);
 app.use('/finance', financeRouter);
+app.use('/finance-head', financeHeadRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

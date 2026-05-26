@@ -19,7 +19,7 @@ const CreateSchema = z.object({
   loginId: z.string().min(3),
   password: z.string().min(8),
   fullName: z.string().min(1),
-  role: z.enum(['ADMIN', 'SALES_MANAGER', 'FINANCE_OFFICER']),
+  role: z.enum(['ADMIN', 'SALES_MANAGER', 'FINANCE_OFFICER', 'FINANCE_HEAD']),
   branchId: z.string().uuid().optional(),
 });
 

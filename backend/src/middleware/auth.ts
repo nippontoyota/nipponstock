@@ -34,3 +34,11 @@ export function requireFinanceOfficer(req: AuthRequest, res: Response, next: Nex
   }
   next();
 }
+
+export function requireFinanceHead(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'FINANCE_HEAD') {
+    res.status(403).json({ error: 'Finance Head access required' });
+    return;
+  }
+  next();
+}

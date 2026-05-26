@@ -5,7 +5,7 @@ interface AuthUser {
   id: string;
   loginId: string;
   fullName: string;
-  role: 'ADMIN' | 'SALES_MANAGER' | 'FINANCE_OFFICER';
+  role: 'ADMIN' | 'SALES_MANAGER' | 'FINANCE_OFFICER' | 'FINANCE_HEAD';
   branchId: string | null;
 }
 

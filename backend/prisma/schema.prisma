@@ -12,6 +12,7 @@ enum Role {
   ADMIN
   SALES_MANAGER
   FINANCE_OFFICER
+  FINANCE_HEAD
 }
 
 enum VehicleStatus {
