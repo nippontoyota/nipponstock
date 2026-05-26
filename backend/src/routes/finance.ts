@@ -56,17 +56,44 @@ router.get('/blockings', async (req: AuthRequest, res: Response) => {
   res.json(blockings);
 });
 
+// ── PATCH payment status (FO can update their branch blockings) ───────────────
+router.patch('/blockings/:id/payment-status', async (req: AuthRequest, res: Response) => {
+  const branchId = req.user!.branchId;
+  if (!branchId) { res.status(403).json({ error: 'No branch assigned' }); return; }
+
+  const Schema = z.object({ paymentStatus: z.string().min(1) });
+  const parsed = Schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const blocking = await prisma.blockingRequest.findUnique({ where: { id: req.params.id } });
+  if (!blocking) { res.status(404).json({ error: 'Not found' }); return; }
+  if (blocking.branchId !== branchId) { res.status(403).json({ error: 'Access denied' }); return; }
+
+  const updated = await prisma.blockingRequest.update({
+    where: { id: req.params.id },
+    data: { paymentStatus: parsed.data.paymentStatus },
+    include: {
+      vehicle: { select: { model: true, suffix: true, colour: true, chassisYear: true, chassisNumber: true, stockStatus: true } },
+      user: { select: { fullName: true } },
+      financeRecord: true,
+    },
+  });
+
+  res.json(updated);
+});
+
 // ── Upsert finance record ─────────────────────────────────────────────────────
 const RecordSchema = z.object({
-  purchaseMode: z.enum(['Cash', 'Direct', 'In House', 'No Idea']).optional().nullable(),
+  purchaseMode: z.enum(['In House', 'Out House', 'Cash', 'Leasing', 'No Idea']).optional().nullable(),
   bankName: z.string().optional().nullable(),
   loanAmount: z.number().optional().nullable(),
   financeStatus: z.enum([
-    'Approved',
-    'Disbursed',
-    'Logged, Approval Pending',
-    'Logged, Documents Pending',
     'Login Pending',
+    'Logged Document Pending',
+    'Logged Approval Pending',
+    'Approved',
+    'Agreement Done',
+    'Disbursed',
     'Rejected',
   ]).optional().nullable(),
   expectedDisbursementDate: z.string().datetime().optional().nullable(),

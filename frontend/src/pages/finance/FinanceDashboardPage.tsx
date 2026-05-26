@@ -20,6 +20,7 @@ interface Blocking {
   customerName: string | null;
   consultantName: string | null;
   paymentMode: string | null;
+  paymentStatus: string | null;
   hardBlockAt: string | null;
   expiryAt: string | null;
   vehicle: {
@@ -38,6 +39,14 @@ interface Summary { mtdCount: number; untouchedCount: number; }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PURCHASE_MODES = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea'] as const;
+
+const PAYMENT_STATUSES = [
+  'Down Payment Received',
+  'Only Booking Received',
+  'Part payment received',
+  'Ready for Disbursement',
+  'Regd. In Progress',
+] as const;
 
 const BANK_NAMES = [
   'SFL', 'Canara', 'TFS', 'UCO', 'SBI', 'FBL', 'HDFC', 'SIB', 'BOB', 'Chola',
@@ -91,6 +100,7 @@ export default function FinanceDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<'all' | 'untouched' | 'touched'>('all');
   const [search, setSearch] = useState('');
+  const [savingPayStatus, setSavingPayStatus] = useState<string | null>(null); // blockingId being saved
 
   const fetchAll = useCallback(async () => {
     try {
@@ -143,6 +153,20 @@ export default function FinanceDashboardPage() {
       toast.error('Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePayStatusChange = async (blockingId: string, paymentStatus: string) => {
+    if (!paymentStatus) return;
+    setSavingPayStatus(blockingId);
+    try {
+      const { data } = await api.patch(`/finance/blockings/${blockingId}/payment-status`, { paymentStatus });
+      setBlockings((prev) => prev.map((b) => b.id === blockingId ? { ...b, paymentStatus: data.paymentStatus } : b));
+      toast.success('Payment status updated');
+    } catch {
+      toast.error('Failed to update payment status');
+    } finally {
+      setSavingPayStatus(null);
     }
   };
 
@@ -237,7 +261,7 @@ export default function FinanceDashboardPage() {
             <table className="w-full text-sm font-body">
               <thead className="bg-surface-container">
                 <tr>
-                  {['Customer', 'Vehicle', 'Order ID', 'Consultant', 'Blocked', 'Age', 'Purchase Mode', 'Finance Status', ''].map((h) => (
+                  {['Customer', 'Vehicle', 'Order ID', 'Consultant', 'Blocked', 'Age', 'Purchase Mode', 'Finance Status', 'Payment Status', ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -273,6 +297,23 @@ export default function FinanceDashboardPage() {
                         <span className={`badge text-[10px] ${statusColor(b.financeRecord?.financeStatus ?? null)}`}>
                           {b.financeRecord?.financeStatus ?? (touched ? '—' : 'Not Updated')}
                         </span>
+                      </td>
+                      {/* Inline Payment Status dropdown */}
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative">
+                          <select
+                            className="text-[10px] font-label font-black uppercase tracking-widest bg-surface-container border border-outline-variant/30 rounded-lg px-2 py-1.5 pr-6 text-on-surface-variant hover:border-primary/40 transition-colors appearance-none cursor-pointer disabled:opacity-50 min-w-[120px]"
+                            value={b.paymentStatus ?? ''}
+                            disabled={savingPayStatus === b.id}
+                            onChange={(e) => handlePayStatusChange(b.id, e.target.value)}
+                          >
+                            <option value="">Payment Status…</option>
+                            {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <span className="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-outline" style={{ fontSize: '12px' }}>
+                            {savingPayStatus === b.id ? 'sync' : 'expand_more'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <button className="text-[10px] font-label font-black uppercase tracking-widest text-primary hover:text-on-surface transition-colors">
