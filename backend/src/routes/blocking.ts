@@ -264,7 +264,7 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
 // PATCH /blocking/:id/details — owner updates customer name, order ID, expected billing date
 router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
-    customerName: z.string().min(1).optional(),
+    customerName: z.string().optional(),
     orderId: z.string().optional(),
     expectedBillingDate: z.string().datetime().nullable().optional(),
   });
