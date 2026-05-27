@@ -82,10 +82,12 @@ export default function MyBlockingsPage() {
   const [updatingPayStatus, setUpdatingPayStatus] = useState(false);
 
   const PAYMENT_STATUSES = [
-    'Full payment received',
+    'Down Payment Received',
     'Only Booking Received',
-    'Part payment received',
+    'Part Payment Received',
+    'Full Payment Received',
     'Ready for Disbursement',
+    'Regd. In Progress',
   ];
 
   const RELEASE_REASONS = [
@@ -409,9 +411,11 @@ export default function MyBlockingsPage() {
                   {b.paymentStatus && (
                     <div className="mb-4">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-label font-black uppercase tracking-widest
-                        ${b.paymentStatus === 'Full payment received' ? 'bg-green-900/40 text-green-400' :
+                        ${b.paymentStatus === 'Full Payment Received' ? 'bg-green-900/40 text-green-400' :
                           b.paymentStatus === 'Ready for Disbursement' ? 'bg-primary/10 text-primary' :
-                          b.paymentStatus === 'Part payment received' ? 'bg-orange-900/30 text-orange-400' :
+                          b.paymentStatus === 'Part Payment Received' ? 'bg-orange-900/30 text-orange-400' :
+                          b.paymentStatus === 'Down Payment Received' ? 'bg-yellow-900/30 text-yellow-400' :
+                          b.paymentStatus === 'Regd. In Progress' ? 'bg-teal-900/30 text-teal-400' :
                           'bg-surface-container-high text-on-surface-variant'}`}>
                         <span className="material-symbols-outlined text-xs">payments</span>
                         {b.paymentStatus}

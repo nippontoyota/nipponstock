@@ -56,7 +56,7 @@ export default function BlockPage() {
     amountReceived: '',
     financeType: '' as '' | 'IN_HOUSE' | 'OUTHOUSE',
     financierBank: '',
-    paymentStatus: 'Full payment received',
+    paymentStatus: 'Only Booking Received',
     expectedBillingDate: '',
   });
 
@@ -429,10 +429,12 @@ export default function BlockPage() {
                       <label className="label">Payment Status *</label>
                       <div className="relative">
                         <select className="input appearance-none pr-10" value={form.paymentStatus} onChange={(e) => setForm((f) => ({ ...f, paymentStatus: e.target.value }))}>
-                          <option value="Full payment received">Full payment received</option>
+                          <option value="Down Payment Received">Down Payment Received</option>
                           <option value="Only Booking Received">Only Booking Received</option>
-                          <option value="Part payment received">Part payment received</option>
+                          <option value="Part Payment Received">Part Payment Received</option>
+                          <option value="Full Payment Received">Full Payment Received</option>
                           <option value="Ready for Disbursement">Ready for Disbursement</option>
+                          <option value="Regd. In Progress">Regd. In Progress</option>
                         </select>
                         <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
                       </div>
