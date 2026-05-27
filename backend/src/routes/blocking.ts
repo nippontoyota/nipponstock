@@ -9,6 +9,17 @@ import { emitHeatmapUpdate, emitBlockingUpdate } from '../services/events';
 const router = Router();
 router.use(authenticate);
 
+// Canonical payment status values — enforced at every write point
+const PAYMENT_STATUSES = [
+  'Down Payment Received',
+  'Only Booking Received',
+  'Part Payment Received',
+  'Full Payment Received',
+  'Ready for Disbursement',
+  'Regd. In Progress',
+] as const;
+const paymentStatusEnum = z.enum(PAYMENT_STATUSES);
+
 // POST /blocking/soft — atomic soft block
 router.post('/soft', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
@@ -111,7 +122,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
     paymentMode: z.enum(['CASH', 'FINANCE']),
     amountReceived: z.number().optional(),
     financierBank: z.string().optional(),
-    paymentStatus: z.string().min(1),
+    paymentStatus: paymentStatusEnum,
     expectedBillingDate: z.string().datetime().optional(),
   });
 
@@ -189,7 +200,7 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
     paymentMode: z.enum(['CASH', 'FINANCE']),
     amountReceived: z.number().optional(),
     financierBank: z.string().optional(),
-    paymentStatus: z.string().min(1),
+    paymentStatus: paymentStatusEnum,
     expectedBillingDate: z.string().datetime().optional(),
   });
 
@@ -421,7 +432,7 @@ router.patch('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     consultantName: z.string().optional(),
     paymentMode: z.enum(['CASH', 'FINANCE']).optional(),
     financierBank: z.string().optional(),
-    paymentStatus: z.string().optional(),
+    paymentStatus: paymentStatusEnum.optional(),
     expectedBillingDate: z.string().datetime().optional(),
     adminNotes: z.string().optional(),
   });
