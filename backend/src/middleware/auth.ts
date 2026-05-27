@@ -42,3 +42,11 @@ export function requireFinanceHead(req: AuthRequest, res: Response, next: NextFu
   }
   next();
 }
+
+export function requireClusterManager(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'CLUSTER_MANAGER') {
+    res.status(403).json({ error: 'Cluster Manager access required' });
+    return;
+  }
+  next();
+}

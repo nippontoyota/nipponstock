@@ -31,7 +31,12 @@ router.post('/login', async (req: Request, res: Response) => {
     return;
   }
 
-  const token = signToken({ userId: user.id, role: user.role, branchId: user.branchId });
+  const token = signToken({
+    userId: user.id,
+    role: user.role,
+    branchId: user.branchId,
+    clusterNumber: user.clusterNumber ?? null,
+  });
   res.json({
     token,
     user: {
@@ -40,6 +45,7 @@ router.post('/login', async (req: Request, res: Response) => {
       fullName: user.fullName,
       role: user.role,
       branchId: user.branchId,
+      clusterNumber: user.clusterNumber ?? null,
     },
   });
 });

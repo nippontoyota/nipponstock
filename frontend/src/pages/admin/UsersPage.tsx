@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
-interface User { id: string; loginId: string; fullName: string; role: 'ADMIN' | 'SALES_MANAGER' | 'FINANCE_OFFICER'; branchId: string | null; isActive: boolean; branch?: { name: string } | null; }
+interface User { id: string; loginId: string; fullName: string; role: string; branchId: string | null; clusterNumber: number | null; isActive: boolean; branch?: { name: string } | null; }
 interface Branch { id: string; name: string; }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ loginId: '', password: '', fullName: '', role: 'SALES_MANAGER', branchId: '' });
+  const [form, setForm] = useState({ loginId: '', password: '', fullName: '', role: 'SALES_MANAGER', branchId: '', clusterNumber: '' });
   const [saving, setSaving] = useState(false);
 
   const fetch = async () => {
@@ -22,10 +22,14 @@ export default function UsersPage() {
   const handleCreate = async () => {
     setSaving(true);
     try {
-      await api.post('/users', { ...form, branchId: form.branchId || undefined });
+      await api.post('/users', {
+        ...form,
+        branchId: form.branchId || undefined,
+        clusterNumber: form.clusterNumber ? parseInt(form.clusterNumber) : undefined,
+      });
       toast.success('User created');
       setShowForm(false);
-      setForm({ loginId: '', password: '', fullName: '', role: 'SALES_MANAGER', branchId: '' });
+      setForm({ loginId: '', password: '', fullName: '', role: 'SALES_MANAGER', branchId: '', clusterNumber: '' });
       fetch();
     } catch (err: unknown) {
       const errData = (err as { response?: { data?: { error?: unknown } } }).response?.data?.error;
@@ -74,7 +78,11 @@ export default function UsersPage() {
                 <td className="px-4 py-3">
                   <span className={`badge ${u.role === 'ADMIN' ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>{u.role}</span>
                 </td>
-                <td className="px-4 py-3 text-on-surface-variant text-xs">{u.branch?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-on-surface-variant text-xs">
+                  {u.role === 'CLUSTER_MANAGER'
+                    ? (u.clusterNumber ? `Cluster ${u.clusterNumber}` : '—')
+                    : (u.branch?.name ?? '—')}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`badge ${u.isActive ? 'bg-green-900/30 text-green-400' : 'bg-tertiary-container/20 text-tertiary'}`}>
                     {u.isActive ? 'Active' : 'Inactive'}
@@ -109,9 +117,11 @@ export default function UsersPage() {
               <div>
                 <label className="label">Role</label>
                 <div className="relative">
-                  <select className="input appearance-none pr-8" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, branchId: '' }))}>
+                  <select className="input appearance-none pr-8" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, branchId: '', clusterNumber: '' }))}>
                     <option value="SALES_MANAGER">Sales Manager</option>
                     <option value="FINANCE_OFFICER">Finance Officer</option>
+                    <option value="FINANCE_HEAD">Finance Head</option>
+                    <option value="CLUSTER_MANAGER">Cluster Manager</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
@@ -124,6 +134,21 @@ export default function UsersPage() {
                     <select className="input appearance-none pr-8" value={form.branchId} onChange={(e) => setForm((f) => ({ ...f, branchId: e.target.value }))}>
                       <option value="">Select branch…</option>
                       {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
+                  </div>
+                </div>
+              )}
+              {form.role === 'CLUSTER_MANAGER' && (
+                <div>
+                  <label className="label">Cluster Number</label>
+                  <div className="relative">
+                    <select className="input appearance-none pr-8" value={form.clusterNumber} onChange={(e) => setForm((f) => ({ ...f, clusterNumber: e.target.value }))}>
+                      <option value="">Select cluster…</option>
+                      <option value="1">Cluster 1 — CO01A, CO01B, KY01A</option>
+                      <option value="2">Cluster 2 — TR01A, TR01C, KL01A</option>
+                      <option value="3">Cluster 3 — IR01A, TI01A, MV01A</option>
+                      <option value="4">Cluster 4 — KT01A, PH01A, TL01A</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                   </div>

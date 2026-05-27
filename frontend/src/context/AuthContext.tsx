@@ -5,8 +5,9 @@ interface AuthUser {
   id: string;
   loginId: string;
   fullName: string;
-  role: 'ADMIN' | 'SALES_MANAGER' | 'FINANCE_OFFICER' | 'FINANCE_HEAD';
+  role: 'ADMIN' | 'SALES_MANAGER' | 'FINANCE_OFFICER' | 'FINANCE_HEAD' | 'CLUSTER_MANAGER';
   branchId: string | null;
+  clusterNumber: number | null;
 }
 
 interface AuthContextType {

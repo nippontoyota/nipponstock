@@ -13,6 +13,7 @@ enum Role {
   SALES_MANAGER
   FINANCE_OFFICER
   FINANCE_HEAD
+  CLUSTER_MANAGER
 }
 
 enum VehicleStatus {
@@ -67,8 +68,9 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  branch   Branch? @relation(fields: [branchId], references: [id])
-  branchId String?
+  branch        Branch? @relation(fields: [branchId], references: [id])
+  branchId      String?
+  clusterNumber Int?    // for CLUSTER_MANAGER role (1-4)
 
   blockings        BlockingRequest[] @relation("UserBlockings")
   vehicleRequests  VehicleRequest[]

@@ -1,0 +1,408 @@
+import { useEffect, useState, useCallback } from 'react';
+import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface MTDSummary {
+  mtdBlocked: number;
+  mtdCash: number;
+  mtdFinance: number;
+  mtdReleased: number;
+}
+
+interface FinanceSummary {
+  totalBlockings: number;
+  untouched: number;
+  inHouse: number;
+  loginPending: number;
+  loggedApprovalPending: number;
+  loggedDocsPending: number;
+  approved: number;
+  disbursed: number;
+}
+
+interface StockRow   { branch: string; stockStatus: string;  count: number; }
+interface PayRow     { branch: string; paymentStatus: string; count: number; }
+interface AgeRow     { branch: string; ageBucket: string;    count: number; }
+interface PurchaseRow { branch: string; purchaseMode: string; count: number; }
+interface StatusRow   { branch: string; financeStatus: string; count: number; }
+
+// ── Column definitions ────────────────────────────────────────────────────────
+const STOCK_COLS   = ['BND', 'MDDP', 'CTDMS', 'Unknown'];
+const AGE_COLS     = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
+const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
+const FINANCE_STATUS_COLS = [
+  'Login Pending', 'Logged Approval Pending', 'Logged Document Pending',
+  'Approved', 'Agreement Done', 'Disbursed', 'Rejected',
+];
+
+// ── Pivot builder ─────────────────────────────────────────────────────────────
+function buildPivot<T extends { branch: string }>(
+  rows: T[],
+  keyFn: (r: T) => string,
+  cols: string[],
+) {
+  const branches = Array.from(new Set(rows.map((r) => r.branch))).sort();
+  const lookup = new Map<string, number>();
+  const colTotals = new Map<string, number>();
+  const rowTotals = new Map<string, number>();
+
+  for (const r of rows) {
+    const col = keyFn(r);
+    const count = (r as unknown as { count: number }).count;
+    lookup.set(`${r.branch}\x01${col}`, count);
+    colTotals.set(col, (colTotals.get(col) ?? 0) + count);
+    rowTotals.set(r.branch, (rowTotals.get(r.branch) ?? 0) + count);
+  }
+  for (const col of cols) if (!colTotals.has(col)) colTotals.set(col, 0);
+
+  const grand = Array.from(rowTotals.values()).reduce((a, b) => a + b, 0);
+  return { branches, lookup, colTotals, rowTotals, grand };
+}
+
+// ── Shared styles ─────────────────────────────────────────────────────────────
+const thCls     = 'px-3 py-2 text-[9px] font-label font-black uppercase tracking-widest text-zinc-400 text-center whitespace-nowrap';
+const tdCls     = 'px-3 py-2 text-xs text-center tabular-nums';
+const tdBranchCls = 'px-3 py-2 text-xs font-headline font-bold text-on-surface tracking-tight text-left whitespace-nowrap';
+const tdTotCls  = 'px-3 py-2 text-xs font-bold text-center tabular-nums text-primary';
+const thTotCls  = 'px-3 py-2 text-[9px] font-label font-black uppercase tracking-widest text-primary text-center';
+
+function cell(v: number | undefined) {
+  if (!v) return <span className="text-zinc-600">—</span>;
+  return <span>{v}</span>;
+}
+
+// ── KPI card ──────────────────────────────────────────────────────────────────
+function KPI({ label, value, color, icon }: { label: string; value: number | undefined; color: string; icon: string }) {
+  return (
+    <div className="bg-surface-container-low rounded-xl p-5 relative overflow-hidden" style={{ borderLeft: `3px solid ${color}` }}>
+      <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant mb-1">{label}</p>
+      <p className="font-headline text-3xl font-extrabold text-on-surface">{value ?? '—'}</p>
+      <div className="absolute right-3 bottom-3 opacity-10">
+        <span className="material-symbols-outlined" style={{ fontSize: '40px', color }}>{icon}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+function SectionHead({ title, icon }: { title: string; icon: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="material-symbols-outlined text-primary text-base">{icon}</span>
+      <h2 className="font-headline font-bold text-sm uppercase tracking-widest text-on-surface">{title}</h2>
+    </div>
+  );
+}
+
+function statusColour(s: string): string {
+  if (s === 'Disbursed')              return 'text-green-400';
+  if (s === 'Approved')               return 'text-primary';
+  if (s === 'Agreement Done')         return 'text-teal-400';
+  if (s === 'Rejected')               return 'text-red-400';
+  if (s === 'Login Pending')          return 'text-yellow-400';
+  if (s.startsWith('Logged'))         return 'text-orange-400';
+  return 'text-zinc-400';
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function ClusterManagerPage() {
+  const { user } = useAuth();
+  const cluster = user?.clusterNumber;
+
+  const [mtd, setMtd]             = useState<MTDSummary | null>(null);
+  const [stockData, setStockData] = useState<StockRow[]>([]);
+  const [payData, setPayData]     = useState<PayRow[]>([]);
+  const [ageData, setAgeData]     = useState<AgeRow[]>([]);
+  const [finSummary, setFinSummary] = useState<FinanceSummary | null>(null);
+  const [purchaseData, setPurchaseData] = useState<PurchaseRow[]>([]);
+  const [statusData, setStatusData]     = useState<StatusRow[]>([]);
+  const [loading, setLoading]     = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const [m, s, p, a, fs, fp, fst] = await Promise.all([
+      api.get('/cluster-manager/summary'),
+      api.get('/cluster-manager/branch-stock'),
+      api.get('/cluster-manager/branch-payment'),
+      api.get('/cluster-manager/branch-ageing'),
+      api.get('/cluster-manager/finance-summary'),
+      api.get('/cluster-manager/finance-branch-purchase'),
+      api.get('/cluster-manager/finance-branch-status'),
+    ]);
+    setMtd(m.data);
+    setStockData(s.data);
+    setPayData(p.data);
+    setAgeData(a.data);
+    setFinSummary(fs.data);
+    setPurchaseData(fp.data);
+    setStatusData(fst.data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Build pivot data
+  const activeStockCols   = STOCK_COLS.filter((c) => stockData.some((r) => r.stockStatus === c));
+  const activePayCols     = Array.from(new Set(payData.map((r) => r.paymentStatus))).sort();
+  const activeAgeCols     = AGE_COLS.filter((c) => ageData.some((r) => r.ageBucket === c));
+  const activePurchaseCols = PURCHASE_COLS.filter((c) => purchaseData.some((r) => r.purchaseMode === c));
+  const activeStatusCols  = FINANCE_STATUS_COLS.filter((c) => statusData.some((r) => r.financeStatus === c));
+
+  const stockPivot    = buildPivot(stockData,    (r) => r.stockStatus,   activeStockCols);
+  const payPivot      = buildPivot(payData,      (r) => r.paymentStatus, activePayCols);
+  const agePivot      = buildPivot(ageData,      (r) => r.ageBucket,     activeAgeCols);
+  const purchasePivot = buildPivot(purchaseData, (r) => r.purchaseMode,  activePurchaseCols);
+  const statusPivot   = buildPivot(statusData,   (r) => r.financeStatus, activeStatusCols);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* ── Page title ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-headline font-bold tracking-tighter text-on-surface uppercase mb-1">
+            Cluster {cluster} Dashboard
+          </h1>
+          <p className="text-on-surface-variant font-body text-sm">
+            Month-to-date performance and finance overview for your cluster branches.
+          </p>
+        </div>
+        <button
+          onClick={fetchAll}
+          className="flex items-center gap-2 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          <span className="material-symbols-outlined text-base">refresh</span>
+          Refresh
+        </button>
+      </div>
+
+      {/* ── MTD KPI Row ─────────────────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="MTD Blocking Summary" icon="bar_chart_4_bars" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPI label="Cars Blocked MTD"    value={mtd?.mtdBlocked}  color="#6750A4" icon="directions_car" />
+          <KPI label="Cash Blockings MTD"  value={mtd?.mtdCash}     color="#3B82F6" icon="payments" />
+          <KPI label="Finance Blockings MTD" value={mtd?.mtdFinance} color="#F59E0B" icon="account_balance" />
+          <KPI label="Released to Pool MTD" value={mtd?.mtdReleased} color="#10B981" icon="rotate_left" />
+        </div>
+      </section>
+
+      {/* ── Table 1: Branch × Stock Status ──────────────────────────────────── */}
+      <section>
+        <SectionHead title="Branch × Stock Status (Active Hard Blocks)" icon="table_chart" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                {activeStockCols.map((c) => <th key={c} className={thCls}>{c}</th>)}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stockPivot.branches.map((br, i) => (
+                <tr key={br} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{br}</td>
+                  {activeStockCols.map((c) => (
+                    <td key={c} className={tdCls}>{cell(stockPivot.lookup.get(`${br}\x01${c}`))}</td>
+                  ))}
+                  <td className={tdTotCls}>{stockPivot.rowTotals.get(br) ?? 0}</td>
+                </tr>
+              ))}
+              {stockPivot.branches.length === 0 && (
+                <tr><td colSpan={activeStockCols.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No active hard blockings</td></tr>
+              )}
+              {stockPivot.branches.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {activeStockCols.map((c) => <td key={c} className={tdTotCls}>{cell(stockPivot.colTotals.get(c))}</td>)}
+                  <td className={`${tdTotCls} text-primary`}>{stockPivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Table 2: Branch × Payment Status ────────────────────────────────── */}
+      <section>
+        <SectionHead title="Branch × Payment Status (Active Hard Blocks)" icon="receipt_long" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                {activePayCols.map((c) => <th key={c} className={thCls}>{c}</th>)}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payPivot.branches.map((br, i) => (
+                <tr key={br} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{br}</td>
+                  {activePayCols.map((c) => (
+                    <td key={c} className={tdCls}>{cell(payPivot.lookup.get(`${br}\x01${c}`))}</td>
+                  ))}
+                  <td className={tdTotCls}>{payPivot.rowTotals.get(br) ?? 0}</td>
+                </tr>
+              ))}
+              {payPivot.branches.length === 0 && (
+                <tr><td colSpan={activePayCols.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {payPivot.branches.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {activePayCols.map((c) => <td key={c} className={tdTotCls}>{cell(payPivot.colTotals.get(c))}</td>)}
+                  <td className={`${tdTotCls} text-primary`}>{payPivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Table 3: Branch × Ageing ─────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Branch × Blocking Ageing (Active Hard Blocks)" icon="schedule" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                {activeAgeCols.map((c) => <th key={c} className={thCls}>{c}</th>)}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agePivot.branches.map((br, i) => (
+                <tr key={br} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{br}</td>
+                  {activeAgeCols.map((c) => (
+                    <td key={c} className={tdCls}>{cell(agePivot.lookup.get(`${br}\x01${c}`))}</td>
+                  ))}
+                  <td className={tdTotCls}>{agePivot.rowTotals.get(br) ?? 0}</td>
+                </tr>
+              ))}
+              {agePivot.branches.length === 0 && (
+                <tr><td colSpan={activeAgeCols.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {agePivot.branches.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {activeAgeCols.map((c) => <td key={c} className={tdTotCls}>{cell(agePivot.colTotals.get(c))}</td>)}
+                  <td className={`${tdTotCls} text-primary`}>{agePivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Divider ─────────────────────────────────────────────────────────── */}
+      <div className="border-t border-zinc-800/40 pt-2">
+        <p className="text-[10px] font-label uppercase tracking-widest text-zinc-500">Finance Overview</p>
+      </div>
+
+      {/* ── Finance KPI Row ──────────────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Finance KPIs (Cluster Branches)" icon="account_balance" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPI label="Total Hard Blockings"     value={finSummary?.totalBlockings}      color="#6750A4" icon="directions_car" />
+          <KPI label="Not Updated by FO"        value={finSummary?.untouched}           color="#EF4444" icon="hourglass_empty" />
+          <KPI label="In House Finance"         value={finSummary?.inHouse}             color="#3B82F6" icon="account_balance" />
+          <KPI label="Login Pending"            value={finSummary?.loginPending}        color="#F59E0B" icon="pending" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <KPI label="Logged / Approval Pending" value={finSummary?.loggedApprovalPending} color="#F97316" icon="approval" />
+          <KPI label="Logged / Docs Pending"     value={finSummary?.loggedDocsPending}     color="#EAB308" icon="description" />
+          <KPI label="Approved"                  value={finSummary?.approved}               color="#8B5CF6" icon="verified" />
+          <KPI label="Disbursed"                 value={finSummary?.disbursed}              color="#10B981" icon="payments" />
+        </div>
+      </section>
+
+      {/* ── Finance Table 1: Branch × Purchase Mode ──────────────────────────── */}
+      <section>
+        <SectionHead title="Branch × Purchase Mode" icon="storefront" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                {activePurchaseCols.map((c) => <th key={c} className={thCls}>{c}</th>)}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {purchasePivot.branches.map((br, i) => (
+                <tr key={br} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{br}</td>
+                  {activePurchaseCols.map((c) => (
+                    <td key={c} className={tdCls}>{cell(purchasePivot.lookup.get(`${br}\x01${c}`))}</td>
+                  ))}
+                  <td className={tdTotCls}>{purchasePivot.rowTotals.get(br) ?? 0}</td>
+                </tr>
+              ))}
+              {purchasePivot.branches.length === 0 && (
+                <tr><td colSpan={activePurchaseCols.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {purchasePivot.branches.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {activePurchaseCols.map((c) => <td key={c} className={tdTotCls}>{cell(purchasePivot.colTotals.get(c))}</td>)}
+                  <td className={`${tdTotCls} text-primary`}>{purchasePivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Finance Table 2: Branch × Finance Status ─────────────────────────── */}
+      <section>
+        <SectionHead title="Branch × Finance Status" icon="timeline" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                {activeStatusCols.map((c) => (
+                  <th key={c} className={`${thCls} ${statusColour(c)}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statusPivot.branches.map((br, i) => (
+                <tr key={br} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{br}</td>
+                  {activeStatusCols.map((c) => (
+                    <td key={c} className={`${tdCls} ${statusColour(c)}`}>{cell(statusPivot.lookup.get(`${br}\x01${c}`))}</td>
+                  ))}
+                  <td className={tdTotCls}>{statusPivot.rowTotals.get(br) ?? 0}</td>
+                </tr>
+              ))}
+              {statusPivot.branches.length === 0 && (
+                <tr><td colSpan={activeStatusCols.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {statusPivot.branches.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {activeStatusCols.map((c) => <td key={c} className={`${tdTotCls} ${statusColour(c)}`}>{cell(statusPivot.colTotals.get(c))}</td>)}
+                  <td className={`${tdTotCls} text-primary`}>{statusPivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}

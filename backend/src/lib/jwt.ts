@@ -12,6 +12,7 @@ export interface TokenPayload {
   userId: string;
   role: string;
   branchId: string | null;
+  clusterNumber: number | null;
 }
 
 export function signToken(payload: TokenPayload): string {
