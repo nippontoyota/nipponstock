@@ -345,7 +345,7 @@ router.get('/finance-branch-purchase', async (_req: AuthRequest, res: Response) 
 // ── 14. Finance Branch × Finance Status ──────────────────────────────────────
 router.get('/finance-branch-status', async (_req: AuthRequest, res: Response) => {
   const records = await prisma.financeRecord.findMany({
-    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' } },
+    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, purchaseMode: 'In House' },
     select: { financeStatus: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
   });
 

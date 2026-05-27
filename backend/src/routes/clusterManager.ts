@@ -293,7 +293,7 @@ router.get('/finance-branch-status', async (req: AuthRequest, res: Response) => 
   if (!branchIds.length) { res.json([]); return; }
 
   const records = await prisma.financeRecord.findMany({
-    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE', branchId: { in: branchIds } } },
+    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE', branchId: { in: branchIds } }, purchaseMode: 'In House' },
     select: {
       financeStatus: true,
       blockingRequest: { select: { branch: { select: { name: true } } } },
