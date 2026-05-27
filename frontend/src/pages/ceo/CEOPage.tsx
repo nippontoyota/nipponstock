@@ -9,7 +9,27 @@ import api from '../../api';
 interface Summary {
   physicalStock: number; mddpStock: number; totalBlockings: number;
   cashBlockings: number; financeBlockings: number; approvedFinance: number;
-  pendingDisbursements: number;
+  fullPaymentCollected: number;
+}
+
+// ── Model code → display name ─────────────────────────────────────────────────
+const MODEL_MAP: Record<string, string> = {
+  A15: 'TOYOTA RUMION',
+  A32: 'TOYOTA URBAN CRUISE REBELLA',
+  CMR: 'NEW CAMRY',
+  D22: 'URBAN CRUISER HYRYDER',
+  D24: 'TOYOTA GLANZA',
+  D27: 'URBAN CRUISER TAISOR',
+  FRN: 'FORTUNER',
+  HLX: 'HILUX',
+  IMV: 'INNOVA',
+  INN: 'INNOVA HYCROSS',
+  LCR: 'LAND CRUISER',
+  VEL: 'VELLFIRE',
+};
+const modelName = (code: string) => MODEL_MAP[code] ?? code;
+function mapModelKey(data: R2[], key: string): R2[] {
+  return data.map((r) => ({ ...r, [key]: modelName(String(r[key])) }));
 }
 interface FinSummary {
   totalBlockings: number; untouched: number; inHouse: number;
@@ -185,9 +205,13 @@ export default function CEOPage() {
       api.get('/ceo/finance-branch-status'),
       api.get('/ceo/finance-bank'),
     ]);
-    setSummary(s.data); setStockVsYear(sy.data); setModelPhysical(mp.data);
-    setModelBlockStock(mbs.data); setModelBlockPay(mbp.data); setBranchAgeing(ba.data);
-    setBranchModel(bm.data); setBranchStockChart(bsc.data); setByDate(bd.data);
+    setSummary(s.data); setStockVsYear(sy.data);
+    setModelPhysical(mapModelKey(mp.data, 'model'));
+    setModelBlockStock(mapModelKey(mbs.data, 'model'));
+    setModelBlockPay(mapModelKey(mbp.data, 'model'));
+    setBranchAgeing(ba.data);
+    setBranchModel(mapModelKey(bm.data, 'model'));
+    setBranchStockChart(bsc.data); setByDate(bd.data);
     setBilling(bp.data); setRelease(ra.data); setFinSummary(fs.data);
     setFinPurchase(fp.data); setFinStatus(fst.data); setBanks(fbank.data);
     setLoading(false);
@@ -250,7 +274,7 @@ export default function CEOPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
           <KPI label="Finance Blockings (by FO)"  value={summary?.financeBlockings}   color="#8B5CF6" icon="account_balance" />
           <KPI label="Approved Finance Cases"     value={summary?.approvedFinance}    color="#14B8A6" icon="verified" />
-          <KPI label="Pending Disbursements"      value={summary?.pendingDisbursements} color="#F97316" icon="hourglass_empty" />
+          <KPI label="Full Payment Collected"     value={summary?.fullPaymentCollected} color="#10B981" icon="check_circle" />
         </div>
       </section>
 
@@ -409,7 +433,7 @@ export default function CEOPage() {
                 </tr>
               </thead>
               <tbody>
-                {(release?.reasons ?? []).map((r) => (
+                {(release?.reasons ?? []).slice(0, 5).map((r) => (
                   <tr key={r.reason} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)' }}>
                     <td className={tdBrCls}>{r.reason}</td>
                     <td className={tdCls}>{r.count}</td>
@@ -479,7 +503,7 @@ export default function CEOPage() {
                 </tr>
               </thead>
               <tbody>
-                {banks.map((b, i) => {
+                {banks.slice(0, 5).map((b, i) => {
                   const total = banks.reduce((s, x) => s + x.count, 0);
                   const pct = total ? Math.round((b.count / total) * 100) : 0;
                   return (
@@ -507,7 +531,7 @@ export default function CEOPage() {
           {/* Bar chart for banks */}
           <div className="bg-surface-container-low rounded-xl p-4">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={banks.slice(0, 15)} layout="vertical" margin={{ top: 4, right: 16, left: 60, bottom: 4 }}>
+              <BarChart data={banks.slice(0, 5)} layout="vertical" margin={{ top: 4, right: 16, left: 60, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(67,70,86,0.2)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} />
                 <YAxis type="category" dataKey="bankName" tick={{ fontSize: 10, fill: '#9ca3af' }} width={55} />

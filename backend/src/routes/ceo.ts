@@ -16,7 +16,7 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     cashBlockings,
     financeBlockings,
     approvedFinance,
-    pendingDisbursements,
+    fullPaymentCollected,
   ] = await Promise.all([
     prisma.vehicle.count({ where: { stockStatus: { in: ['BND', 'CTDMS'] }, status: { not: 'DELIVERED' } } }),
     prisma.vehicle.count({ where: { stockStatus: 'MDDP', status: { not: 'DELIVERED' } } }),
@@ -24,10 +24,10 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     prisma.blockingRequest.count({ where: { ...baseHard, paymentMode: 'CASH' } }),
     prisma.blockingRequest.count({ where: { ...baseHard, paymentMode: 'FINANCE' } }),
     prisma.financeRecord.count({ where: { blockingRequest: baseHard, financeStatus: 'Approved' } }),
-    prisma.financeRecord.count({ where: { blockingRequest: baseHard, financeStatus: 'Agreement Done' } }),
+    prisma.blockingRequest.count({ where: { ...baseHard, paymentStatus: 'Full Payment Received' } }),
   ]);
 
-  res.json({ physicalStock, mddpStock, totalBlockings, cashBlockings, financeBlockings, approvedFinance, pendingDisbursements });
+  res.json({ physicalStock, mddpStock, totalBlockings, cashBlockings, financeBlockings, approvedFinance, fullPaymentCollected });
 });
 
 // ── 2. Stock Status × Chassis Year pivot ─────────────────────────────────────
