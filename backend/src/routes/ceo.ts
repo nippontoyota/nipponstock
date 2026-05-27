@@ -288,6 +288,65 @@ router.get('/release-analysis', async (_req: AuthRequest, res: Response) => {
   res.json({ total: totalReleases, branches, reasons });
 });
 
+// ── 11b. Model × Purchase Mode ────────────────────────────────────────────────
+router.get('/model-purchase', async (_req: AuthRequest, res: Response) => {
+  const [records, noRecord] = await Promise.all([
+    prisma.financeRecord.findMany({
+      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' } },
+      select: {
+        purchaseMode: true,
+        blockingRequest: { select: { vehicle: { select: { model: true } } } },
+      },
+    }),
+    prisma.blockingRequest.findMany({
+      where: { blockType: 'HARD', status: 'ACTIVE', financeRecord: null },
+      select: { vehicle: { select: { model: true } } },
+    }),
+  ]);
+
+  const map = new Map<string, number>();
+  for (const r of records) {
+    const key = `${r.blockingRequest.vehicle.model}\x01${r.purchaseMode ?? 'Not Set'}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  for (const b of noRecord) {
+    const key = `${b.vehicle.model}\x01Not Updated`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; purchaseMode: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), purchaseMode: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── 11c. Model × Finance Status (In House only) ───────────────────────────────
+router.get('/model-finance-status', async (_req: AuthRequest, res: Response) => {
+  const records = await prisma.financeRecord.findMany({
+    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, purchaseMode: 'In House' },
+    select: {
+      financeStatus: true,
+      blockingRequest: { select: { vehicle: { select: { model: true } } } },
+    },
+  });
+
+  const map = new Map<string, number>();
+  for (const r of records) {
+    if (!r.financeStatus) continue;
+    const key = `${r.blockingRequest.vehicle.model}\x01${r.financeStatus}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; financeStatus: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), financeStatus: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── 12. Finance KPI Summary ───────────────────────────────────────────────────
 router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };

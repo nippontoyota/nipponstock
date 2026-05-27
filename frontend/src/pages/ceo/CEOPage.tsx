@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, CartesianGrid,
+  LineChart, Line, CartesianGrid, LabelList,
 } from 'recharts';
 import api from '../../api';
 
@@ -184,11 +184,13 @@ export default function CEOPage() {
   const [finPurchase, setFinPurchase]   = useState<R2[]>([]);
   const [finStatus, setFinStatus]       = useState<R2[]>([]);
   const [banks, setBanks]               = useState<BankRow[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [modelPurchase, setModelPurchase]   = useState<R2[]>([]);
+  const [modelFinStatus, setModelFinStatus] = useState<R2[]>([]);
+  const [loading, setLoading]               = useState(true);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank] = await Promise.all([
+    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
@@ -204,6 +206,8 @@ export default function CEOPage() {
       api.get('/ceo/finance-branch-purchase'),
       api.get('/ceo/finance-branch-status'),
       api.get('/ceo/finance-bank'),
+      api.get('/ceo/model-purchase'),
+      api.get('/ceo/model-finance-status'),
     ]);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
@@ -214,6 +218,8 @@ export default function CEOPage() {
     setBranchStockChart(bsc.data); setByDate(bd.data);
     setBilling(bp.data); setRelease(ra.data); setFinSummary(fs.data);
     setFinPurchase(fp.data); setFinStatus(fst.data); setBanks(fbank.data);
+    setModelPurchase(mapModelKey(mpur.data, 'model'));
+    setModelFinStatus(mapModelKey(mfst.data, 'model'));
     setLoading(false);
   }, []);
 
@@ -228,14 +234,22 @@ export default function CEOPage() {
   const activeModelCols      = Array.from(new Set(branchModel.map((r) => String(r['model'])))).sort();
   const activePurchaseCols   = PURCHASE_COLS.filter((c) => finPurchase.some((r) => r['purchaseMode'] === c));
   const activeFinStatusCols  = FIN_STATUS_COLS.filter((c) => finStatus.some((r) => r['financeStatus'] === c));
+  const activeModelPurchaseCols = PURCHASE_COLS.filter((c) => modelPurchase.some((r) => r['purchaseMode'] === c));
+  const activeModelFinStatusCols = FIN_STATUS_COLS.filter((c) => modelFinStatus.some((r) => r['financeStatus'] === c));
 
-  // Transform branch-stock data for stacked bar chart
+  // Transform branch-stock data for stacked bar chart (with totals for labels)
   const barBranches = Array.from(new Set(branchStockChart.map((r) => String(r['branch'])))).sort();
   const stockBarsData = barBranches.map((br) => {
-    const entry: Record<string, string | number> = { branch: br };
+    const entry: Record<string, string | number> = { branch: br, _phantom: 0 };
+    let total = 0;
     for (const r of branchStockChart) {
-      if (String(r['branch']) === br) entry[String(r['stockStatus'])] = Number(r['count']);
+      if (String(r['branch']) === br) {
+        const cnt = Number(r['count']);
+        entry[String(r['stockStatus'])] = cnt;
+        total += cnt;
+      }
     }
+    entry['_total'] = total;
     return entry;
   });
   const activeBarStockCols = Array.from(new Set(branchStockChart.map((r) => String(r['stockStatus']))));
@@ -335,8 +349,14 @@ export default function CEOPage() {
               <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(67,70,86,0.4)', borderRadius: 8, fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {activeBarStockCols.map((ss) => (
-                <Bar key={ss} dataKey={ss} stackId="a" fill={STOCK_COLORS[ss] ?? '#6b7280'} radius={[0, 0, 0, 0]} />
+                <Bar key={ss} dataKey={ss} stackId="a" fill={STOCK_COLORS[ss] ?? '#6b7280'} radius={[0, 0, 0, 0]}>
+                  <LabelList dataKey={ss} position="center" style={{ fontSize: 9, fill: '#fff', fontWeight: 'bold' }} formatter={(v: number) => (v > 0 ? v : '')} />
+                </Bar>
               ))}
+              {/* Phantom bar — carries total label on top of stack */}
+              <Bar dataKey="_phantom" stackId="a" fill="transparent" stroke="none" legendType="none">
+                <LabelList dataKey="_total" position="top" style={{ fontSize: 11, fill: '#e4e4e7', fontWeight: 'bold' }} formatter={(v: number) => (v > 0 ? v : '')} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -352,7 +372,7 @@ export default function CEOPage() {
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(d) => d.slice(5)} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
               <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(67,70,86,0.4)', borderRadius: 8, fontSize: 12 }} />
-              <Line type="monotone" dataKey="count" stroke={CHART_BLUE} strokeWidth={2} dot={false} name="Blockings" />
+              <Line type="monotone" dataKey="count" stroke={CHART_BLUE} strokeWidth={2} dot={{ r: 3, fill: CHART_BLUE }} name="Blockings" label={{ position: 'top', fontSize: 9, fill: '#9ca3af' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -486,6 +506,18 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Branch × Finance Status" icon="timeline" />
         <PivotTable rowLabel="Branch" data={finStatus} rowKey="branch" colKey="financeStatus" activeCols={activeFinStatusCols} colorFn={statusColour} />
+      </section>
+
+      {/* Model × Purchase Mode */}
+      <section>
+        <SectionHead title="Model × Purchase Mode" icon="directions_car" />
+        <PivotTable rowLabel="Model" data={modelPurchase} rowKey="model" colKey="purchaseMode" activeCols={activeModelPurchaseCols} />
+      </section>
+
+      {/* Model × Finance Status (In House only) */}
+      <section>
+        <SectionHead title="Model × Finance Status (In House Cases)" icon="account_tree" />
+        <PivotTable rowLabel="Model" data={modelFinStatus} rowKey="model" colKey="financeStatus" activeCols={activeModelFinStatusCols} colorFn={statusColour} />
       </section>
 
       {/* Bank × Count */}
