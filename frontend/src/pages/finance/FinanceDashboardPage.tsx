@@ -20,7 +20,6 @@ interface Blocking {
   customerName: string | null;
   consultantName: string | null;
   paymentMode: string | null;
-  paymentStatus: string | null;
   hardBlockAt: string | null;
   expiryAt: string | null;
   vehicle: {
@@ -74,7 +73,6 @@ function ageDays(hardBlockAt: string | null): number {
 
 function statusColor(s: string | null): string {
   if (!s) return 'bg-zinc-800 text-zinc-400';
-  if (s === 'Full Payment Received')   return 'bg-green-900/60 text-green-300';
   if (s === 'Disbursed')               return 'bg-green-900/40 text-green-400';
   if (s === 'Approved')                return 'bg-primary/10 text-primary';
   if (s === 'Agreement Done')          return 'bg-teal-900/40 text-teal-400';
