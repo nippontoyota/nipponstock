@@ -122,6 +122,7 @@ export default function UsersPage() {
                     <option value="FINANCE_OFFICER">Finance Officer</option>
                     <option value="FINANCE_HEAD">Finance Head</option>
                     <option value="CLUSTER_MANAGER">Cluster Manager</option>
+                    <option value="CEO">CEO</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>

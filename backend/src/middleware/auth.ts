@@ -50,3 +50,11 @@ export function requireClusterManager(req: AuthRequest, res: Response, next: Nex
   }
   next();
 }
+
+export function requireCeo(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'CEO') {
+    res.status(403).json({ error: 'CEO access required' });
+    return;
+  }
+  next();
+}

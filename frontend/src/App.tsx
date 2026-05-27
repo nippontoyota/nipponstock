@@ -25,6 +25,8 @@ import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
 import FinanceHeadPage from './pages/finance/FinanceHeadPage';
 import ClusterManagerShell from './layouts/ClusterManagerShell';
 import ClusterManagerPage from './pages/cluster/ClusterManagerPage';
+import CEOShell from './layouts/CEOShell';
+import CEOPage from './pages/ceo/CEOPage';
 
 function RequireAuth({ children, role }: { children: JSX.Element; role?: string | string[] }) {
   const { user } = useAuth();
@@ -113,6 +115,18 @@ export default function App() {
         <Route index element={<ClusterManagerPage />} />
       </Route>
 
+      {/* CEO routes */}
+      <Route
+        path="/ceo"
+        element={
+          <RequireAuth role="CEO">
+            <CEOShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<CEOPage />} />
+      </Route>
+
       {/* Root redirect — role-aware */}
       <Route
         path="/"
@@ -122,6 +136,7 @@ export default function App() {
             user.role === 'FINANCE_OFFICER'  ? <Navigate to="/finance"      replace /> :
             user.role === 'FINANCE_HEAD'     ? <Navigate to="/finance-head" replace /> :
             user.role === 'CLUSTER_MANAGER'  ? <Navigate to="/cluster"      replace /> :
+            user.role === 'CEO'              ? <Navigate to="/ceo"          replace /> :
                                                <Navigate to="/sales"        replace />
           ) : (
             <Navigate to="/login" replace />
