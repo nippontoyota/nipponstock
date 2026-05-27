@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { differenceInHours } from 'date-fns';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface MTDSummary {
@@ -21,11 +23,35 @@ interface FinanceSummary {
   disbursed: number;
 }
 
-interface StockRow   { branch: string; stockStatus: string;  count: number; }
-interface PayRow     { branch: string; paymentStatus: string; count: number; }
-interface AgeRow     { branch: string; ageBucket: string;    count: number; }
-interface PurchaseRow { branch: string; purchaseMode: string; count: number; }
+interface StockRow    { branch: string; stockStatus: string;   count: number; }
+interface PayRow      { branch: string; paymentStatus: string; count: number; }
+interface AgeRow      { branch: string; ageBucket: string;     count: number; }
+interface PurchaseRow { branch: string; purchaseMode: string;  count: number; }
 interface StatusRow   { branch: string; financeStatus: string; count: number; }
+
+interface RawBlocking {
+  id: string;
+  customerName: string | null;
+  orderId: string | null;
+  consultantName: string | null;
+  teamLeaderName: string | null;
+  paymentMode: string | null;
+  paymentStatus: string | null;
+  hardBlockAt: string | null;
+  expiryAt: string | null;
+  expectedBillingDate: string | null;
+  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
+  branch: { name: string; branchCode: string | null };
+  user: { fullName: string };
+  financeRecord: {
+    purchaseMode: string | null;
+    bankName: string | null;
+    loanAmount: number | null;
+    financeStatus: string | null;
+    expectedDisbursementDate: string | null;
+    otherRemarks: string | null;
+  } | null;
+}
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const STOCK_COLS   = ['BND', 'MDDP', 'CTDMS', 'Unknown'];
@@ -117,7 +143,65 @@ export default function ClusterManagerPage() {
   const [finSummary, setFinSummary] = useState<FinanceSummary | null>(null);
   const [purchaseData, setPurchaseData] = useState<PurchaseRow[]>([]);
   const [statusData, setStatusData]     = useState<StatusRow[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading]       = useState(true);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadExcel = async () => {
+    setDownloading(true);
+    try {
+      const { data } = await api.get<RawBlocking[]>('/cluster-manager/all-blockings');
+      const rows = data.map((b) => {
+        const daysLeft = b.expiryAt
+          ? Math.max(0, Math.floor(differenceInHours(new Date(b.expiryAt), new Date()) / 24))
+          : '';
+        return {
+          'Branch':               b.branch.name,
+          'Branch Code':          b.branch.branchCode ?? '',
+          'Sales Manager':        b.user.fullName,
+          'Customer':             b.customerName ?? '',
+          'Chassis Year':         b.vehicle.chassisYear,
+          'Model':                b.vehicle.model,
+          'Suffix':               b.vehicle.suffix,
+          'Colour':               b.vehicle.colour,
+          'Chassis No':           b.vehicle.chassisNumber,
+          'Stock Status':         b.vehicle.stockStatus ?? '',
+          'Stockyard Location':   b.vehicle.stockyardLocation ?? '',
+          'Order ID':             b.orderId ?? '',
+          'Consultant':           b.consultantName ?? '',
+          'Team Leader':          b.teamLeaderName ?? '',
+          'Payment Mode':         b.paymentMode ?? '',
+          'Payment Status':       b.paymentStatus ?? '',
+          'Blocked Date':         b.hardBlockAt ? new Date(b.hardBlockAt).toLocaleDateString('en-GB') : '',
+          'Days Left':            daysLeft,
+          'Expiry':               b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : '',
+          'Expected Billing':     b.expectedBillingDate ? new Date(b.expectedBillingDate).toLocaleDateString('en-GB') : '',
+          'FO Purchase Mode':     b.financeRecord?.purchaseMode ?? '',
+          'FO Bank Name':         b.financeRecord?.bankName ?? '',
+          'FO Loan Amount':       b.financeRecord?.loanAmount ?? '',
+          'FO Finance Status':    b.financeRecord?.financeStatus ?? '',
+          'FO Exp. Disbursement': b.financeRecord?.expectedDisbursementDate
+            ? new Date(b.financeRecord.expectedDisbursementDate).toLocaleDateString('en-GB')
+            : '',
+          'FO Remarks':           b.financeRecord?.otherRemarks ?? '',
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      // Auto column widths
+      const colWidths = Object.keys(rows[0] ?? {}).map((k) => ({
+        wch: Math.max(k.length, ...rows.map((r) => String(r[k as keyof typeof r] ?? '').length)) + 2,
+      }));
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Cluster ${cluster} Blockings`);
+      XLSX.writeFile(wb, `cluster${cluster}_blockings_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch {
+      // silent — toast would need import
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -175,13 +259,23 @@ export default function ClusterManagerPage() {
             Month-to-date performance and finance overview for your cluster branches.
           </p>
         </div>
-        <button
-          onClick={fetchAll}
-          className="flex items-center gap-2 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors"
-        >
-          <span className="material-symbols-outlined text-base">refresh</span>
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={downloadExcel}
+            disabled={downloading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container text-xs font-bold uppercase tracking-widest font-headline transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-lg">download</span>
+            {downloading ? 'Downloading…' : 'Download Excel'}
+          </button>
+          <button
+            onClick={fetchAll}
+            className="flex items-center gap-2 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── MTD KPI Row ─────────────────────────────────────────────────────── */}

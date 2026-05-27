@@ -262,6 +262,28 @@ router.get('/finance-branch-purchase', async (req: AuthRequest, res: Response) =
   res.json(rows);
 });
 
+// ── Raw blocking data (all cluster branches) ──────────────────────────────────
+router.get('/all-blockings', async (req: AuthRequest, res: Response) => {
+  const clusterNumber = req.user!.clusterNumber;
+  if (!clusterNumber) { res.status(403).json({ error: 'No cluster assigned' }); return; }
+
+  const branchIds = await getClusterBranchIds(clusterNumber);
+  if (!branchIds.length) { res.json([]); return; }
+
+  const blockings = await prisma.blockingRequest.findMany({
+    where: { branchId: { in: branchIds }, blockType: 'HARD', status: 'ACTIVE' },
+    orderBy: { hardBlockAt: 'desc' },
+    include: {
+      vehicle: { select: { model: true, suffix: true, colour: true, chassisYear: true, chassisNumber: true, stockStatus: true, stockyardLocation: true } },
+      branch: { select: { name: true, branchCode: true } },
+      user: { select: { fullName: true } },
+      financeRecord: true,
+    },
+  });
+
+  res.json(blockings);
+});
+
 // ── Finance Branch × Finance Status pivot ─────────────────────────────────────
 router.get('/finance-branch-status', async (req: AuthRequest, res: Response) => {
   const clusterNumber = req.user!.clusterNumber;
