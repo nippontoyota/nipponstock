@@ -62,6 +62,7 @@ export default function MyBlockingsPage() {
   const [delivering, setDelivering] = useState(false);
   const [tab, setTab] = useState<'active' | 'history'>('active');
   const [search, setSearch] = useState('');
+  const [payFilter, setPayFilter] = useState<string>(''); // '' = All
 
   // Edit details modal state
   const [editTarget, setEditTarget] = useState<Blocking | null>(null);
@@ -219,7 +220,15 @@ export default function MyBlockingsPage() {
     );
   };
 
-  const displayed = applySearch(tab === 'active' ? active : history);
+  const applyPayFilter = (list: Blocking[]) => {
+    if (!payFilter) return list;
+    return list.filter((b) => (b.paymentStatus ?? '') === payFilter);
+  };
+
+  const displayed = applyPayFilter(applySearch(tab === 'active' ? active : history));
+
+  // Unique payment statuses present in active blockings (for filter chips)
+  const activePayStatuses = Array.from(new Set(active.map((b) => b.paymentStatus).filter(Boolean))) as string[];
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -291,7 +300,7 @@ export default function MyBlockingsPage() {
       </div>
 
       {/* Search bar */}
-      <div className="relative mb-6 max-w-sm">
+      <div className="relative mb-4 max-w-sm">
         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
         <input
           className="input pl-10 w-full"
@@ -305,6 +314,28 @@ export default function MyBlockingsPage() {
           </button>
         )}
       </div>
+
+      {/* Payment Status filter chips */}
+      {tab === 'active' && activePayStatuses.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-[10px] font-label uppercase tracking-widest text-zinc-500">Payment Status:</span>
+          <button
+            onClick={() => setPayFilter('')}
+            className={`px-3 py-1 rounded-full text-[10px] font-label font-black uppercase tracking-widest transition-colors ${!payFilter ? 'bg-primary text-on-primary' : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container'}`}
+          >
+            All ({active.length})
+          </button>
+          {activePayStatuses.map((s) => (
+            <button
+              key={s}
+              onClick={() => setPayFilter(payFilter === s ? '' : s)}
+              className={`px-3 py-1 rounded-full text-[10px] font-label font-black uppercase tracking-widest transition-colors ${payFilter === s ? 'bg-secondary text-on-secondary' : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container'}`}
+            >
+              {s} ({active.filter((b) => b.paymentStatus === s).length})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bento grid */}
       {displayed.length === 0 ? (
@@ -359,7 +390,7 @@ export default function MyBlockingsPage() {
                     </div>
                   </div>
 
-                  {/* Expiry badge */}
+                  {/* Expiry + payment badges */}
                   {b.expiryAt && (
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2 bg-zinc-950/50 px-3 py-2 rounded-xl" style={{ border: '1px solid rgba(67,70,86,0.3)' }}>
@@ -370,6 +401,20 @@ export default function MyBlockingsPage() {
                       </div>
                       <span className={`badge ${b.paymentMode === 'CASH' ? 'bg-surface-container-high text-zinc-400' : 'bg-secondary-container text-secondary'}`}>
                         {b.paymentMode}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Payment Status badge */}
+                  {b.paymentStatus && (
+                    <div className="mb-4">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-label font-black uppercase tracking-widest
+                        ${b.paymentStatus === 'Full payment received' ? 'bg-green-900/40 text-green-400' :
+                          b.paymentStatus === 'Ready for Disbursement' ? 'bg-primary/10 text-primary' :
+                          b.paymentStatus === 'Part payment received' ? 'bg-orange-900/30 text-orange-400' :
+                          'bg-surface-container-high text-on-surface-variant'}`}>
+                        <span className="material-symbols-outlined text-xs">payments</span>
+                        {b.paymentStatus}
                       </span>
                     </div>
                   )}
