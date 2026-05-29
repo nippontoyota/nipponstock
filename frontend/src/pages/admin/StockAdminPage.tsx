@@ -94,7 +94,7 @@ export default function StockAdminPage() {
     amountReceived: '',
     financeType: '' as '' | 'IN_HOUSE' | 'OUTHOUSE',
     financierBank: '',
-    paymentStatus: 'Full payment received',
+    paymentStatus: 'Only Booking Received',
     expectedBillingDate: '',
   });
   const [submittingAdminBlock, setSubmittingAdminBlock] = useState(false);
@@ -241,7 +241,7 @@ export default function StockAdminPage() {
     setAdminBlockVehicle(v);
     setAdminBlockStep(1);
     setSelectedUserId('');
-    setAdminBlockForm({ orderId: '', customerName: '', consultantName: '', teamLeaderName: '', paymentMode: 'CASH', amountReceived: '', financeType: '', financierBank: '', paymentStatus: 'Full payment received', expectedBillingDate: '' });
+    setAdminBlockForm({ orderId: '', customerName: '', consultantName: '', teamLeaderName: '', paymentMode: 'CASH', amountReceived: '', financeType: '', financierBank: '', paymentStatus: 'Only Booking Received', expectedBillingDate: '' });
     setOrderIdError('');
     if (salesUsers.length === 0) {
       const { data } = await api.get('/users');
@@ -602,10 +602,12 @@ export default function StockAdminPage() {
                   <label className="label">Payment Status *</label>
                   <div className="relative">
                     <select className="input appearance-none pr-8" value={adminBlockForm.paymentStatus} onChange={(e) => abf({ paymentStatus: e.target.value })}>
-                      <option>Full payment received</option>
+                      <option>Down Payment Received</option>
                       <option>Only Booking Received</option>
-                      <option>Part payment received</option>
+                      <option>Part Payment Received</option>
+                      <option>Full Payment Received</option>
                       <option>Ready for Disbursement</option>
+                      <option>Regd. In Progress</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                   </div>
