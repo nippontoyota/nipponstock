@@ -27,6 +27,7 @@ interface Blocking {
   financierBank: string | null;
   expectedBillingDate: string | null;
   expiryAt: string | null;
+  fullPaymentAt: string | null;
   hardBlockAt: string | null;
   vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
   branch: { name: string };
@@ -262,7 +263,9 @@ export default function MyBlockingsPage() {
                   'Branch': b.branch.name,
                   'Blocked Date': b.hardBlockAt ? new Date(b.hardBlockAt).toLocaleDateString('en-GB') : '',
                   'Days Left': daysLeft,
-                  'Expiry': b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : '',
+                  'Expiry': b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : (b.fullPaymentAt ? 'No Expiry (Full Paid)' : ''),
+                  'Full Payment Date': b.fullPaymentAt ? new Date(b.fullPaymentAt).toLocaleDateString('en-GB') : '',
+                  'Days Since Full Payment': b.fullPaymentAt ? Math.floor((Date.now() - new Date(b.fullPaymentAt).getTime()) / 86_400_000) : '',
                   // Finance Officer fields
                   'FO Purchase Mode': b.financeRecord?.purchaseMode ?? '',
                   'FO Bank Name': b.financeRecord?.bankName ?? '',
@@ -392,8 +395,20 @@ export default function MyBlockingsPage() {
                     </div>
                   </div>
 
-                  {/* Expiry + payment badges */}
-                  {b.expiryAt && (
+                  {/* Expiry / Full-Payment counter */}
+                  {b.fullPaymentAt ? (
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2 bg-green-950/60 px-3 py-2 rounded-xl" style={{ border: '1px solid rgba(34,197,94,0.25)' }}>
+                        <p className="text-[10px] font-label uppercase tracking-widest text-green-400">Days Since Full Pymt</p>
+                        <span className="text-2xl font-headline font-bold tracking-tighter text-green-400">
+                          {String(Math.floor((Date.now() - new Date(b.fullPaymentAt).getTime()) / 86_400_000)).padStart(2, '0')}
+                        </span>
+                      </div>
+                      <span className={`badge ${b.paymentMode === 'CASH' ? 'bg-surface-container-high text-zinc-400' : 'bg-secondary-container text-secondary'}`}>
+                        {b.paymentMode}
+                      </span>
+                    </div>
+                  ) : b.expiryAt ? (
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2 bg-zinc-950/50 px-3 py-2 rounded-xl" style={{ border: '1px solid rgba(67,70,86,0.3)' }}>
                         <p className={`text-[10px] font-label uppercase tracking-widest ${expiryTextColor(b.expiryAt)}`}>Days to Expiry</p>
@@ -405,7 +420,7 @@ export default function MyBlockingsPage() {
                         {b.paymentMode}
                       </span>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Payment Status badge */}
                   {b.paymentStatus && (

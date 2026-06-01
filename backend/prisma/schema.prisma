@@ -158,6 +158,7 @@ model BlockingRequest {
   paymentMode         PaymentMode?
   financierBank       String?
   paymentStatus       String?
+  fullPaymentAt       DateTime?
   expectedBillingDate DateTime?
   amountReceived      Float?
   receiptUrl          String?

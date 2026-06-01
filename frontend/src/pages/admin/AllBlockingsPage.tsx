@@ -15,7 +15,7 @@ interface FemResult { total: number; successful: number; failed: number; details
 interface Blocking {
   id: string; blockType: string; status: string; customerName: string | null; consultantName: string | null;
   paymentMode: string | null; paymentStatus: string | null; orderId: string | null; financierBank: string | null;
-  expectedBillingDate: string | null; expiryAt: string | null; hardBlockAt: string | null; adminNotes: string | null;
+  expectedBillingDate: string | null; expiryAt: string | null; fullPaymentAt: string | null; hardBlockAt: string | null; adminNotes: string | null;
   vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null };
   user: { fullName: string; loginId: string };
   branch: { name: string };
@@ -145,7 +145,9 @@ export default function AllBlockingsPage() {
         'Financier Bank': b.financierBank ?? '',
         'Date of Blocking': b.hardBlockAt ? format(new Date(b.hardBlockAt), 'dd/MM/yyyy') : '',
         'Expected Billing': b.expectedBillingDate ? format(new Date(b.expectedBillingDate), 'dd/MM/yyyy') : '',
-        'Expires At': b.expiryAt ? format(new Date(b.expiryAt), 'dd/MM/yyyy HH:mm') : '',
+        'Expires At': b.expiryAt ? format(new Date(b.expiryAt), 'dd/MM/yyyy HH:mm') : (b.fullPaymentAt ? 'No Expiry (Full Paid)' : ''),
+        'Full Payment Date': b.fullPaymentAt ? format(new Date(b.fullPaymentAt), 'dd/MM/yyyy') : '',
+        'Days Since Full Payment': b.fullPaymentAt ? Math.floor((Date.now() - new Date(b.fullPaymentAt).getTime()) / 86_400_000) : '',
         'Admin Notes': b.adminNotes ?? '',
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -272,7 +274,11 @@ export default function AllBlockingsPage() {
                   <td className="px-4 py-3"><span className="badge bg-surface-container-high text-zinc-400">{b.blockType}</span></td>
                   <td className="px-4 py-3"><span className={`badge ${statusColor[b.status] ?? 'bg-surface-container text-zinc-500'}`}>{b.status}</span></td>
                   <td className="px-4 py-3 text-xs text-on-surface-variant whitespace-nowrap">{b.hardBlockAt ? format(new Date(b.hardBlockAt), 'dd/MM/yyyy') : '—'}</td>
-                  <td className="px-4 py-3 text-xs text-on-surface-variant">{b.expiryAt ? formatDistanceToNow(new Date(b.expiryAt), { addSuffix: true }) : '—'}</td>
+                  <td className="px-4 py-3 text-xs text-on-surface-variant">
+                    {b.fullPaymentAt
+                      ? <span className="text-green-400 font-semibold">{Math.floor((Date.now() - new Date(b.fullPaymentAt).getTime()) / 86_400_000)}d since full pymt</span>
+                      : b.expiryAt ? formatDistanceToNow(new Date(b.expiryAt), { addSuffix: true }) : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <button onClick={() => openEdit(b)} className="text-primary hover:text-on-primary-container font-label text-xs font-bold uppercase tracking-widest transition-colors">Edit</button>
                   </td>

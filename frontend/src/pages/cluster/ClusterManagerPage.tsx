@@ -39,6 +39,7 @@ interface RawBlocking {
   paymentStatus: string | null;
   hardBlockAt: string | null;
   expiryAt: string | null;
+  fullPaymentAt: string | null;
   expectedBillingDate: string | null;
   vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
   branch: { name: string; branchCode: string | null };
@@ -173,7 +174,9 @@ export default function ClusterManagerPage() {
           'Payment Status':       b.paymentStatus ?? '',
           'Blocked Date':         b.hardBlockAt ? new Date(b.hardBlockAt).toLocaleDateString('en-GB') : '',
           'Days Left':            daysLeft,
-          'Expiry':               b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : '',
+          'Expiry':               b.expiryAt ? new Date(b.expiryAt).toLocaleDateString('en-GB') : (b.fullPaymentAt ? 'No Expiry (Full Paid)' : ''),
+          'Full Payment Date':    b.fullPaymentAt ? new Date(b.fullPaymentAt).toLocaleDateString('en-GB') : '',
+          'Days Since Full Pymt': b.fullPaymentAt ? Math.floor((Date.now() - new Date(b.fullPaymentAt).getTime()) / 86_400_000) : '',
           'Expected Billing':     b.expectedBillingDate ? new Date(b.expectedBillingDate).toLocaleDateString('en-GB') : '',
           'FO Purchase Mode':     b.financeRecord?.purchaseMode ?? '',
           'FO Bank Name':         b.financeRecord?.bankName ?? '',

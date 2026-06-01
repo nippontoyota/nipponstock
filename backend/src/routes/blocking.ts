@@ -20,6 +20,18 @@ const PAYMENT_STATUSES = [
 ] as const;
 const paymentStatusEnum = z.enum(PAYMENT_STATUSES);
 
+// When paymentStatus changes to/from 'Full Payment Received', update expiryAt + fullPaymentAt
+function fullPaymentFields(newStatus: string, existingStatus?: string | null): Record<string, unknown> {
+  if (newStatus === 'Full Payment Received') {
+    return { expiryAt: null, fullPaymentAt: new Date() };
+  }
+  if (existingStatus === 'Full Payment Received') {
+    // Moving away from Full Payment Received — clear the timestamp (expiry restored by admin if needed)
+    return { fullPaymentAt: null };
+  }
+  return {};
+}
+
 // POST /blocking/soft — atomic soft block
 router.post('/soft', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
@@ -149,7 +161,9 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
   }
 
   const days = await getBlockingDays(existing.vehicle.model, existing.vehicle.stockStatus);
-  const expiryAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const defaultExpiry = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const fpFields = fullPaymentFields(formData.paymentStatus);
+  const expiryAt = fpFields.expiryAt !== undefined ? (fpFields.expiryAt as Date | null) : defaultExpiry;
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
@@ -164,6 +178,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
           blockType: 'HARD',
           hardBlockAt: new Date(),
           expiryAt,
+          ...fpFields,
           ...formData,
           expectedBillingDate: formData.expectedBillingDate ? new Date(formData.expectedBillingDate) : undefined,
         },
@@ -228,7 +243,9 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
 
   const days = await getBlockingDays(vehicle.model, vehicle.stockStatus);
   const now = new Date();
-  const expiryAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const defaultExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const fpFields = fullPaymentFields(formData.paymentStatus);
+  const expiryAt = fpFields.expiryAt !== undefined ? (fpFields.expiryAt as Date | null) : defaultExpiry;
 
   try {
     const blocking = await prisma.$transaction(async (tx) => {
@@ -242,6 +259,7 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
           softBlockAt: now,
           hardBlockAt: now,
           expiryAt,
+          ...(fpFields.fullPaymentAt ? { fullPaymentAt: fpFields.fullPaymentAt as Date } : {}),
           orderId: formData.orderId,
           customerName: formData.customerName,
           consultantName: formData.consultantName,
@@ -328,9 +346,10 @@ router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
 
   if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
 
+  const fpFields = fullPaymentFields(parsed.data.paymentStatus, existing.paymentStatus);
   const updated = await prisma.blockingRequest.update({
     where: { id: req.params.id },
-    data: { paymentStatus: parsed.data.paymentStatus },
+    data: { paymentStatus: parsed.data.paymentStatus, ...fpFields },
   });
 
   await logAudit({
@@ -442,6 +461,7 @@ router.patch('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
 
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.expectedBillingDate) data.expectedBillingDate = new Date(parsed.data.expectedBillingDate);
+  if (parsed.data.paymentStatus) Object.assign(data, fullPaymentFields(parsed.data.paymentStatus, existing.paymentStatus));
 
   const updated = await prisma.blockingRequest.update({ where: { id: req.params.id }, data });
   await logAudit({ entityType: 'BLOCKING', entityId: req.params.id, action: 'EDITED', performedById: req.user!.userId, previousValue: existing, newValue: updated });

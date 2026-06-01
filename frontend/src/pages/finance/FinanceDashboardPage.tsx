@@ -22,6 +22,7 @@ interface Blocking {
   paymentMode: string | null;
   hardBlockAt: string | null;
   expiryAt: string | null;
+  fullPaymentAt: string | null;
   vehicle: {
     model: string;
     suffix: string;
