@@ -75,10 +75,8 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
       );
 
 
-      // Sort: oldest chassis year first; within same year, earliest assignmentDate first
+      // Sort: earliest assignmentDate first (chassisYear is fixed by the request filter or irrelevant)
       matching.sort((a, b) => {
-        const yearDiff = (a.chassisYear ?? 9999) - (b.chassisYear ?? 9999);
-        if (yearDiff !== 0) return yearDiff;
         const aDate = a.assignmentDate ? new Date(a.assignmentDate).getTime() : 0;
         const bDate = b.assignmentDate ? new Date(b.assignmentDate).getTime() : 0;
         return aDate - bDate;
