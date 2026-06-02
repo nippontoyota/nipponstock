@@ -78,6 +78,7 @@ const AGE_COLS      = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
 const FIN_STATUS_COLS = ['Login Pending','Logged Approval Pending','Logged Document Pending','Approved','Agreement Done','Disbursed','Rejected'];
 const PAY_STATUS_COLS = ['Down Payment Received','Only Booking Received','Part Payment Received','Full Payment Received','Ready for Disbursement','Regd. In Progress','Not Updated'];
+const FP_AGE_COLS   = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
 
 // ── Chart colours ─────────────────────────────────────────────────────────────
 const STOCK_COLORS: Record<string, string> = { BND: '#6750A4', CTDMS: '#F59E0B', MDDP: '#10B981', Unknown: '#6b7280' };
@@ -186,11 +187,12 @@ export default function CEOPage() {
   const [banks, setBanks]               = useState<BankRow[]>([]);
   const [modelPurchase, setModelPurchase]   = useState<R2[]>([]);
   const [modelFinStatus, setModelFinStatus] = useState<R2[]>([]);
+  const [fpAge, setFpAge]                   = useState<R2[]>([]);
   const [loading, setLoading]               = useState(true);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst] = await Promise.all([
+    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
@@ -208,6 +210,7 @@ export default function CEOPage() {
       api.get('/ceo/finance-bank'),
       api.get('/ceo/model-purchase'),
       api.get('/ceo/model-finance-status'),
+      api.get('/ceo/full-payment-ageing'),
     ]);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
@@ -220,6 +223,7 @@ export default function CEOPage() {
     setFinPurchase(fp.data); setFinStatus(fst.data); setBanks(fbank.data);
     setModelPurchase(mapModelKey(mpur.data, 'model'));
     setModelFinStatus(mapModelKey(mfst.data, 'model'));
+    setFpAge(fpa.data);
     setLoading(false);
   }, []);
 
@@ -236,6 +240,7 @@ export default function CEOPage() {
   const activeFinStatusCols  = FIN_STATUS_COLS.filter((c) => finStatus.some((r) => r['financeStatus'] === c));
   const activeModelPurchaseCols = PURCHASE_COLS.filter((c) => modelPurchase.some((r) => r['purchaseMode'] === c));
   const activeModelFinStatusCols = FIN_STATUS_COLS.filter((c) => modelFinStatus.some((r) => r['financeStatus'] === c));
+  const activeFpAgeCols          = FP_AGE_COLS.filter((c) => fpAge.some((r) => r['dayBucket'] === c));
 
   // Transform branch-stock data for stacked bar chart (with totals for labels)
   const barBranches = Array.from(new Set(branchStockChart.map((r) => String(r['branch'])))).sort();
@@ -518,6 +523,19 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Model × Finance Status (In House Cases)" icon="account_tree" />
         <PivotTable rowLabel="Model" data={modelFinStatus} rowKey="model" colKey="financeStatus" activeCols={activeModelFinStatusCols} colorFn={statusColour} />
+      </section>
+
+      {/* Full Payment Ageing */}
+      <section>
+        <SectionHead title="Days Since Full Payment — BND / CTDMS Physical Stock" icon="payments" />
+        <PivotTable
+          rowLabel="Branch"
+          data={fpAge}
+          rowKey="branch"
+          colKey="dayBucket"
+          activeCols={activeFpAgeCols}
+          colorFn={(c) => (Number(c) >= 5 || c === '8+') ? 'text-red-400' : Number(c) >= 3 ? 'text-orange-400' : 'text-green-400'}
+        />
       </section>
 
       {/* Bank × Count */}

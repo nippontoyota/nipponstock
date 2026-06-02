@@ -28,6 +28,7 @@ interface PayRow      { branch: string; paymentStatus: string; count: number; }
 interface AgeRow      { branch: string; ageBucket: string;     count: number; }
 interface PurchaseRow { branch: string; purchaseMode: string;  count: number; }
 interface StatusRow   { branch: string; financeStatus: string; count: number; }
+interface FPAgeRow    { branch: string; dayBucket: string;     count: number; }
 
 interface RawBlocking {
   id: string;
@@ -58,6 +59,7 @@ interface RawBlocking {
 const STOCK_COLS   = ['BND', 'MDDP', 'CTDMS', 'Unknown'];
 const AGE_COLS     = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
+const FP_AGE_COLS   = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
 const FINANCE_STATUS_COLS = [
   'Login Pending', 'Logged Approval Pending', 'Logged Document Pending',
   'Approved', 'Agreement Done', 'Disbursed', 'Rejected',
@@ -144,6 +146,7 @@ export default function ClusterManagerPage() {
   const [finSummary, setFinSummary] = useState<FinanceSummary | null>(null);
   const [purchaseData, setPurchaseData] = useState<PurchaseRow[]>([]);
   const [statusData, setStatusData]     = useState<StatusRow[]>([]);
+  const [fpAgeData, setFpAgeData]       = useState<FPAgeRow[]>([]);
   const [loading, setLoading]       = useState(true);
   const [downloading, setDownloading] = useState(false);
 
@@ -208,7 +211,7 @@ export default function ClusterManagerPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [m, s, p, a, fs, fp, fst] = await Promise.all([
+    const [m, s, p, a, fs, fp, fst, fpa] = await Promise.all([
       api.get('/cluster-manager/summary'),
       api.get('/cluster-manager/branch-stock'),
       api.get('/cluster-manager/branch-payment'),
@@ -216,6 +219,7 @@ export default function ClusterManagerPage() {
       api.get('/cluster-manager/finance-summary'),
       api.get('/cluster-manager/finance-branch-purchase'),
       api.get('/cluster-manager/finance-branch-status'),
+      api.get('/cluster-manager/full-payment-ageing'),
     ]);
     setMtd(m.data);
     setStockData(s.data);
@@ -224,6 +228,7 @@ export default function ClusterManagerPage() {
     setFinSummary(fs.data);
     setPurchaseData(fp.data);
     setStatusData(fst.data);
+    setFpAgeData(fpa.data);
     setLoading(false);
   }, []);
 
@@ -241,6 +246,7 @@ export default function ClusterManagerPage() {
   const agePivot      = buildPivot(ageData,      (r) => r.ageBucket,     activeAgeCols);
   const purchasePivot = buildPivot(purchaseData, (r) => r.purchaseMode,  activePurchaseCols);
   const statusPivot   = buildPivot(statusData,   (r) => r.financeStatus, activeStatusCols);
+  const fpAgePivot    = buildPivot(fpAgeData,    (r) => r.dayBucket,     FP_AGE_COLS);
 
   if (loading) {
     return (
@@ -494,6 +500,50 @@ export default function ClusterManagerPage() {
                   <td className={`${tdBranchCls} text-primary`}>Total</td>
                   {activeStatusCols.map((c) => <td key={c} className={`${tdTotCls} ${statusColour(c)}`}>{cell(statusPivot.colTotals.get(c))}</td>)}
                   <td className={`${tdTotCls} text-primary`}>{statusPivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Full Payment Ageing ───────────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Days Since Full Payment — BND / CTDMS Physical Stock" icon="payments" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                {FP_AGE_COLS.map((c) => (
+                  <th key={c} className={`${thCls} ${Number(c) >= 5 || c === '8+' ? 'text-red-400' : Number(c) >= 3 ? 'text-orange-400' : 'text-green-400'}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fpAgePivot.branches.map((br, i) => (
+                <tr key={br} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{br}</td>
+                  {FP_AGE_COLS.map((c) => {
+                    const v = fpAgePivot.lookup.get(`${br}\x01${c}`);
+                    const colClass = Number(c) >= 5 || c === '8+' ? 'text-red-400' : Number(c) >= 3 ? 'text-orange-400' : 'text-green-400';
+                    return <td key={c} className={`${tdCls} ${v ? colClass : ''}`}>{cell(v)}</td>;
+                  })}
+                  <td className={tdTotCls}>{fpAgePivot.rowTotals.get(br) ?? 0}</td>
+                </tr>
+              ))}
+              {fpAgePivot.branches.length === 0 && (
+                <tr><td colSpan={FP_AGE_COLS.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {fpAgePivot.branches.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {FP_AGE_COLS.map((c) => {
+                    const colClass = Number(c) >= 5 || c === '8+' ? 'text-red-400' : Number(c) >= 3 ? 'text-orange-400' : 'text-green-400';
+                    return <td key={c} className={`${tdTotCls} ${colClass}`}>{cell(fpAgePivot.colTotals.get(c))}</td>;
+                  })}
+                  <td className={`${tdTotCls} text-primary`}>{fpAgePivot.grand}</td>
                 </tr>
               )}
             </tbody>

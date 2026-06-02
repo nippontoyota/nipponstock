@@ -262,6 +262,51 @@ router.get('/finance-branch-purchase', async (req: AuthRequest, res: Response) =
   res.json(rows);
 });
 
+// ── Full Payment Ageing (BND/CTDMS physical stock, cluster branches) ─────────
+router.get('/full-payment-ageing', async (req: AuthRequest, res: Response) => {
+  const clusterNumber = req.user!.clusterNumber;
+  if (!clusterNumber) { res.status(403).json({ error: 'No cluster assigned' }); return; }
+
+  const codes = CLUSTER_BRANCHES[clusterNumber] ?? [];
+  const branches = await prisma.branch.findMany({
+    where: { branchCode: { in: codes } },
+    select: { id: true, name: true },
+  });
+  const branchIds = branches.map((b) => b.id);
+  if (!branchIds.length) { res.json([]); return; }
+
+  const blockings = await prisma.blockingRequest.findMany({
+    where: {
+      branchId: { in: branchIds },
+      blockType: 'HARD',
+      status: 'ACTIVE',
+      paymentStatus: 'Full Payment Received',
+      fullPaymentAt: { not: null },
+      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
+    },
+    select: {
+      fullPaymentAt: true,
+      branch: { select: { name: true } },
+    },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const days = Math.floor((now.getTime() - new Date(b.fullPaymentAt!).getTime()) / 86_400_000);
+    const bucket = days >= 8 ? '8+' : String(days);
+    const key = `${b.branch.name}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { branch: string; dayBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ branch: key.slice(0, sep), dayBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── Raw blocking data (all cluster branches) ──────────────────────────────────
 router.get('/all-blockings', async (req: AuthRequest, res: Response) => {
   const clusterNumber = req.user!.clusterNumber;

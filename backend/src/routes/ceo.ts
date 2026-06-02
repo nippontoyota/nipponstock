@@ -347,7 +347,40 @@ router.get('/model-finance-status', async (_req: AuthRequest, res: Response) => 
   res.json(rows);
 });
 
-// ── 12. Finance KPI Summary ───────────────────────────────────────────────────
+// ── 12. Full Payment Ageing (BND/CTDMS physical stock only) ──────────────────
+router.get('/full-payment-ageing', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: {
+      blockType: 'HARD',
+      status: 'ACTIVE',
+      paymentStatus: 'Full Payment Received',
+      fullPaymentAt: { not: null },
+      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
+    },
+    select: {
+      fullPaymentAt: true,
+      branch: { select: { name: true } },
+    },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const days = Math.floor((now.getTime() - new Date(b.fullPaymentAt!).getTime()) / 86_400_000);
+    const bucket = days >= 8 ? '8+' : String(days);
+    const key = `${b.branch.name}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { branch: string; dayBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ branch: key.slice(0, sep), dayBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── 13. Finance KPI Summary ───────────────────────────────────────────────────
 router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
   const finWhere = { blockingRequest: baseHard };
