@@ -238,17 +238,16 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
 
   const { vehicleId, onBehalfOfUserId, ...formData } = parsed.data;
 
-  // Verify vehicle is OPEN
-  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
-  if (!vehicle) { res.status(404).json({ error: 'Vehicle not found' }); return; }
-  if (vehicle.status !== 'OPEN') { res.status(409).json({ error: 'Vehicle is not open — it may have just been taken' }); return; }
-
-  // Get the user and their branch
+  // Get the user and their branch (before transaction — read-only, safe)
   const onBehalfUser = await prisma.user.findUnique({ where: { id: onBehalfOfUserId }, select: { id: true, branchId: true, fullName: true } });
   if (!onBehalfUser) { res.status(404).json({ error: 'User not found' }); return; }
   if (!onBehalfUser.branchId) { res.status(400).json({ error: 'Selected user has no branch assigned' }); return; }
 
-  const days = await getBlockingDays(vehicle.model, vehicle.stockStatus);
+  // Pre-fetch vehicle for getBlockingDays (model/stockStatus needed before tx)
+  const vehicleCheck = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicleCheck) { res.status(404).json({ error: 'Vehicle not found' }); return; }
+
+  const days = await getBlockingDays(vehicleCheck.model, vehicleCheck.stockStatus);
   const now = new Date();
   const defaultExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   const fpFields = fullPaymentFields(formData.paymentStatus);
@@ -256,7 +255,14 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
 
   try {
     const blocking = await prisma.$transaction(async (tx) => {
-      await tx.vehicle.update({ where: { id: vehicleId }, data: { status: 'HARD_BLOCKED' } });
+      // ── Atomic OPEN check + status flip ──────────────────────────────────────
+      // updateMany returns count=0 if vehicle is not OPEN, preventing race conditions
+      // where two admins block the same vehicle simultaneously.
+      const claimed = await tx.vehicle.updateMany({
+        where: { id: vehicleId, status: 'OPEN' },
+        data: { status: 'HARD_BLOCKED' },
+      });
+      if (claimed.count === 0) throw new Error('VEHICLE_NOT_OPEN');
       return tx.blockingRequest.create({
         data: {
           vehicleId,
@@ -293,7 +299,12 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
     emitBlockingUpdate(blocking.id);
     res.status(201).json(blocking);
   } catch (e: unknown) {
-    res.status(500).json({ error: 'Failed to create block', detail: String(e) });
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === 'VEHICLE_NOT_OPEN') {
+      res.status(409).json({ error: 'Vehicle is not open — it may have just been taken by another user' });
+    } else {
+      res.status(500).json({ error: 'Failed to create block', detail: msg });
+    }
   }
 });
 
