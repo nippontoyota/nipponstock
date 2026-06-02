@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
@@ -64,7 +64,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
           hiddenFromHeatmap: false,
           ...(chassisYear ? { chassisYear } : {}),
         },
-        select: { id: true, model: true, suffix: true, colour: true, stockStatus: true },
+        select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisYear: true, assignmentDate: true },
       });
 
       // Strip ALL unicode whitespace (including non-breaking spaces  , zero-width, etc.)
@@ -75,9 +75,18 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
       );
 
 
-      // Priority: BND → CTDMS → MDDP → any
+      // Sort: oldest chassis year first; within same year, earliest assignmentDate first
+      matching.sort((a, b) => {
+        const yearDiff = (a.chassisYear ?? 9999) - (b.chassisYear ?? 9999);
+        if (yearDiff !== 0) return yearDiff;
+        const aDate = a.assignmentDate ? new Date(a.assignmentDate).getTime() : 0;
+        const bDate = b.assignmentDate ? new Date(b.assignmentDate).getTime() : 0;
+        return aDate - bDate;
+      });
+
+      // Priority: BND → CTDMS → MDDP → any (within each tier, sort order above applies)
       const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
-      let vehicle: { id: string; model: string; suffix: string; colour: string; stockStatus: string | null } | null = null;
+      let vehicle: { id: string } | null = null;
       for (const ss of PRIORITY) {
         vehicle = matching.find((v) => v.stockStatus === ss) ?? null;
         if (vehicle) break;
