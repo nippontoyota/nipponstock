@@ -16,7 +16,6 @@ const PAYMENT_STATUSES = [
   'Part Payment Received',
   'Full Payment Received',
   'Ready for Disbursement',
-  'Regd. In Progress',
 ] as const;
 const paymentStatusEnum = z.enum(PAYMENT_STATUSES);
 

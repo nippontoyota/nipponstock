@@ -77,7 +77,7 @@ const STOCK_COLS    = ['BND', 'CTDMS', 'MDDP', 'Unknown', 'Not Set'];
 const AGE_COLS      = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
 const FIN_STATUS_COLS = ['Login Pending','Logged Approval Pending','Logged Document Pending','Approved','Agreement Done','Disbursed','Rejected'];
-const PAY_STATUS_COLS = ['Down Payment Received','Only Booking Received','Part Payment Received','Full Payment Received','Ready for Disbursement','Regd. In Progress','Not Updated'];
+const PAY_STATUS_COLS = ['Down Payment Received','Only Booking Received','Part Payment Received','Full Payment Received','Ready for Disbursement','Not Updated'];
 const FP_AGE_COLS   = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
 
 // ── Chart colours ─────────────────────────────────────────────────────────────

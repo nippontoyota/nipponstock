@@ -88,7 +88,6 @@ export default function MyBlockingsPage() {
     'Part Payment Received',
     'Full Payment Received',
     'Ready for Disbursement',
-    'Regd. In Progress',
   ];
 
   const RELEASE_REASONS = [
@@ -430,7 +429,6 @@ export default function MyBlockingsPage() {
                           b.paymentStatus === 'Ready for Disbursement' ? 'bg-primary/10 text-primary' :
                           b.paymentStatus === 'Part Payment Received' ? 'bg-orange-900/30 text-orange-400' :
                           b.paymentStatus === 'Down Payment Received' ? 'bg-yellow-900/30 text-yellow-400' :
-                          b.paymentStatus === 'Regd. In Progress' ? 'bg-teal-900/30 text-teal-400' :
                           'bg-surface-container-high text-on-surface-variant'}`}>
                         <span className="material-symbols-outlined text-xs">payments</span>
                         {b.paymentStatus}

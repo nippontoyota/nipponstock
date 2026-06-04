@@ -434,7 +434,6 @@ export default function BlockPage() {
                           <option value="Part Payment Received">Part Payment Received</option>
                           <option value="Full Payment Received">Full Payment Received</option>
                           <option value="Ready for Disbursement">Ready for Disbursement</option>
-                          <option value="Regd. In Progress">Regd. In Progress</option>
                         </select>
                         <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
                       </div>

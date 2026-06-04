@@ -397,7 +397,6 @@ export default function AllBlockingsPage() {
                     <option>Part Payment Received</option>
                     <option>Full Payment Received</option>
                     <option>Ready for Disbursement</option>
-                    <option>Regd. In Progress</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                 </div>
