@@ -242,6 +242,75 @@ router.get('/billing-pipeline', async (_req: AuthRequest, res: Response) => {
   res.json(rows);
 });
 
+// ── 11a. Ageing Stock — Physical BND/CTDMS (model × age bucket, OPEN + BLOCKED) ─
+const STOCK_AGE_BUCKETS = ['<30d', '30-50d', '51-70d', '71-100d', '101-150d', '150+d'] as const;
+function stockAgeBucket(days: number): string {
+  if (days < 30)  return '<30d';
+  if (days < 51)  return '30-50d';
+  if (days < 71)  return '51-70d';
+  if (days < 101) return '71-100d';
+  if (days < 151) return '101-150d';
+  return '150+d';
+}
+
+router.get('/stock-ageing', async (_req: AuthRequest, res: Response) => {
+  const vehicles = await prisma.vehicle.findMany({
+    where: {
+      stockStatus: { in: ['BND', 'CTDMS'] },
+      status: { in: ['OPEN', 'SOFT_BLOCKED', 'HARD_BLOCKED'] },
+    },
+    select: { model: true, assignmentDate: true, createdAt: true },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const v of vehicles) {
+    const ref = v.assignmentDate ?? v.createdAt;
+    const days = Math.floor((now.getTime() - new Date(ref).getTime()) / 86_400_000);
+    const bucket = stockAgeBucket(days);
+    const key = `${v.model}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── 11b. Active Blockings Ageing — Physical BND/CTDMS (model × age bucket) ───
+router.get('/blocking-stock-ageing', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: {
+      blockType: 'HARD',
+      status: 'ACTIVE',
+      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
+    },
+    select: {
+      vehicle: { select: { model: true, assignmentDate: true, createdAt: true } },
+    },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const ref = b.vehicle.assignmentDate ?? b.vehicle.createdAt;
+    const days = Math.floor((now.getTime() - new Date(ref).getTime()) / 86_400_000);
+    const bucket = stockAgeBucket(days);
+    const key = `${b.vehicle.model}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── 11. Release to Pool Analysis ──────────────────────────────────────────────
 router.get('/release-analysis', async (_req: AuthRequest, res: Response) => {
   // Get all self-releases from audit log (last 180 days)

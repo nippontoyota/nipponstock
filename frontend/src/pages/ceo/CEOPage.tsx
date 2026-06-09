@@ -78,7 +78,8 @@ const AGE_COLS      = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
 const FIN_STATUS_COLS = ['Login Pending','Logged Approval Pending','Logged Document Pending','Approved','Agreement Done','Disbursed','Rejected'];
 const PAY_STATUS_COLS = ['Down Payment Received','Only Booking Received','Part Payment Received','Full Payment Received','Ready for Disbursement','Not Updated'];
-const FP_AGE_COLS   = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
+const FP_AGE_COLS     = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
+const STOCK_AGE_COLS  = ['<30d', '30-50d', '51-70d', '71-100d', '101-150d', '150+d'];
 
 // ── Chart colours ─────────────────────────────────────────────────────────────
 const STOCK_COLORS: Record<string, string> = { BND: '#6750A4', CTDMS: '#F59E0B', MDDP: '#10B981', Unknown: '#6b7280' };
@@ -188,11 +189,13 @@ export default function CEOPage() {
   const [modelPurchase, setModelPurchase]   = useState<R2[]>([]);
   const [modelFinStatus, setModelFinStatus] = useState<R2[]>([]);
   const [fpAge, setFpAge]                   = useState<R2[]>([]);
+  const [stockAgeing, setStockAgeing]       = useState<R2[]>([]);
+  const [blockingStockAgeing, setBlockingStockAgeing] = useState<R2[]>([]);
   const [loading, setLoading]               = useState(true);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa] = await Promise.all([
+    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
@@ -211,6 +214,8 @@ export default function CEOPage() {
       api.get('/ceo/model-purchase'),
       api.get('/ceo/model-finance-status'),
       api.get('/ceo/full-payment-ageing'),
+      api.get('/ceo/stock-ageing'),
+      api.get('/ceo/blocking-stock-ageing'),
     ]);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
@@ -224,6 +229,8 @@ export default function CEOPage() {
     setModelPurchase(mapModelKey(mpur.data, 'model'));
     setModelFinStatus(mapModelKey(mfst.data, 'model'));
     setFpAge(fpa.data);
+    setStockAgeing(mapModelKey(sa.data, 'model'));
+    setBlockingStockAgeing(mapModelKey(bsa.data, 'model'));
     setLoading(false);
   }, []);
 
@@ -241,6 +248,8 @@ export default function CEOPage() {
   const activeModelPurchaseCols = PURCHASE_COLS.filter((c) => modelPurchase.some((r) => r['purchaseMode'] === c));
   const activeModelFinStatusCols = FIN_STATUS_COLS.filter((c) => modelFinStatus.some((r) => r['financeStatus'] === c));
   const activeFpAgeCols          = FP_AGE_COLS.filter((c) => fpAge.some((r) => r['dayBucket'] === c));
+  const activeStockAgeingCols    = STOCK_AGE_COLS.filter((c) => stockAgeing.some((r) => r['ageBucket'] === c));
+  const activeBlockingStockAgeCols = STOCK_AGE_COLS.filter((c) => blockingStockAgeing.some((r) => r['ageBucket'] === c));
 
   // Transform branch-stock data for stacked bar chart (with totals for labels)
   const barBranches = Array.from(new Set(branchStockChart.map((r) => String(r['branch'])))).sort();
@@ -400,6 +409,106 @@ export default function CEOPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
+        </div>
+      </section>
+
+      {/* ── Ageing Stock: Physical BND/CTDMS ─────────────────────────────── */}
+      <section>
+        <SectionHead title="Ageing Stock — Physical BND/CTDMS (OPEN + BLOCKED, by Assignment Date)" icon="inventory_2" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Model</th>
+                {STOCK_AGE_COLS.map((c) => (
+                  <th key={c} className={`${thCls} ${c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : 'text-green-400'}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const pivot = buildPivot(stockAgeing, 'model', 'ageBucket', activeStockAgeingCols);
+                return <>
+                  {pivot.branches.map((m, i) => (
+                    <tr key={m} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                      <td className={tdBrCls}>{m}</td>
+                      {STOCK_AGE_COLS.map((c) => {
+                        const v = pivot.lookup.get(`${m}\x01${c}`);
+                        const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                        return <td key={c} className={`${tdCls} ${v ? col : ''}`}>{v ? v : <span className="text-zinc-600">—</span>}</td>;
+                      })}
+                      <td className={tdTotCls}>{pivot.rowTotals.get(m) ?? 0}</td>
+                    </tr>
+                  ))}
+                  {pivot.branches.length === 0 && (
+                    <tr><td colSpan={STOCK_AGE_COLS.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+                  )}
+                  {pivot.branches.length > 0 && (
+                    <tr className="bg-surface-container">
+                      <td className={`${tdBrCls} text-primary`}>Total</td>
+                      {STOCK_AGE_COLS.map((c) => {
+                        const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                        const v = pivot.colTotals.get(c);
+                        return <td key={c} className={`${tdTotCls} ${col}`}>{v ? v : <span className="text-zinc-600">—</span>}</td>;
+                      })}
+                      <td className={`${tdTotCls} text-primary`}>{pivot.grand}</td>
+                    </tr>
+                  )}
+                </>;
+              })()}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Active Blockings Ageing: Physical BND/CTDMS ───────────────────── */}
+      <section>
+        <SectionHead title="Active Blockings Ageing — Physical BND/CTDMS (by Vehicle Assignment Date)" icon="lock_clock" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Model</th>
+                {STOCK_AGE_COLS.map((c) => (
+                  <th key={c} className={`${thCls} ${c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : 'text-green-400'}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const pivot = buildPivot(blockingStockAgeing, 'model', 'ageBucket', activeBlockingStockAgeCols);
+                return <>
+                  {pivot.branches.map((m, i) => (
+                    <tr key={m} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                      <td className={tdBrCls}>{m}</td>
+                      {STOCK_AGE_COLS.map((c) => {
+                        const v = pivot.lookup.get(`${m}\x01${c}`);
+                        const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                        return <td key={c} className={`${tdCls} ${v ? col : ''}`}>{v ? v : <span className="text-zinc-600">—</span>}</td>;
+                      })}
+                      <td className={tdTotCls}>{pivot.rowTotals.get(m) ?? 0}</td>
+                    </tr>
+                  ))}
+                  {pivot.branches.length === 0 && (
+                    <tr><td colSpan={STOCK_AGE_COLS.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+                  )}
+                  {pivot.branches.length > 0 && (
+                    <tr className="bg-surface-container">
+                      <td className={`${tdBrCls} text-primary`}>Total</td>
+                      {STOCK_AGE_COLS.map((c) => {
+                        const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                        const v = pivot.colTotals.get(c);
+                        return <td key={c} className={`${tdTotCls} ${col}`}>{v ? v : <span className="text-zinc-600">—</span>}</td>;
+                      })}
+                      <td className={`${tdTotCls} text-primary`}>{pivot.grand}</td>
+                    </tr>
+                  )}
+                </>;
+              })()}
+            </tbody>
+          </table>
         </div>
       </section>
 
