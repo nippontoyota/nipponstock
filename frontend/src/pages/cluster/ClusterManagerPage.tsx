@@ -29,6 +29,7 @@ interface AgeRow      { branch: string; ageBucket: string;     count: number; }
 interface PurchaseRow { branch: string; purchaseMode: string;  count: number; }
 interface StatusRow   { branch: string; financeStatus: string; count: number; }
 interface FPAgeRow    { branch: string; dayBucket: string;     count: number; }
+interface StockAgeRow { model: string;  ageBucket: string;    count: number; }
 
 interface RawBlocking {
   id: string;
@@ -60,6 +61,7 @@ const STOCK_COLS   = ['BND', 'MDDP', 'CTDMS', 'Unknown'];
 const AGE_COLS     = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
 const FP_AGE_COLS   = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
+const STOCK_AGE_COLS = ['<30d', '30-50d', '51-70d', '71-100d', '101-150d', '150+d'];
 const FINANCE_STATUS_COLS = [
   'Login Pending', 'Logged Approval Pending', 'Logged Document Pending',
   'Approved', 'Agreement Done', 'Disbursed', 'Rejected',
@@ -87,6 +89,21 @@ function buildPivot<T extends { branch: string }>(
 
   const grand = Array.from(rowTotals.values()).reduce((a, b) => a + b, 0);
   return { branches, lookup, colTotals, rowTotals, grand };
+}
+
+// ── Model-based pivot (for stock ageing tables) ───────────────────────────────
+function buildModelPivot(rows: StockAgeRow[], cols: string[]) {
+  const models = Array.from(new Set(rows.map((r) => r.model))).sort();
+  const lookup = new Map<string, number>();
+  const colTotals = new Map<string, number>();
+  const rowTotals = new Map<string, number>();
+  for (const r of rows) {
+    lookup.set(`${r.model}\x01${r.ageBucket}`, r.count);
+    colTotals.set(r.ageBucket, (colTotals.get(r.ageBucket) ?? 0) + r.count);
+    rowTotals.set(r.model, (rowTotals.get(r.model) ?? 0) + r.count);
+  }
+  const grand = Array.from(rowTotals.values()).reduce((a, b) => a + b, 0);
+  return { models, lookup, colTotals, rowTotals, grand };
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -146,7 +163,9 @@ export default function ClusterManagerPage() {
   const [finSummary, setFinSummary] = useState<FinanceSummary | null>(null);
   const [purchaseData, setPurchaseData] = useState<PurchaseRow[]>([]);
   const [statusData, setStatusData]     = useState<StatusRow[]>([]);
-  const [fpAgeData, setFpAgeData]       = useState<FPAgeRow[]>([]);
+  const [fpAgeData, setFpAgeData]             = useState<FPAgeRow[]>([]);
+  const [stockAgeData, setStockAgeData]       = useState<StockAgeRow[]>([]);
+  const [blockingStockAgeData, setBlockingStockAgeData] = useState<StockAgeRow[]>([]);
   const [loading, setLoading]       = useState(true);
   const [downloading, setDownloading] = useState(false);
 
@@ -211,7 +230,7 @@ export default function ClusterManagerPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [m, s, p, a, fs, fp, fst, fpa] = await Promise.all([
+    const [m, s, p, a, fs, fp, fst, fpa, sa, bsa] = await Promise.all([
       api.get('/cluster-manager/summary'),
       api.get('/cluster-manager/branch-stock'),
       api.get('/cluster-manager/branch-payment'),
@@ -220,6 +239,8 @@ export default function ClusterManagerPage() {
       api.get('/cluster-manager/finance-branch-purchase'),
       api.get('/cluster-manager/finance-branch-status'),
       api.get('/cluster-manager/full-payment-ageing'),
+      api.get('/cluster-manager/stock-ageing'),
+      api.get('/cluster-manager/blocking-stock-ageing'),
     ]);
     setMtd(m.data);
     setStockData(s.data);
@@ -229,6 +250,8 @@ export default function ClusterManagerPage() {
     setPurchaseData(fp.data);
     setStatusData(fst.data);
     setFpAgeData(fpa.data);
+    setStockAgeData(sa.data);
+    setBlockingStockAgeData(bsa.data);
     setLoading(false);
   }, []);
 
@@ -247,6 +270,11 @@ export default function ClusterManagerPage() {
   const purchasePivot = buildPivot(purchaseData, (r) => r.purchaseMode,  activePurchaseCols);
   const statusPivot   = buildPivot(statusData,   (r) => r.financeStatus, activeStatusCols);
   const fpAgePivot    = buildPivot(fpAgeData,    (r) => r.dayBucket,     FP_AGE_COLS);
+
+  const activeStockAgeCols         = STOCK_AGE_COLS.filter((c) => stockAgeData.some((r) => r.ageBucket === c));
+  const activeBlockingStockAgeCols = STOCK_AGE_COLS.filter((c) => blockingStockAgeData.some((r) => r.ageBucket === c));
+  const stockAgePivot         = buildModelPivot(stockAgeData,        activeStockAgeCols);
+  const blockingStockAgePivot = buildModelPivot(blockingStockAgeData, activeBlockingStockAgeCols);
 
   if (loading) {
     return (
@@ -544,6 +572,94 @@ export default function ClusterManagerPage() {
                     return <td key={c} className={`${tdTotCls} ${colClass}`}>{cell(fpAgePivot.colTotals.get(c))}</td>;
                   })}
                   <td className={`${tdTotCls} text-primary`}>{fpAgePivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Ageing Stock: Physical BND/CTDMS (all stock) ─────────────────────── */}
+      <section>
+        <SectionHead title="Ageing Stock — Physical BND/CTDMS (OPEN + BLOCKED, by Assignment Date)" icon="inventory_2" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Model</th>
+                {STOCK_AGE_COLS.map((c) => (
+                  <th key={c} className={`${thCls} ${c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : 'text-green-400'}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stockAgePivot.models.map((m, i) => (
+                <tr key={m} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{m}</td>
+                  {STOCK_AGE_COLS.map((c) => {
+                    const v = stockAgePivot.lookup.get(`${m}\x01${c}`);
+                    const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                    return <td key={c} className={`${tdCls} ${v ? col : ''}`}>{cell(v)}</td>;
+                  })}
+                  <td className={tdTotCls}>{stockAgePivot.rowTotals.get(m) ?? 0}</td>
+                </tr>
+              ))}
+              {stockAgePivot.models.length === 0 && (
+                <tr><td colSpan={STOCK_AGE_COLS.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {stockAgePivot.models.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {STOCK_AGE_COLS.map((c) => {
+                    const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                    return <td key={c} className={`${tdTotCls} ${col}`}>{cell(stockAgePivot.colTotals.get(c))}</td>;
+                  })}
+                  <td className={`${tdTotCls} text-primary`}>{stockAgePivot.grand}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Active Blockings Ageing: cluster branches only ───────────────────── */}
+      <section>
+        <SectionHead title="Active Blockings Ageing — BND/CTDMS (Cluster Branches, by Vehicle Assignment Date)" icon="lock_clock" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Model</th>
+                {STOCK_AGE_COLS.map((c) => (
+                  <th key={c} className={`${thCls} ${c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : 'text-green-400'}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {blockingStockAgePivot.models.map((m, i) => (
+                <tr key={m} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                  <td className={tdBranchCls}>{m}</td>
+                  {STOCK_AGE_COLS.map((c) => {
+                    const v = blockingStockAgePivot.lookup.get(`${m}\x01${c}`);
+                    const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                    return <td key={c} className={`${tdCls} ${v ? col : ''}`}>{cell(v)}</td>;
+                  })}
+                  <td className={tdTotCls}>{blockingStockAgePivot.rowTotals.get(m) ?? 0}</td>
+                </tr>
+              ))}
+              {blockingStockAgePivot.models.length === 0 && (
+                <tr><td colSpan={STOCK_AGE_COLS.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+              )}
+              {blockingStockAgePivot.models.length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  {STOCK_AGE_COLS.map((c) => {
+                    const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                    return <td key={c} className={`${tdTotCls} ${col}`}>{cell(blockingStockAgePivot.colTotals.get(c))}</td>;
+                  })}
+                  <td className={`${tdTotCls} text-primary`}>{blockingStockAgePivot.grand}</td>
                 </tr>
               )}
             </tbody>

@@ -307,6 +307,82 @@ router.get('/full-payment-ageing', async (req: AuthRequest, res: Response) => {
   res.json(rows);
 });
 
+// ── Ageing Stock — Physical BND/CTDMS (model × age bucket, OPEN + BLOCKED, all stock) ─
+const STOCK_AGE_BUCKETS_CM = ['<30d', '30-50d', '51-70d', '71-100d', '101-150d', '150+d'] as const;
+function stockAgeBucketCM(days: number): string {
+  if (days < 30)  return '<30d';
+  if (days < 51)  return '30-50d';
+  if (days < 71)  return '51-70d';
+  if (days < 101) return '71-100d';
+  if (days < 151) return '101-150d';
+  return '150+d';
+}
+
+router.get('/stock-ageing', async (_req: AuthRequest, res: Response) => {
+  const vehicles = await prisma.vehicle.findMany({
+    where: {
+      stockStatus: { in: ['BND', 'CTDMS'] },
+      status: { in: ['OPEN', 'SOFT_BLOCKED', 'HARD_BLOCKED'] },
+    },
+    select: { model: true, assignmentDate: true, createdAt: true },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const v of vehicles) {
+    const ref = v.assignmentDate ?? v.createdAt;
+    const days = Math.floor((now.getTime() - new Date(ref).getTime()) / 86_400_000);
+    const bucket = stockAgeBucketCM(days);
+    const key = `${v.model}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── Active Blockings Ageing — cluster branches only (model × age bucket) ──────
+router.get('/blocking-stock-ageing', async (req: AuthRequest, res: Response) => {
+  const clusterNumber = req.user!.clusterNumber;
+  if (!clusterNumber) { res.status(403).json({ error: 'No cluster assigned' }); return; }
+
+  const branchIds = await getClusterBranchIds(clusterNumber);
+  if (!branchIds.length) { res.json([]); return; }
+
+  const blockings = await prisma.blockingRequest.findMany({
+    where: {
+      branchId: { in: branchIds },
+      blockType: 'HARD',
+      status: 'ACTIVE',
+      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
+    },
+    select: {
+      vehicle: { select: { model: true, assignmentDate: true, createdAt: true } },
+    },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const ref = b.vehicle.assignmentDate ?? b.vehicle.createdAt;
+    const days = Math.floor((now.getTime() - new Date(ref).getTime()) / 86_400_000);
+    const bucket = stockAgeBucketCM(days);
+    const key = `${b.vehicle.model}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── Raw blocking data (all cluster branches) ──────────────────────────────────
 router.get('/all-blockings', async (req: AuthRequest, res: Response) => {
   const clusterNumber = req.user!.clusterNumber;
