@@ -513,7 +513,7 @@ router.patch('/:id/release', requireAdmin, async (req: AuthRequest, res: Respons
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
 
   await prisma.$transaction([
-    prisma.blockingRequest.update({ where: { id: req.params.id }, data: { status: 'EXPIRED' } }),
+    prisma.blockingRequest.update({ where: { id: req.params.id }, data: { status: 'EXPIRED', adminNotes: 'Manually released by admin' } }),
     prisma.vehicle.update({ where: { id: existing.vehicleId }, data: { status: 'OPEN' } }),
   ]);
 
