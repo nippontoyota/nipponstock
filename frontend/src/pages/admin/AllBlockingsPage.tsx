@@ -280,7 +280,9 @@ export default function AllBlockingsPage() {
                       : b.expiryAt ? formatDistanceToNow(new Date(b.expiryAt), { addSuffix: true }) : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => openEdit(b)} className="text-primary hover:text-on-primary-container font-label text-xs font-bold uppercase tracking-widest transition-colors">Edit</button>
+                    {b.status === 'ACTIVE'
+                      ? <button onClick={() => openEdit(b)} className="text-primary hover:text-on-primary-container font-label text-xs font-bold uppercase tracking-widest transition-colors">Edit</button>
+                      : <span className="font-label text-xs text-zinc-600 uppercase tracking-widest">—</span>}
                   </td>
                 </tr>
               ))}
