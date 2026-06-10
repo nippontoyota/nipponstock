@@ -44,7 +44,7 @@ export function startExpiryJob() {
       await prisma.$transaction([
         prisma.blockingRequest.update({
           where: { id: b.id },
-          data: { status: 'EXPIRED' },
+          data: { status: 'EXPIRED', adminNotes: 'Released due to expiry date' },
         }),
         prisma.vehicle.update({
           where: { id: b.vehicleId },
