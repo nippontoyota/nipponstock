@@ -67,7 +67,7 @@ export default function MyBlockingsPage() {
 
   // Edit details modal state
   const [editTarget, setEditTarget] = useState<Blocking | null>(null);
-  const [editForm, setEditForm] = useState({ customerName: '', orderId: '', expectedBillingDate: '' });
+  const [editForm, setEditForm] = useState({ customerName: '', orderId: '', expectedBillingDate: '', consultantName: '', teamLeaderName: '' });
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Release modal state
@@ -180,6 +180,8 @@ export default function MyBlockingsPage() {
       expectedBillingDate: b.expectedBillingDate
         ? new Date(b.expectedBillingDate).toISOString().slice(0, 10)
         : '',
+      consultantName: b.consultantName ?? '',
+      teamLeaderName: b.teamLeaderName ?? '',
     });
   };
 
@@ -190,6 +192,8 @@ export default function MyBlockingsPage() {
       const payload: Record<string, string> = {
         customerName: editForm.customerName.trim(),
         orderId: editForm.orderId.trim(),
+        consultantName: editForm.consultantName.trim(),
+        teamLeaderName: editForm.teamLeaderName.trim(),
         ...(editForm.expectedBillingDate
           ? { expectedBillingDate: new Date(editForm.expectedBillingDate).toISOString() }
           : {}),
@@ -589,6 +593,24 @@ export default function MyBlockingsPage() {
                   type="date"
                   value={editForm.expectedBillingDate}
                   onChange={(e) => setEditForm((f) => ({ ...f, expectedBillingDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label">Sales Consultant Name</label>
+                <input
+                  className="input"
+                  value={editForm.consultantName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, consultantName: e.target.value }))}
+                  placeholder="Sales consultant name"
+                />
+              </div>
+              <div>
+                <label className="label">Team Leader Name</label>
+                <input
+                  className="input"
+                  value={editForm.teamLeaderName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, teamLeaderName: e.target.value }))}
+                  placeholder="Team leader name"
                 />
               </div>
             </div>

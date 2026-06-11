@@ -307,12 +307,14 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
   }
 });
 
-// PATCH /blocking/:id/details — owner updates customer name, order ID, expected billing date
+// PATCH /blocking/:id/details — owner updates customer name, order ID, expected billing date, consultant, team leader
 router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
     customerName: z.string().optional(),
     orderId: z.string().optional(),
     expectedBillingDate: z.string().datetime().nullable().optional(),
+    consultantName: z.string().optional(),
+    teamLeaderName: z.string().optional(),
   });
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
@@ -332,6 +334,8 @@ router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   if (parsed.data.expectedBillingDate !== undefined) {
     data.expectedBillingDate = parsed.data.expectedBillingDate ? new Date(parsed.data.expectedBillingDate) : null;
   }
+  if (parsed.data.consultantName !== undefined) data.consultantName = parsed.data.consultantName;
+  if (parsed.data.teamLeaderName !== undefined) data.teamLeaderName = parsed.data.teamLeaderName;
 
   const updated = await prisma.blockingRequest.update({ where: { id: req.params.id }, data });
 
