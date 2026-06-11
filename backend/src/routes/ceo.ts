@@ -119,6 +119,29 @@ router.get('/model-blocking-payment', async (_req: AuthRequest, res: Response) =
   res.json(rows);
 });
 
+// ── 5b. Branch × Payment Status (active hard blocks) ─────────────────────────
+router.get('/branch-blocking-payment', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: { blockType: 'HARD', status: 'ACTIVE' },
+    select: { branch: { select: { name: true } }, paymentStatus: true },
+  });
+
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const branch = b.branch.name;
+    const ps = b.paymentStatus ?? 'Not Updated';
+    const key = `${branch}\x01${ps}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { branch: string; paymentStatus: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ branch: key.slice(0, sep), paymentStatus: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── 6. Branch × Ageing pivot (active hard blocks) ────────────────────────────
 router.get('/branch-blocking-ageing', async (_req: AuthRequest, res: Response) => {
   const blockings = await prisma.blockingRequest.findMany({

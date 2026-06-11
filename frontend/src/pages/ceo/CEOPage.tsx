@@ -176,6 +176,7 @@ export default function CEOPage() {
   const [modelPhysical, setModelPhysical] = useState<R2[]>([]);
   const [modelBlockStock, setModelBlockStock] = useState<R2[]>([]);
   const [modelBlockPay, setModelBlockPay] = useState<R2[]>([]);
+  const [branchBlockPay, setBranchBlockPay] = useState<R2[]>([]);
   const [branchAgeing, setBranchAgeing] = useState<R2[]>([]);
   const [branchModel, setBranchModel]   = useState<R2[]>([]);
   const [branchStockChart, setBranchStockChart] = useState<R2[]>([]);
@@ -195,7 +196,7 @@ export default function CEOPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa] = await Promise.all([
+    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa, bbp] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
@@ -216,6 +217,7 @@ export default function CEOPage() {
       api.get('/ceo/full-payment-ageing'),
       api.get('/ceo/stock-ageing'),
       api.get('/ceo/blocking-stock-ageing'),
+      api.get('/ceo/branch-blocking-payment'),
     ]);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
@@ -231,6 +233,7 @@ export default function CEOPage() {
     setFpAge(fpa.data);
     setStockAgeing(mapModelKey(sa.data, 'model'));
     setBlockingStockAgeing(mapModelKey(bsa.data, 'model'));
+    setBranchBlockPay(bbp.data);
     setLoading(false);
   }, []);
 
@@ -240,7 +243,8 @@ export default function CEOPage() {
   const activeStockYearCols  = Array.from(new Set(stockVsYear.map((r) => String(r['chassisYear'])))).sort();
   const activePhysicalCols   = STOCK_COLS.filter((c) => modelPhysical.some((r) => r['stockStatus'] === c));
   const activeBlockStockCols = STOCK_COLS.filter((c) => modelBlockStock.some((r) => r['stockStatus'] === c));
-  const activeBlockPayCols   = PAY_STATUS_COLS.filter((c) => modelBlockPay.some((r) => r['paymentStatus'] === c));
+  const activeBlockPayCols       = PAY_STATUS_COLS.filter((c) => modelBlockPay.some((r) => r['paymentStatus'] === c));
+  const activeBranchPayCols      = PAY_STATUS_COLS.filter((c) => branchBlockPay.some((r) => r['paymentStatus'] === c));
   const activeAgeCols        = AGE_COLS.filter((c) => branchAgeing.some((r) => r['ageBucket'] === c));
   const activeModelCols      = Array.from(new Set(branchModel.map((r) => String(r['model'])))).sort();
   const activePurchaseCols   = PURCHASE_COLS.filter((c) => finPurchase.some((r) => r['purchaseMode'] === c));
@@ -334,6 +338,12 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Table 4 — Model wise Blockings × Payment Status" icon="receipt_long" />
         <PivotTable rowLabel="Model" data={modelBlockPay} rowKey="model" colKey="paymentStatus" activeCols={activeBlockPayCols} />
+      </section>
+
+      {/* Table 4b: Branch × Payment Status */}
+      <section>
+        <SectionHead title="Branch vs Payment Status" icon="account_balance" />
+        <PivotTable rowLabel="Branch" data={branchBlockPay} rowKey="branch" colKey="paymentStatus" activeCols={activeBranchPayCols} />
       </section>
 
       {/* Table 5: Branch × Ageing */}
