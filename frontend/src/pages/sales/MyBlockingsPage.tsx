@@ -444,7 +444,7 @@ export default function MyBlockingsPage() {
                           onClick={(e) => { e.stopPropagation(); setSelected(b); }}
                           className={`flex-1 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline ${isCritical ? 'bg-tertiary-container text-on-tertiary-container hover:brightness-110' : 'bg-primary text-on-primary hover:brightness-110'}`}
                         >
-                          Payment Received
+                          Tally Done
                         </button>
                       )}
                     </div>
