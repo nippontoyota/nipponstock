@@ -334,6 +334,38 @@ router.get('/blocking-stock-ageing', async (_req: AuthRequest, res: Response) =>
   res.json(rows);
 });
 
+// ── 11c. Active Blockings Ageing — BND/CTDMS by Branch × Age Bucket ──────────
+router.get('/blocking-stock-ageing-branch', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: {
+      blockType: 'HARD',
+      status: 'ACTIVE',
+      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
+    },
+    select: {
+      branch: { select: { name: true } },
+      vehicle: { select: { assignmentDate: true, createdAt: true } },
+    },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const ref = b.vehicle.assignmentDate ?? b.vehicle.createdAt;
+    const days = Math.floor((now.getTime() - new Date(ref).getTime()) / 86_400_000);
+    const bucket = stockAgeBucket(days);
+    const key = `${b.branch.name}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { branch: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ branch: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── 11. Release to Pool Analysis ──────────────────────────────────────────────
 router.get('/release-analysis', async (_req: AuthRequest, res: Response) => {
   // Get all self-releases from audit log (last 180 days)
