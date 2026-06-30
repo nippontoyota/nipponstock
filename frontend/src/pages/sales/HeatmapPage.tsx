@@ -14,6 +14,7 @@ interface HeatmapCell {
   total: number;
   level: 'green' | 'yellow' | 'red';
   hasPhysical: boolean;
+  chassisYears: number[];
 }
 
 interface CarSuffix { id: string; suffix: string; description?: string; }
@@ -89,6 +90,7 @@ export default function HeatmapPage() {
       Model: c.model,
       Suffix: c.suffix,
       Colour: c.colour,
+      'Chassis Year': c.chassisYears.join(', '),
       Availability: c.level === 'green' ? 'High' : c.level === 'yellow' ? 'Medium' : 'Critical',
       'Physical Status': c.hasPhysical ? 'Yes' : 'No',
     }));
