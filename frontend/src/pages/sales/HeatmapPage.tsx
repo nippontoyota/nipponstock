@@ -6,6 +6,14 @@ import * as XLSX from 'xlsx';
 import api from '../../api';
 import socket from '../../socket';
 
+interface HeatmapYearBreakdown {
+  chassisYear: number;
+  open: number;
+  total: number;
+  level: 'green' | 'yellow' | 'red';
+  hasPhysical: boolean;
+}
+
 interface HeatmapCell {
   model: string;
   suffix: string;
@@ -15,6 +23,7 @@ interface HeatmapCell {
   level: 'green' | 'yellow' | 'red';
   hasPhysical: boolean;
   chassisYears: number[];
+  yearBreakdown: HeatmapYearBreakdown[];
 }
 
 interface CarSuffix { id: string; suffix: string; description?: string; }
@@ -84,16 +93,21 @@ export default function HeatmapPage() {
     };
   }, [yomFilter, fetchHeatmap]);
 
+  const availabilityLabel = (level: 'green' | 'yellow' | 'red') =>
+    level === 'green' ? 'High (>5)' : level === 'yellow' ? 'Medium (>2–5)' : 'Critical (≤2)';
+
   const downloadExcel = () => {
     if (cells.length === 0) { toast.error('No data to export'); return; }
-    const rows = cells.map((c) => ({
-      Model: c.model,
-      Suffix: c.suffix,
-      Colour: c.colour,
-      'Chassis Year': c.chassisYears.join(', '),
-      Availability: c.level === 'green' ? 'High' : c.level === 'yellow' ? 'Medium' : 'Critical',
-      'Physical Status': c.hasPhysical ? 'Yes' : 'No',
-    }));
+    const rows = cells.flatMap((c) =>
+      c.yearBreakdown.map((y) => ({
+        Model: c.model,
+        Suffix: c.suffix,
+        Colour: c.colour,
+        'Chassis Year': y.chassisYear,
+        Availability: availabilityLabel(y.level),
+        'Physical Status': y.hasPhysical ? 'Yes' : 'No',
+      })),
+    );
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Stock Heatmap');
