@@ -19,6 +19,20 @@ const PAYMENT_STATUSES = [
 ] as const;
 const paymentStatusEnum = z.enum(PAYMENT_STATUSES);
 
+// Expiry = 11:00 PM IST on the Nth day from today (IST date)
+function hardBlockExpiry(days: number): Date {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // UTC+5:30
+  const nowIst = new Date(Date.now() + IST_OFFSET_MS);
+  // Midnight IST on (today + days) expressed as a UTC timestamp
+  const expiryMidnightIst = Date.UTC(
+    nowIst.getUTCFullYear(),
+    nowIst.getUTCMonth(),
+    nowIst.getUTCDate() + days,
+  );
+  // 23:00 IST = midnight IST + 23 h, then subtract IST offset to get UTC
+  return new Date(expiryMidnightIst - IST_OFFSET_MS + 23 * 60 * 60 * 1000);
+}
+
 // When paymentStatus changes to/from 'Full Payment Received', update expiryAt + fullPaymentAt
 function fullPaymentFields(newStatus: string, existingStatus?: string | null): Record<string, unknown> {
   if (newStatus === 'Full Payment Received') {
@@ -167,7 +181,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
   }
 
   const days = await getBlockingDays(existing.vehicle.model, existing.vehicle.stockStatus);
-  const defaultExpiry = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const defaultExpiry = hardBlockExpiry(days);
   const fpFields = fullPaymentFields(formData.paymentStatus);
   const expiryAt = fpFields.expiryAt !== undefined ? (fpFields.expiryAt as Date | null) : defaultExpiry;
 
@@ -247,8 +261,7 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
   if (!vehicleCheck) { res.status(404).json({ error: 'Vehicle not found' }); return; }
 
   const days = await getBlockingDays(vehicleCheck.model, vehicleCheck.stockStatus);
-  const now = new Date();
-  const defaultExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const defaultExpiry = hardBlockExpiry(days);
   const fpFields = fullPaymentFields(formData.paymentStatus);
   const expiryAt = fpFields.expiryAt !== undefined ? (fpFields.expiryAt as Date | null) : defaultExpiry;
 
