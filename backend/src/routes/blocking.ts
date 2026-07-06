@@ -261,6 +261,7 @@ router.post('/admin-block', requireAdmin, async (req: AuthRequest, res: Response
   if (!vehicleCheck) { res.status(404).json({ error: 'Vehicle not found' }); return; }
 
   const days = await getBlockingDays(vehicleCheck.model, vehicleCheck.stockStatus);
+  const now = new Date();
   const defaultExpiry = hardBlockExpiry(days);
   const fpFields = fullPaymentFields(formData.paymentStatus);
   const expiryAt = fpFields.expiryAt !== undefined ? (fpFields.expiryAt as Date | null) : defaultExpiry;
