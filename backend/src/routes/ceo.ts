@@ -603,4 +603,22 @@ router.get('/finance-bank', async (_req: AuthRequest, res: Response) => {
   res.json(rows);
 });
 
+// ── Download: all hard active blockings ───────────────────────────────────────
+router.get('/blockings-export', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: { blockType: 'HARD', status: 'ACTIVE' },
+    orderBy: { hardBlockAt: 'asc' },
+    select: {
+      orderId: true, customerName: true, consultantName: true, teamLeaderName: true,
+      paymentMode: true, paymentStatus: true, financierBank: true,
+      hardBlockAt: true, expectedBillingDate: true, expiryAt: true,
+      fullPaymentAt: true, adminNotes: true,
+      branch: { select: { name: true } },
+      user: { select: { fullName: true, loginId: true } },
+      vehicle: { select: { model: true, suffix: true, colour: true, chassisYear: true, chassisNumber: true, stockStatus: true } },
+    },
+  });
+  res.json(blockings);
+});
+
 export default router;

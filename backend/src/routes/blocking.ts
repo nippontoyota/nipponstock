@@ -411,11 +411,12 @@ router.get('/my', async (req: AuthRequest, res: Response) => {
 
 // GET /blocking/all — admin
 router.get('/all', requireAdmin, async (req: AuthRequest, res: Response) => {
-  const { branchId, status, model, chassis, search, from, to, blockedFrom, blockedTo, page = '1', limit = '50' } = req.query as Record<string, string>;
+  const { branchId, status, blockType, model, chassis, search, from, to, blockedFrom, blockedTo, page = '1', limit = '50' } = req.query as Record<string, string>;
 
   const where: Record<string, unknown> = {};
   if (branchId) where.branchId = branchId;
   if (status) where.status = status;
+  if (blockType) where.blockType = blockType;
 
   // Vehicle filter — model and/or chassis
   const vehicleFilter: Record<string, unknown> = {};

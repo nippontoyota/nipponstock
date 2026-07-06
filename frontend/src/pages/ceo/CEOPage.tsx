@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, CartesianGrid, LabelList,
 } from 'recharts';
+import * as XLSX from 'xlsx';
 import api from '../../api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -276,6 +277,52 @@ export default function CEOPage() {
   });
   const activeBarStockCols = Array.from(new Set(branchStockChart.map((r) => String(r['stockStatus']))));
 
+  const downloadBlockings = async () => {
+    const tid = toast.loading('Fetching blockings…');
+    try {
+      const { data } = await api.get('/ceo/blockings-export');
+      const all = data as Record<string, unknown>[];
+      if (all.length === 0) { toast.dismiss(tid); toast.error('No active hard blockings'); return; }
+      const rows = all.map((b: Record<string, unknown>) => {
+        const v = b.vehicle as Record<string, unknown>;
+        const br = b.branch as Record<string, unknown>;
+        const u = b.user as Record<string, unknown>;
+        return {
+          Branch: br.name,
+          'Sales Manager': u.fullName,
+          'Login ID': u.loginId,
+          Model: v.model,
+          Suffix: v.suffix,
+          Colour: v.colour,
+          'Chassis Year': v.chassisYear,
+          VIN: v.chassisNumber,
+          'Stock Status': v.stockStatus ?? '',
+          'Order ID': b.orderId ?? '',
+          Customer: b.customerName ?? '',
+          Consultant: b.consultantName ?? '',
+          'Team Leader': b.teamLeaderName ?? '',
+          'Payment Mode': b.paymentMode ?? '',
+          'Payment Status': b.paymentStatus ?? '',
+          'Financier Bank': b.financierBank ?? '',
+          'Date of Blocking': b.hardBlockAt ? format(new Date(b.hardBlockAt as string), 'dd/MM/yyyy') : '',
+          'Expected Billing': b.expectedBillingDate ? format(new Date(b.expectedBillingDate as string), 'dd/MM/yyyy') : '',
+          'Expires At': b.expiryAt ? format(new Date(b.expiryAt as string), 'dd/MM/yyyy HH:mm') : (b.fullPaymentAt ? 'No Expiry (Full Paid)' : ''),
+          'Full Payment Date': b.fullPaymentAt ? format(new Date(b.fullPaymentAt as string), 'dd/MM/yyyy') : '',
+          'Admin Notes': b.adminNotes ?? '',
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Active Blockings');
+      XLSX.writeFile(wb, `active_blockings_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      toast.dismiss(tid);
+      toast.success(`${all.length} records exported`);
+    } catch {
+      toast.dismiss(tid);
+      toast.error('Export failed');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -293,9 +340,14 @@ export default function CEOPage() {
           <h1 className="text-4xl font-headline font-bold tracking-tighter text-on-surface uppercase mb-1">CEO Dashboard</h1>
           <p className="text-on-surface-variant font-body text-sm">Complete business overview across all branches.</p>
         </div>
-        <button onClick={fetchAll} className="flex items-center gap-2 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors">
-          <span className="material-symbols-outlined text-base">refresh</span>Refresh
-        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={downloadBlockings} className="flex items-center gap-2 text-xs font-label uppercase tracking-widest text-primary hover:text-on-surface transition-colors">
+            <span className="material-symbols-outlined text-base">download</span>Download Blockings
+          </button>
+          <button onClick={fetchAll} className="flex items-center gap-2 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors">
+            <span className="material-symbols-outlined text-base">refresh</span>Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── Summary KPIs ───────────────────────────────────────────────────── */}
