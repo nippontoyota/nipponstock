@@ -31,6 +31,20 @@ interface StatusRow   { branch: string; financeStatus: string; count: number; }
 interface FPAgeRow    { branch: string; dayBucket: string;     count: number; }
 interface StockAgeRow { model: string;  ageBucket: string;    count: number; }
 
+interface HeatmapYearBreakdown {
+  chassisYear: number;
+  open: number;
+  total: number;
+  level: 'green' | 'yellow' | 'red';
+  hasPhysical: boolean;
+}
+interface HeatmapCell {
+  model: string; suffix: string; colour: string;
+  open: number; total: number; level: 'green' | 'yellow' | 'red';
+  hasPhysical: boolean; chassisYears: number[];
+  yearBreakdown: HeatmapYearBreakdown[];
+}
+
 interface RawBlocking {
   id: string;
   customerName: string | null;
@@ -166,8 +180,29 @@ export default function ClusterManagerPage() {
   const [fpAgeData, setFpAgeData]             = useState<FPAgeRow[]>([]);
   const [stockAgeData, setStockAgeData]       = useState<StockAgeRow[]>([]);
   const [blockingStockAgeData, setBlockingStockAgeData] = useState<StockAgeRow[]>([]);
+  const [heatmapCells, setHeatmapCells] = useState<HeatmapCell[]>([]);
   const [loading, setLoading]       = useState(true);
   const [downloading, setDownloading] = useState(false);
+
+  const downloadHeatmap = () => {
+    if (heatmapCells.length === 0) return;
+    const availabilityLabel = (level: 'green' | 'yellow' | 'red') =>
+      level === 'green' ? 'High (>5)' : level === 'yellow' ? 'Medium (>2–5)' : 'Critical (≤2)';
+    const rows = heatmapCells.flatMap((c) =>
+      c.yearBreakdown.map((y) => ({
+        Model: c.model,
+        Suffix: c.suffix,
+        Colour: c.colour,
+        'Chassis Year': y.chassisYear,
+        Availability: availabilityLabel(y.level),
+        'Physical Status': y.hasPhysical ? 'Yes' : 'No',
+      })),
+    );
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Stock Heatmap');
+    XLSX.writeFile(wb, `heatmap_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const downloadExcel = async () => {
     setDownloading(true);
@@ -230,7 +265,7 @@ export default function ClusterManagerPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [m, s, p, a, fs, fp, fst, fpa, sa, bsa] = await Promise.all([
+    const [m, s, p, a, fs, fp, fst, fpa, sa, bsa, hm] = await Promise.all([
       api.get('/cluster-manager/summary'),
       api.get('/cluster-manager/branch-stock'),
       api.get('/cluster-manager/branch-payment'),
@@ -241,6 +276,7 @@ export default function ClusterManagerPage() {
       api.get('/cluster-manager/full-payment-ageing'),
       api.get('/cluster-manager/stock-ageing'),
       api.get('/cluster-manager/blocking-stock-ageing'),
+      api.get('/stock/heatmap'),
     ]);
     setMtd(m.data);
     setStockData(s.data);
@@ -252,6 +288,7 @@ export default function ClusterManagerPage() {
     setFpAgeData(fpa.data);
     setStockAgeData(sa.data);
     setBlockingStockAgeData(bsa.data);
+    setHeatmapCells(hm.data);
     setLoading(false);
   }, []);
 
@@ -297,6 +334,14 @@ export default function ClusterManagerPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={downloadHeatmap}
+            disabled={heatmapCells.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container text-xs font-bold uppercase tracking-widest font-headline transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-lg">grid_on</span>
+            Heatmap Excel
+          </button>
           <button
             onClick={downloadExcel}
             disabled={downloading}
