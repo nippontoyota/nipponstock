@@ -391,18 +391,24 @@ router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   res.json(updated);
 });
 
-// PATCH /blocking/:id/payment-status — owner updates their own booking's payment status
+// PATCH /blocking/:id/payment-status — owner or SM (for TL bookings in same branch) updates payment status
 router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({ paymentStatus: z.string().min(1) });
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const existing = await prisma.blockingRequest.findUnique({ where: { id: req.params.id } });
+  const existing = await prisma.blockingRequest.findUnique({
+    where: { id: req.params.id },
+    include: { user: { select: { role: true, branchId: true } } },
+  });
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
 
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
-  if (!isOwner && !isAdmin) { res.status(403).json({ error: 'Forbidden' }); return; }
+  const isSmOverTl = req.user!.role === 'SALES_MANAGER'
+    && existing.user.role === 'TEAM_LEADER'
+    && existing.user.branchId === req.user!.branchId;
+  if (!isOwner && !isAdmin && !isSmOverTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
   if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
 
@@ -589,12 +595,18 @@ router.patch('/:id/self-release', async (req: AuthRequest, res: Response) => {
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const existing = await prisma.blockingRequest.findUnique({ where: { id: req.params.id }, include: { vehicle: true } });
+  const existing = await prisma.blockingRequest.findUnique({
+    where: { id: req.params.id },
+    include: { vehicle: true, user: { select: { role: true, branchId: true } } },
+  });
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
 
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
-  if (!isOwner && !isAdmin) { res.status(403).json({ error: 'Forbidden' }); return; }
+  const isSmOverTl = req.user!.role === 'SALES_MANAGER'
+    && existing.user.role === 'TEAM_LEADER'
+    && existing.user.branchId === req.user!.branchId;
+  if (!isOwner && !isAdmin && !isSmOverTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
   if (existing.status !== 'ACTIVE') {
     res.status(409).json({ error: 'Booking is not active' });
@@ -629,12 +641,18 @@ router.patch('/:id/deliver', async (req: AuthRequest, res: Response) => {
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const existing = await prisma.blockingRequest.findUnique({ where: { id: req.params.id } });
+  const existing = await prisma.blockingRequest.findUnique({
+    where: { id: req.params.id },
+    include: { user: { select: { role: true, branchId: true } } },
+  });
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
 
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
-  if (!isOwner && !isAdmin) { res.status(403).json({ error: 'Forbidden' }); return; }
+  const isSmOverTl = req.user!.role === 'SALES_MANAGER'
+    && existing.user.role === 'TEAM_LEADER'
+    && existing.user.branchId === req.user!.branchId;
+  if (!isOwner && !isAdmin && !isSmOverTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.vehicle.update({ where: { id: existing.vehicleId }, data: { status: 'DELIVERED' } });

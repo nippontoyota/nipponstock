@@ -450,9 +450,9 @@ export default function MyBlockingsPage() {
 
                   {/* Actions */}
                   <div className="mt-auto space-y-2">
-                    {/* Tally Done — owner only */}
+                    {/* Tally Done — owner or SM over TL */}
                     <div className="flex gap-3">
-                      {b.status === 'ACTIVE' && b.blockType === 'HARD' && isMyOwn && (
+                      {b.status === 'ACTIVE' && b.blockType === 'HARD' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelected(b); }}
                           className={`flex-1 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline ${isCritical ? 'bg-tertiary-container text-on-tertiary-container hover:brightness-110' : 'bg-primary text-on-primary hover:brightness-110'}`}
@@ -461,7 +461,7 @@ export default function MyBlockingsPage() {
                         </button>
                       )}
                     </div>
-                    {/* Edit Details — owner or SM viewing TL booking */}
+                    {/* Edit Details — owner or SM over TL */}
                     {b.status === 'ACTIVE' && b.blockType === 'HARD' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); openEdit(b); }}
@@ -471,8 +471,8 @@ export default function MyBlockingsPage() {
                         Edit Details
                       </button>
                     )}
-                    {/* Update Payment Status — owner only (TL has no payment status) */}
-                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && isMyOwn && b.paymentStatus && (
+                    {/* Update Payment Status — owner or SM over TL */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && b.paymentStatus && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setPayStatusTarget(b); setNewPayStatus(b.paymentStatus ?? ''); }}
                         className="w-full py-2.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
@@ -481,8 +481,8 @@ export default function MyBlockingsPage() {
                         Update Payment Status
                       </button>
                     )}
-                    {/* Release — owner only */}
-                    {b.status === 'ACTIVE' && isMyOwn && (
+                    {/* Release — owner or SM over TL */}
+                    {b.status === 'ACTIVE' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setReleaseTarget(b); setReleaseReason(''); setReleaseRemarks(''); setReleaseSalesId(''); }}
                         className="w-full py-2.5 rounded-lg border border-tertiary/30 text-tertiary hover:bg-tertiary-container/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
