@@ -361,7 +361,7 @@ router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   const isAdmin = req.user!.role === 'ADMIN';
   // Sales Manager can edit Team Leader blockings from their own branch
   const isSmEditingTl = req.user!.role === 'SALES_MANAGER'
-    && existing.user.role === 'TEAM_LEADER'
+    && (existing.user.role as string) === 'TEAM_LEADER'
     && existing.user.branchId === req.user!.branchId;
   if (!isOwner && !isAdmin && !isSmEditingTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
@@ -406,7 +406,7 @@ router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
   const isSmOverTl = req.user!.role === 'SALES_MANAGER'
-    && existing.user.role === 'TEAM_LEADER'
+    && (existing.user.role as string) === 'TEAM_LEADER'
     && existing.user.branchId === req.user!.branchId;
   if (!isOwner && !isAdmin && !isSmOverTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
@@ -604,7 +604,7 @@ router.patch('/:id/self-release', async (req: AuthRequest, res: Response) => {
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
   const isSmOverTl = req.user!.role === 'SALES_MANAGER'
-    && existing.user.role === 'TEAM_LEADER'
+    && (existing.user.role as string) === 'TEAM_LEADER'
     && existing.user.branchId === req.user!.branchId;
   if (!isOwner && !isAdmin && !isSmOverTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
@@ -650,7 +650,7 @@ router.patch('/:id/deliver', async (req: AuthRequest, res: Response) => {
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
   const isSmOverTl = req.user!.role === 'SALES_MANAGER'
-    && existing.user.role === 'TEAM_LEADER'
+    && (existing.user.role as string) === 'TEAM_LEADER'
     && existing.user.branchId === req.user!.branchId;
   if (!isOwner && !isAdmin && !isSmOverTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
