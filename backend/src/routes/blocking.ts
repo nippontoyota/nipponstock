@@ -144,7 +144,19 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
 
 // POST /blocking/hard — convert soft to hard block
 router.post('/hard', async (req: AuthRequest, res: Response) => {
-  const Schema = z.object({
+  const isTeamLeader = req.user!.role === 'TEAM_LEADER';
+
+  // Team Leaders only submit customer credentials — no financial payload
+  const TLSchema = z.object({
+    blockingId: z.string().uuid(),
+    chassisYear: z.number().int(),
+    orderId: z.string().min(1),
+    customerName: z.string().min(1),
+    consultantName: z.string().min(1),
+    teamLeaderName: z.string().optional(),
+  });
+
+  const SMSchema = z.object({
     blockingId: z.string().uuid(),
     chassisYear: z.number().int(),
     orderId: z.string().min(1),
@@ -158,7 +170,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
     expectedBillingDate: z.string().datetime().optional(),
   });
 
-  const parsed = Schema.safeParse(req.body);
+  const parsed = isTeamLeader ? TLSchema.safeParse(req.body) : SMSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   const { blockingId, chassisYear, ...formData } = parsed.data;
@@ -182,8 +194,13 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
 
   const days = await getBlockingDays(existing.vehicle.model, existing.vehicle.stockStatus);
   const defaultExpiry = hardBlockExpiry(days);
-  const fpFields = fullPaymentFields(formData.paymentStatus);
-  const expiryAt = fpFields.expiryAt !== undefined ? (fpFields.expiryAt as Date | null) : defaultExpiry;
+
+  // Team Leaders have no paymentStatus, so no full-payment logic
+  const paymentStatus = (formData as { paymentStatus?: string }).paymentStatus;
+  const fpFields = paymentStatus ? fullPaymentFields(paymentStatus) : {};
+  const expiryAt = (fpFields as { expiryAt?: Date | null }).expiryAt !== undefined
+    ? ((fpFields as { expiryAt: Date | null }).expiryAt)
+    : defaultExpiry;
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
@@ -192,6 +209,7 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
         data: { chassisYear, status: 'HARD_BLOCKED' },
       });
 
+      const { expectedBillingDate, ...restFormData } = formData as typeof formData & { expectedBillingDate?: string };
       return tx.blockingRequest.update({
         where: { id: blockingId },
         data: {
@@ -199,8 +217,8 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
           hardBlockAt: new Date(),
           expiryAt,
           ...fpFields,
-          ...formData,
-          expectedBillingDate: formData.expectedBillingDate ? new Date(formData.expectedBillingDate) : undefined,
+          ...restFormData,
+          ...(expectedBillingDate ? { expectedBillingDate: new Date(expectedBillingDate) } : {}),
         },
         include: { vehicle: true, branch: true },
       });
@@ -333,12 +351,19 @@ router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const existing = await prisma.blockingRequest.findUnique({ where: { id: req.params.id } });
+  const existing = await prisma.blockingRequest.findUnique({
+    where: { id: req.params.id },
+    include: { user: { select: { role: true, branchId: true } } },
+  });
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
 
   const isOwner = existing.userId === req.user!.userId;
   const isAdmin = req.user!.role === 'ADMIN';
-  if (!isOwner && !isAdmin) { res.status(403).json({ error: 'Forbidden' }); return; }
+  // Sales Manager can edit Team Leader blockings from their own branch
+  const isSmEditingTl = req.user!.role === 'SALES_MANAGER'
+    && existing.user.role === 'TEAM_LEADER'
+    && existing.user.branchId === req.user!.branchId;
+  if (!isOwner && !isAdmin && !isSmEditingTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
   if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
 
@@ -402,10 +427,22 @@ router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
 
 // GET /blocking/my
 router.get('/my', async (req: AuthRequest, res: Response) => {
+  const { userId, role, branchId } = req.user!;
+
+  // Sales Managers also see blockings made by Team Leaders in the same branch
+  const where = role === 'SALES_MANAGER' && branchId
+    ? { OR: [{ userId }, { user: { role: 'TEAM_LEADER' as const, branchId } }] }
+    : { userId };
+
   const blockings = await prisma.blockingRequest.findMany({
-    where: { userId: req.user!.userId },
+    where,
     orderBy: { createdAt: 'desc' },
-    include: { vehicle: true, branch: { select: { name: true } }, financeRecord: true },
+    include: {
+      vehicle: true,
+      branch: { select: { name: true } },
+      financeRecord: true,
+      user: { select: { id: true, fullName: true, role: true } },
+    },
   });
   res.json(blockings);
 });

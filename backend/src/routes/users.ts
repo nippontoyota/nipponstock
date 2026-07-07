@@ -19,7 +19,7 @@ const CreateSchema = z.object({
   loginId: z.string().min(3),
   password: z.string().min(8),
   fullName: z.string().min(1),
-  role: z.enum(['ADMIN', 'SALES_MANAGER', 'FINANCE_OFFICER', 'FINANCE_HEAD', 'CLUSTER_MANAGER', 'CEO']),
+  role: z.enum(['ADMIN', 'SALES_MANAGER', 'TEAM_LEADER', 'FINANCE_OFFICER', 'FINANCE_HEAD', 'CLUSTER_MANAGER', 'CEO']),
   branchId: z.string().uuid().optional(),
   clusterNumber: z.number().int().min(1).max(4).optional(),
 });

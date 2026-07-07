@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../../api';
 import socket from '../../socket';
 import * as XLSX from 'xlsx';
+import { useAuth } from '../../context/AuthContext';
 
 interface FinanceRecord {
   purchaseMode: string | null;
@@ -32,6 +33,7 @@ interface Blocking {
   vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
   branch: { name: string };
   financeRecord: FinanceRecord | null;
+  user: { id: string; fullName: string; role: string };
 }
 
 function expiryDays(expiryAt: string | null): { days: number; hours: number; expired: boolean } {
@@ -57,6 +59,7 @@ function expiryTextColor(expiryAt: string | null) {
 }
 
 export default function MyBlockingsPage() {
+  const { user: authUser } = useAuth();
   const [blockings, setBlockings] = useState<Blocking[]>([]);
   const [selected, setSelected] = useState<Blocking | null>(null);
   const [retailId, setRetailId] = useState('');
@@ -356,6 +359,8 @@ export default function MyBlockingsPage() {
             const { days, expired } = expiryDays(b.expiryAt);
             const borderColor = urgencyBorderColor(b.expiryAt);
             const isCritical = b.expiryAt && differenceInDays(new Date(b.expiryAt), new Date()) <= 2;
+            const isTlBlocking = b.user?.role === 'TEAM_LEADER';
+            const isMyOwn = authUser?.id === b.user?.id;
 
             return (
               <div
@@ -376,6 +381,9 @@ export default function MyBlockingsPage() {
                           <span className={`badge text-[10px] ${b.vehicle.stockStatus === 'BND' ? 'bg-primary/10 text-primary' : b.vehicle.stockStatus === 'CTDMS' ? 'bg-orange-900/30 text-orange-400' : 'bg-green-900/30 text-green-400'}`}>
                             {b.vehicle.stockStatus}
                           </span>
+                        )}
+                        {isTlBlocking && authUser?.role === 'SALES_MANAGER' && (
+                          <span className="badge text-[10px] bg-secondary/10 text-secondary">TL: {b.user.fullName}</span>
                         )}
                       </div>
                       <p className="text-sm text-on-surface-variant">{b.vehicle.colour} · {b.vehicle.suffix}</p>
@@ -442,8 +450,9 @@ export default function MyBlockingsPage() {
 
                   {/* Actions */}
                   <div className="mt-auto space-y-2">
+                    {/* Tally Done — owner only */}
                     <div className="flex gap-3">
-                      {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
+                      {b.status === 'ACTIVE' && b.blockType === 'HARD' && isMyOwn && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelected(b); }}
                           className={`flex-1 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline ${isCritical ? 'bg-tertiary-container text-on-tertiary-container hover:brightness-110' : 'bg-primary text-on-primary hover:brightness-110'}`}
@@ -452,8 +461,8 @@ export default function MyBlockingsPage() {
                         </button>
                       )}
                     </div>
-                    {/* Edit Details button */}
-                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
+                    {/* Edit Details — owner or SM viewing TL booking */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); openEdit(b); }}
                         className="w-full py-2.5 rounded-lg border border-secondary/30 text-secondary hover:bg-secondary/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
@@ -462,8 +471,8 @@ export default function MyBlockingsPage() {
                         Edit Details
                       </button>
                     )}
-                    {/* Update Payment Status button */}
-                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
+                    {/* Update Payment Status — owner only (TL has no payment status) */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && isMyOwn && b.paymentStatus && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setPayStatusTarget(b); setNewPayStatus(b.paymentStatus ?? ''); }}
                         className="w-full py-2.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
@@ -472,8 +481,8 @@ export default function MyBlockingsPage() {
                         Update Payment Status
                       </button>
                     )}
-                    {/* Release button */}
-                    {b.status === 'ACTIVE' && (
+                    {/* Release — owner only */}
+                    {b.status === 'ACTIVE' && isMyOwn && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setReleaseTarget(b); setReleaseReason(''); setReleaseRemarks(''); setReleaseSalesId(''); }}
                         className="w-full py-2.5 rounded-lg border border-tertiary/30 text-tertiary hover:bg-tertiary-container/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"

@@ -65,11 +65,11 @@ export default function App() {
         <Route path="vehicle-requests" element={<VehicleRequestsPage />} />
       </Route>
 
-      {/* Sales Manager routes */}
+      {/* Sales Manager + Team Leader routes */}
       <Route
         path="/sales"
         element={
-          <RequireAuth role="SALES_MANAGER">
+          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER']}>
             <SalesShell />
           </RequireAuth>
         }
@@ -137,6 +137,7 @@ export default function App() {
             user.role === 'FINANCE_HEAD'     ? <Navigate to="/finance-head" replace /> :
             user.role === 'CLUSTER_MANAGER'  ? <Navigate to="/cluster"      replace /> :
             user.role === 'CEO'              ? <Navigate to="/ceo"          replace /> :
+            user.role === 'TEAM_LEADER'      ? <Navigate to="/sales"        replace /> :
                                                <Navigate to="/sales"        replace />
           ) : (
             <Navigate to="/login" replace />

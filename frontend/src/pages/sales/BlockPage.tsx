@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface HeatmapCell { model: string; suffix: string; colour: string; level: string; }
 type Step = 'select' | 'form';
@@ -35,6 +36,8 @@ const THIS_YEAR = new Date().getFullYear();
 
 export default function BlockPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isTL = user?.role === 'TEAM_LEADER';
   const [cells, setCells] = useState<HeatmapCell[]>([]);
   const [yearOptions, setYearOptions] = useState<number[]>([]);
   const [yom, setYom] = useState<string>('');       // Year of Manufacture filter
@@ -109,27 +112,28 @@ export default function BlockPage() {
       return;
     }
     setSubmitting(true);
-    const financierBank = form.paymentMode === 'FINANCE'
-      ? (form.financeType === 'IN_HOUSE' ? 'In-House' : form.financierBank)
-      : undefined;
-    const amountReceived = form.paymentMode === 'CASH' && form.amountReceived
-      ? parseFloat(form.amountReceived)
-      : undefined;
+
+    const basePayload = {
+      blockingId,
+      chassisYear: yom ? parseInt(yom) : THIS_YEAR,
+      orderId: form.orderId,
+      customerName: form.customerName,
+      consultantName: form.consultantName,
+      teamLeaderName: form.teamLeaderName || undefined,
+    };
+
+    const financialPayload = isTL ? {} : {
+      paymentMode: form.paymentMode,
+      amountReceived: form.paymentMode === 'CASH' && form.amountReceived ? parseFloat(form.amountReceived) : undefined,
+      financierBank: form.paymentMode === 'FINANCE'
+        ? (form.financeType === 'IN_HOUSE' ? 'In-House' : form.financierBank)
+        : undefined,
+      paymentStatus: form.paymentStatus,
+      expectedBillingDate: form.expectedBillingDate ? new Date(form.expectedBillingDate).toISOString() : undefined,
+    };
 
     try {
-      await api.post('/blocking/hard', {
-        blockingId,
-        chassisYear: yom ? parseInt(yom) : THIS_YEAR,
-        orderId: form.orderId,
-        customerName: form.customerName,
-        consultantName: form.consultantName,
-        teamLeaderName: form.teamLeaderName || undefined,
-        paymentMode: form.paymentMode,
-        amountReceived,
-        financierBank,
-        paymentStatus: form.paymentStatus,
-        expectedBillingDate: form.expectedBillingDate ? new Date(form.expectedBillingDate).toISOString() : undefined,
-      });
+      await api.post('/blocking/hard', { ...basePayload, ...financialPayload });
       toast.success('Vehicle blocked successfully!');
       navigate('/sales/my-blockings');
     } catch (err: unknown) {
@@ -139,14 +143,15 @@ export default function BlockPage() {
     }
   };
 
-  const isFormValid =
-    /^\d{7}$/.test(form.orderId) &&
-    form.customerName &&
-    form.consultantName &&
-    form.paymentStatus &&
-    (form.paymentMode === 'CASH'
-      ? !!form.amountReceived
-      : form.financeType !== '' && !!form.financierBank);
+  const isFormValid = isTL
+    ? /^\d{7}$/.test(form.orderId) && !!form.customerName && !!form.consultantName
+    : /^\d{7}$/.test(form.orderId) &&
+      !!form.customerName &&
+      !!form.consultantName &&
+      !!form.paymentStatus &&
+      (form.paymentMode === 'CASH'
+        ? !!form.amountReceived
+        : form.financeType !== '' && !!form.financierBank);
 
   const currentStep = step === 'select' ? 0 : 1;
 
@@ -301,8 +306,8 @@ export default function BlockPage() {
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Left: vehicle + customer (7 cols) */}
-              <div className="lg:col-span-7 space-y-8">
+              {/* Left: vehicle + customer */}
+              <div className={`${isTL ? 'lg:col-span-8' : 'lg:col-span-7'} space-y-8`}>
                 {/* Locked vehicle telemetry */}
                 <section className="bg-surface-container-low p-6 rounded-xl space-y-6">
                   <div className="flex justify-between items-end pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
@@ -355,111 +360,129 @@ export default function BlockPage() {
                       <input className="input" placeholder="Team leader (optional)" value={form.teamLeaderName} onChange={(e) => setForm((f) => ({ ...f, teamLeaderName: e.target.value }))} />
                     </div>
                   </div>
+
+                  {/* Team Leader submit button (inline, no financial section) */}
+                  {isTL && (
+                    <div className="pt-4 space-y-4">
+                      <button
+                        type="submit"
+                        disabled={!isFormValid || submitting}
+                        className="w-full py-4 rounded-lg font-headline font-black text-lg tracking-tighter uppercase flex items-center justify-center gap-3 active:scale-[0.98] transition-transform shadow-xl disabled:opacity-40"
+                        style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388', boxShadow: '0 8px 24px rgba(46,91,255,0.2)' }}
+                      >
+                        {submitting ? 'Confirming…' : 'Confirm Block'}
+                        {!submitting && <span className="material-symbols-outlined" style={{ fontVariationSettings: "'wght' 700" }}>lock</span>}
+                      </button>
+                      <p className="text-[10px] text-center text-on-surface-variant px-4">
+                        By confirming, this unit will be removed from live inventory for the configured blocking period.
+                      </p>
+                    </div>
+                  )}
                 </section>
               </div>
 
-              {/* Right: financial (5 cols) */}
-              <aside className="lg:col-span-5 space-y-8">
-                <div className="bg-surface-container-low rounded-xl p-8 space-y-8 sticky top-40">
-                  <h2 className="font-headline text-xl font-bold tracking-tight text-on-surface pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
-                    Financial Payload
-                  </h2>
+              {/* Right: financial (5 cols) — Sales Manager only */}
+              {!isTL && (
+                <aside className="lg:col-span-5 space-y-8">
+                  <div className="bg-surface-container-low rounded-xl p-8 space-y-8 sticky top-40">
+                    <h2 className="font-headline text-xl font-bold tracking-tight text-on-surface pb-4" style={{ borderBottom: '1px solid rgba(67,70,86,0.1)' }}>
+                      Financial Payload
+                    </h2>
 
-                  {/* Payment toggle */}
-                  <div className="space-y-4">
-                    <label className="label">Payment Method</label>
-                    <div className="grid grid-cols-2 p-1 bg-surface-container-lowest rounded-xl">
-                      {(['CASH', 'FINANCE'] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setForm((f) => ({ ...f, paymentMode: mode, financeType: '', financierBank: '' }))}
-                          className={`py-3 px-4 rounded-lg font-headline font-bold text-sm tracking-tight transition-all ${form.paymentMode === mode ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface'}`}
-                        >
-                          {mode}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    {form.paymentMode === 'CASH' && (
-                      <div className="space-y-2">
-                        <label className="label">Amount Received (₹) *</label>
-                        <input
-                          className="input"
-                          type="number"
-                          min="0"
-                          placeholder="Enter amount received"
-                          value={form.amountReceived}
-                          onChange={(e) => setForm((f) => ({ ...f, amountReceived: e.target.value }))}
-                          required
-                        />
+                    {/* Payment toggle */}
+                    <div className="space-y-4">
+                      <label className="label">Payment Method</label>
+                      <div className="grid grid-cols-2 p-1 bg-surface-container-lowest rounded-xl">
+                        {(['CASH', 'FINANCE'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, paymentMode: mode, financeType: '', financierBank: '' }))}
+                            className={`py-3 px-4 rounded-lg font-headline font-bold text-sm tracking-tight transition-all ${form.paymentMode === mode ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface'}`}
+                          >
+                            {mode}
+                          </button>
+                        ))}
                       </div>
-                    )}
-                    {form.paymentMode === 'FINANCE' && (
-                      <>
-                        {/* In-House / Outhouse dropdown */}
+                    </div>
+
+                    <div className="space-y-6">
+                      {form.paymentMode === 'CASH' && (
                         <div className="space-y-2">
-                          <label className="label">Finance Type *</label>
-                          <div className="relative">
-                            <select
-                              className="input appearance-none pr-10"
-                              value={form.financeType}
-                              onChange={(e) => setForm((f) => ({ ...f, financeType: e.target.value as '' | 'IN_HOUSE' | 'OUTHOUSE', financierBank: '' }))}
-                            >
-                              <option value="">Select finance type…</option>
-                              <option value="IN_HOUSE">In-House</option>
-                              <option value="OUTHOUSE">Outhouse</option>
-                            </select>
-                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
-                          </div>
+                          <label className="label">Amount Received (₹) *</label>
+                          <input
+                            className="input"
+                            type="number"
+                            min="0"
+                            placeholder="Enter amount received"
+                            value={form.amountReceived}
+                            onChange={(e) => setForm((f) => ({ ...f, amountReceived: e.target.value }))}
+                            required
+                          />
                         </div>
-                        {/* Bank name — shown for both In-House and Outhouse */}
-                        {form.financeType !== '' && (
+                      )}
+                      {form.paymentMode === 'FINANCE' && (
+                        <>
                           <div className="space-y-2">
-                            <label className="label">Financier Bank *</label>
-                            <input className="input" placeholder={form.financeType === 'IN_HOUSE' ? 'e.g. Nippon In-House Finance' : 'Bank name'} value={form.financierBank} onChange={(e) => setForm((f) => ({ ...f, financierBank: e.target.value }))} required />
+                            <label className="label">Finance Type *</label>
+                            <div className="relative">
+                              <select
+                                className="input appearance-none pr-10"
+                                value={form.financeType}
+                                onChange={(e) => setForm((f) => ({ ...f, financeType: e.target.value as '' | 'IN_HOUSE' | 'OUTHOUSE', financierBank: '' }))}
+                              >
+                                <option value="">Select finance type…</option>
+                                <option value="IN_HOUSE">In-House</option>
+                                <option value="OUTHOUSE">Outhouse</option>
+                              </select>
+                              <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+                            </div>
                           </div>
-                        )}
-                      </>
-                    )}
+                          {form.financeType !== '' && (
+                            <div className="space-y-2">
+                              <label className="label">Financier Bank *</label>
+                              <input className="input" placeholder={form.financeType === 'IN_HOUSE' ? 'e.g. Nippon In-House Finance' : 'Bank name'} value={form.financierBank} onChange={(e) => setForm((f) => ({ ...f, financierBank: e.target.value }))} required />
+                            </div>
+                          )}
+                        </>
+                      )}
 
-                    <div className="space-y-2">
-                      <label className="label">Payment Status *</label>
-                      <div className="relative">
-                        <select className="input appearance-none pr-10" value={form.paymentStatus} onChange={(e) => setForm((f) => ({ ...f, paymentStatus: e.target.value }))}>
-                          <option value="Down Payment Received">Down Payment Received</option>
-                          <option value="Only Booking Received">Only Booking Received</option>
-                          <option value="Part Payment Received">Part Payment Received</option>
-                          <option value="Full Payment Received">Full Payment Received</option>
-                          <option value="Ready for Disbursement">Ready for Disbursement</option>
-                        </select>
-                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+                      <div className="space-y-2">
+                        <label className="label">Payment Status *</label>
+                        <div className="relative">
+                          <select className="input appearance-none pr-10" value={form.paymentStatus} onChange={(e) => setForm((f) => ({ ...f, paymentStatus: e.target.value }))}>
+                            <option value="Down Payment Received">Down Payment Received</option>
+                            <option value="Only Booking Received">Only Booking Received</option>
+                            <option value="Part Payment Received">Part Payment Received</option>
+                            <option value="Full Payment Received">Full Payment Received</option>
+                            <option value="Ready for Disbursement">Ready for Disbursement</option>
+                          </select>
+                          <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="label">Expected Tally Billing Date <span className="text-zinc-600 normal-case font-normal">(optional)</span></label>
+                        <input className="input" type="date" value={form.expectedBillingDate} onChange={(e) => setForm((f) => ({ ...f, expectedBillingDate: e.target.value }))} style={{ colorScheme: 'dark' }} />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="label">Expected Tally Billing Date <span className="text-zinc-600 normal-case font-normal">(optional)</span></label>
-                      <input className="input" type="date" value={form.expectedBillingDate} onChange={(e) => setForm((f) => ({ ...f, expectedBillingDate: e.target.value }))} style={{ colorScheme: 'dark' }} />
+
+                    <div className="pt-6 space-y-4">
+                      <button
+                        type="submit"
+                        disabled={!isFormValid || submitting}
+                        className="w-full py-4 rounded-lg font-headline font-black text-lg tracking-tighter uppercase flex items-center justify-center gap-3 active:scale-[0.98] transition-transform shadow-xl disabled:opacity-40"
+                        style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388', boxShadow: '0 8px 24px rgba(46,91,255,0.2)' }}
+                      >
+                        {submitting ? 'Confirming…' : 'Confirm Block'}
+                        {!submitting && <span className="material-symbols-outlined" style={{ fontVariationSettings: "'wght' 700" }}>lock</span>}
+                      </button>
+                      <p className="text-[10px] text-center text-on-surface-variant px-4">
+                        By confirming, this unit will be removed from live inventory for the configured blocking period.
+                      </p>
                     </div>
                   </div>
-
-                  <div className="pt-6 space-y-4">
-                    <button
-                      type="submit"
-                      disabled={!isFormValid || submitting}
-                      className="w-full py-4 rounded-lg font-headline font-black text-lg tracking-tighter uppercase flex items-center justify-center gap-3 active:scale-[0.98] transition-transform shadow-xl disabled:opacity-40"
-                      style={{ background: 'linear-gradient(135deg, #b8c3ff 0%, #2e5bff 100%)', color: '#002388', boxShadow: '0 8px 24px rgba(46,91,255,0.2)' }}
-                    >
-                      {submitting ? 'Confirming…' : 'Confirm Block'}
-                      {!submitting && <span className="material-symbols-outlined" style={{ fontVariationSettings: "'wght' 700" }}>lock</span>}
-                    </button>
-                    <p className="text-[10px] text-center text-on-surface-variant px-4">
-                      By confirming, this unit will be removed from live inventory for the configured blocking period.
-                    </p>
-                  </div>
-                </div>
-              </aside>
+                </aside>
+              )}
             </div>
           </form>
         </div>

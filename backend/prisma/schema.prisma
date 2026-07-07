@@ -11,6 +11,7 @@ datasource db {
 enum Role {
   ADMIN
   SALES_MANAGER
+  TEAM_LEADER
   FINANCE_OFFICER
   FINANCE_HEAD
   CLUSTER_MANAGER
@@ -58,6 +59,20 @@ model Branch {
   blockings        BlockingRequest[]
   vehicleRequests  VehicleRequest[]
   physicalVehicles Vehicle[]         @relation("PhysicalStockBranch")
+  stockyardRanks   StockyardRank[]
+}
+
+// Ranking of stockyard codes by proximity to a branch (1 = nearest), used by the
+// "Nearest" vehicle allocation rule.
+model StockyardRank {
+  id            String @id @default(uuid())
+  branch        Branch @relation(fields: [branchId], references: [id])
+  branchId      String
+  stockyardCode String
+  rank          Int
+
+  @@unique([branchId, stockyardCode])
+  @@index([branchId])
 }
 
 model User {

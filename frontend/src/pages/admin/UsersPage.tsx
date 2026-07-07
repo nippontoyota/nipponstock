@@ -119,6 +119,7 @@ export default function UsersPage() {
                 <div className="relative">
                   <select className="input appearance-none pr-8" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, branchId: '', clusterNumber: '' }))}>
                     <option value="SALES_MANAGER">Sales Manager</option>
+                    <option value="TEAM_LEADER">Team Leader</option>
                     <option value="FINANCE_OFFICER">Finance Officer</option>
                     <option value="FINANCE_HEAD">Finance Head</option>
                     <option value="CLUSTER_MANAGER">Cluster Manager</option>
