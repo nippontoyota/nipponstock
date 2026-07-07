@@ -129,7 +129,7 @@ export default function UsersPage() {
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                 </div>
               </div>
-              {(form.role === 'SALES_MANAGER' || form.role === 'FINANCE_OFFICER') && (
+              {(form.role === 'SALES_MANAGER' || form.role === 'TEAM_LEADER' || form.role === 'FINANCE_OFFICER') && (
                 <div>
                   <label className="label">Branch</label>
                   <div className="relative">
