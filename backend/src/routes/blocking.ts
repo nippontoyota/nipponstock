@@ -64,7 +64,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
   const branchId = req.user!.branchId;
 
-  if (!branchId) { res.status(403).json({ error: 'Only sales managers can place blocks' }); return; }
+  if (!branchId) { res.status(403).json({ error: 'No branch assigned to your account — contact admin' }); return; }
 
   // Atomic: find an OPEN vehicle and soft-block it in a single transaction
   try {
