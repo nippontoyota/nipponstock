@@ -471,8 +471,8 @@ export default function MyBlockingsPage() {
                         Edit Details
                       </button>
                     )}
-                    {/* Update Payment Status — owner (needs existing status) or SM over TL (can set from null) */}
-                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && ((isMyOwn && b.paymentStatus) || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
+                    {/* Update Payment Status — SM only (own blockings or TL blockings in branch) */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && authUser?.role === 'SALES_MANAGER' && (isMyOwn || isTlBlocking) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setPayStatusTarget(b); setNewPayStatus(b.paymentStatus ?? ''); }}
                         className="w-full py-2.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
