@@ -77,7 +77,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
           hiddenFromHeatmap: false,
           ...(chassisYear ? { chassisYear } : {}),
         },
-        select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisYear: true, assignmentDate: true },
+        select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisYear: true, assignmentDate: true, chassisNumber: true },
       });
 
       // Strip ALL unicode whitespace (including non-breaking spaces  , zero-width, etc.)
@@ -97,7 +97,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
 
       // Priority: BND → CTDMS → MDDP → any (within each tier, sort order above applies)
       const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
-      let vehicle: { id: string } | null = null;
+      let vehicle: { id: string; chassisNumber: string } | null = null;
       for (const ss of PRIORITY) {
         vehicle = matching.find((v) => v.stockStatus === ss) ?? null;
         if (vehicle) break;
@@ -124,7 +124,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
         },
       });
 
-      return blocking;
+      return { ...blocking, chassisNumber: vehicle.chassisNumber };
     });
 
     emitHeatmapUpdate();

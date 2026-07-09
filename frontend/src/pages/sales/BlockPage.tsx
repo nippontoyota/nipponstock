@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { getVehicleIncentive } from '../../lib/vehicleIncentives';
 
 interface HeatmapCell { model: string; suffix: string; colour: string; level: string; }
 type Step = 'select' | 'form';
@@ -47,6 +48,7 @@ export default function BlockPage() {
   const [step, setStep] = useState<Step>('select');
   const [blockingId, setBlockingId] = useState('');
   const [expiryAt, setExpiryAt] = useState<Date | null>(null);
+  const [chassisNumber, setChassisNumber] = useState('');
   const [placing, setPlacing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderIdError, setOrderIdError] = useState('');
@@ -87,6 +89,7 @@ export default function BlockPage() {
       const { data } = await api.post('/blocking/soft', payload);
       setBlockingId(data.id);
       setExpiryAt(new Date(data.expiryAt));
+      setChassisNumber(data.chassisNumber ?? '');
       setStep('form');
     } catch (err: unknown) {
       toast.error((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Could not place soft block');
@@ -303,6 +306,24 @@ export default function BlockPage() {
             </div>
             {expiryAt && <Countdown expiryAt={expiryAt} />}
           </div>
+
+          {(() => {
+            const incentive = chassisNumber ? getVehicleIncentive(chassisNumber) : null;
+            return incentive ? (
+              <div className="mb-6 rounded-xl px-6 py-5 flex items-start gap-4" style={{ background: 'linear-gradient(135deg, rgba(255,213,79,0.12) 0%, rgba(255,171,0,0.08) 100%)', border: '1px solid rgba(255,191,0,0.35)' }}>
+                <span className="material-symbols-outlined text-yellow-400 text-2xl mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+                <div>
+                  <p className="font-headline font-bold text-sm uppercase tracking-widest text-yellow-300 mb-1">Did You Know?</p>
+                  <p className="font-body text-sm text-on-surface leading-relaxed">
+                    If you retail this vehicle — Consumer Scheme: <strong className="text-yellow-300">₹{incentive.customerScheme}</strong>
+                    {incentive.so && <> · SO gets <strong className="text-yellow-300">₹{incentive.so}</strong></>}
+                    {incentive.tl && <> · TL gets <strong className="text-yellow-300">₹{incentive.tl}</strong></>}
+                    {incentive.sm && <> · SM gets <strong className="text-yellow-300">₹{incentive.sm}</strong></>}
+                  </p>
+                </div>
+              </div>
+            ) : null;
+          })()}
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
