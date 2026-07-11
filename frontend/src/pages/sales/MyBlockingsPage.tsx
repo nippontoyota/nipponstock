@@ -481,8 +481,8 @@ export default function MyBlockingsPage() {
                         Update Payment Status
                       </button>
                     )}
-                    {/* Release — owner or SM over TL */}
-                    {b.status === 'ACTIVE' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
+                    {/* Release — owner (non-TL) or SM over TL */}
+                    {b.status === 'ACTIVE' && authUser?.role !== 'TEAM_LEADER' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setReleaseTarget(b); setReleaseReason(''); setReleaseRemarks(''); setReleaseSalesId(''); }}
                         className="w-full py-2.5 rounded-lg border border-tertiary/30 text-tertiary hover:bg-tertiary-container/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
