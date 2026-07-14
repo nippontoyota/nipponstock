@@ -30,12 +30,13 @@ export function startExpiryJob() {
       ]);
     }
 
-    // Expire hard blocks past their expiryAt
+    // Expire hard blocks past their expiryAt — never expire Full Payment Received bookings
     const expiredHard = await prisma.blockingRequest.findMany({
       where: {
         blockType: 'HARD',
         status: 'ACTIVE',
         expiryAt: { lt: now },
+        paymentStatus: { not: 'Full Payment Received' },
       },
       select: { id: true, vehicleId: true },
     });
