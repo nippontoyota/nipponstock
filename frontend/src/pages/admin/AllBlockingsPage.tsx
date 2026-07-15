@@ -114,8 +114,8 @@ export default function AllBlockingsPage() {
   const downloadExcel = async () => {
     const tid = toast.loading('Fetching all records…');
     try {
-      // Always export only HARD ACTIVE blockings regardless of on-screen filters
-      const allParams = new URLSearchParams({ page: '1', limit: '99999', blockType: 'HARD', status: 'ACTIVE' });
+      // Export all blockings regardless of on-screen filters
+      const allParams = new URLSearchParams({ page: '1', limit: '99999' });
       if (filters.search) allParams.set('search', filters.search);
       if (filters.chassis) allParams.set('chassis', filters.chassis);
       if (filters.blockedFrom) allParams.set('blockedFrom', filters.blockedFrom);

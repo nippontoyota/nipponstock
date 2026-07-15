@@ -450,9 +450,9 @@ export default function MyBlockingsPage() {
 
                   {/* Actions */}
                   <div className="mt-auto space-y-2">
-                    {/* Tally Done — owner or SM over TL */}
+                    {/* Tally Done — owner (non-TL) or SM over TL */}
                     <div className="flex gap-3">
-                      {b.status === 'ACTIVE' && b.blockType === 'HARD' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
+                      {b.status === 'ACTIVE' && b.blockType === 'HARD' && authUser?.role !== 'TEAM_LEADER' && (isMyOwn || (authUser?.role === 'SALES_MANAGER' && isTlBlocking)) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelected(b); }}
                           className={`flex-1 text-xs font-bold uppercase tracking-widest py-3 rounded-lg transition-all font-headline ${isCritical ? 'bg-tertiary-container text-on-tertiary-container hover:brightness-110' : 'bg-primary text-on-primary hover:brightness-110'}`}
@@ -471,8 +471,11 @@ export default function MyBlockingsPage() {
                         Edit Details
                       </button>
                     )}
-                    {/* Update Payment Status — SM only (own blockings or TL blockings in branch) */}
-                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && authUser?.role === 'SALES_MANAGER' && (isMyOwn || isTlBlocking) && (
+                    {/* Update Payment Status — SM (all options) or TL (restricted options, own blockings only) */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
+                      (authUser?.role === 'SALES_MANAGER' && (isMyOwn || isTlBlocking)) ||
+                      (authUser?.role === 'TEAM_LEADER' && isMyOwn)
+                    ) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setPayStatusTarget(b); setNewPayStatus(b.paymentStatus ?? ''); }}
                         className="w-full py-2.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 text-xs font-bold uppercase tracking-widest transition-all font-headline"
@@ -663,7 +666,9 @@ export default function MyBlockingsPage() {
                     onChange={(e) => setNewPayStatus(e.target.value)}
                   >
                     <option value="">Select status…</option>
-                    {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {PAYMENT_STATUSES
+                      .filter((s) => authUser?.role !== 'TEAM_LEADER' || (s !== 'Full Payment Received' && s !== 'Ready for Disbursement'))
+                      .map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
                 </div>
