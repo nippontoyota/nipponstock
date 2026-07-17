@@ -150,7 +150,7 @@ export default function UsersPage() {
                       <option value="1">Cluster 1 — CO01A, CO01B, KY01A</option>
                       <option value="2">Cluster 2 — TR01A, TR01C, KL01A</option>
                       <option value="3">Cluster 3 — IR01A, TI01A, MV01A</option>
-                      <option value="4">Cluster 4 — KT01A, PH01A, TL01A</option>
+                      <option value="4">Cluster 4 — KT01A, PH01A, TL01A, KT01B</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                   </div>
