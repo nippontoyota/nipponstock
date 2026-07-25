@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
@@ -10,21 +10,25 @@ const router = Router();
 router.use(authenticate);
 
 // Heatmap — available to all authenticated users
-router.get('/heatmap', async (req: AuthRequest, res: Response) => {
-  const year = req.query.year ? parseInt(req.query.year as string) : undefined;
-  const data = await getHeatmap(year);
-  res.json(data);
+router.get('/heatmap', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const data = await getHeatmap(year);
+    res.json(data);
+  } catch (err) { next(err); }
 });
 
 // Distinct chassis years in active stock — available to all authenticated users
-router.get('/years', async (_req: AuthRequest, res: Response) => {
-  const rows = await prisma.vehicle.findMany({
-    where: { status: { not: 'DELIVERED' }, hiddenFromHeatmap: false },
-    select: { chassisYear: true },
-    distinct: ['chassisYear'],
-    orderBy: { chassisYear: 'desc' },
-  });
-  res.json(rows.map((r) => r.chassisYear));
+router.get('/years', async (_req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const rows = await prisma.vehicle.findMany({
+      where: { status: { not: 'DELIVERED' }, hiddenFromHeatmap: false },
+      select: { chassisYear: true },
+      distinct: ['chassisYear'],
+      orderBy: { chassisYear: 'desc' },
+    });
+    res.json(rows.map((r) => r.chassisYear));
+  } catch (err) { next(err); }
 });
 
 // All stock — admin only

@@ -1,8 +1,13 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
+
+// Prevent unhandled promise rejections (e.g. Supabase P1017) from crashing the process
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
 
 import { setIO } from './services/events';
 import { startExpiryJob } from './services/expiry';
@@ -52,6 +57,13 @@ app.use('/cluster-manager', clusterManagerRouter);
 app.use('/ceo', ceoRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Global error handler — catches errors passed via next(err) or thrown in async routes
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[express error]', err);
+  if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
+});
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
