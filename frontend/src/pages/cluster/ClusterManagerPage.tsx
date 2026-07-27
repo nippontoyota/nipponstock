@@ -227,7 +227,6 @@ export default function ClusterManagerPage() {
           'Order ID':             b.orderId ?? '',
           'Consultant':           b.consultantName ?? '',
           'Team Leader':          b.teamLeaderName ?? '',
-          'Payment Mode':         b.paymentMode ?? '',
           'Payment Status':       b.paymentStatus ?? '',
           'Blocked Date':         b.hardBlockAt ? new Date(b.hardBlockAt).toLocaleDateString('en-GB') : '',
           'Days Left':            daysLeft,
