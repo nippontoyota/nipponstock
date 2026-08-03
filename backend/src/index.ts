@@ -25,6 +25,7 @@ import financeRouter from './routes/finance';
 import financeHeadRouter from './routes/financeHead';
 import clusterManagerRouter from './routes/clusterManager';
 import ceoRouter from './routes/ceo';
+import deliveryRouter from './routes/delivery';
 
 const app = express();
 const server = http.createServer(app);
@@ -55,6 +56,7 @@ app.use('/finance', financeRouter);
 app.use('/finance-head', financeHeadRouter);
 app.use('/cluster-manager', clusterManagerRouter);
 app.use('/ceo', ceoRouter);
+app.use('/delivery', deliveryRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

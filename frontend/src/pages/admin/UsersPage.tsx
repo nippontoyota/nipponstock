@@ -124,12 +124,15 @@ export default function UsersPage() {
                     <option value="FINANCE_HEAD">Finance Head</option>
                     <option value="CLUSTER_MANAGER">Cluster Manager</option>
                     <option value="CEO">CEO</option>
+                    <option value="DELIVERY_INCHARGE">Delivery Incharge</option>
+                    <option value="INSURANCE">Insurance</option>
+                    <option value="ACCOUNTS_DEPT">Accounts Dept</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
                 </div>
               </div>
-              {(form.role === 'SALES_MANAGER' || form.role === 'TEAM_LEADER' || form.role === 'FINANCE_OFFICER') && (
+              {(['SALES_MANAGER', 'TEAM_LEADER', 'FINANCE_OFFICER', 'DELIVERY_INCHARGE', 'INSURANCE', 'ACCOUNTS_DEPT'].includes(form.role)) && (
                 <div>
                   <label className="label">Branch</label>
                   <div className="relative">

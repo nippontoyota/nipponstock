@@ -27,6 +27,12 @@ import ClusterManagerShell from './layouts/ClusterManagerShell';
 import ClusterManagerPage from './pages/cluster/ClusterManagerPage';
 import CEOShell from './layouts/CEOShell';
 import CEOPage from './pages/ceo/CEOPage';
+import DeliveryShell from './layouts/DeliveryShell';
+import DeliveryInchargePage from './pages/delivery/DeliveryInchargePage';
+import InsuranceShell from './layouts/InsuranceShell';
+import InsurancePage from './pages/insurance/InsurancePage';
+import AccountsShell from './layouts/AccountsShell';
+import AccountsDeptPage from './pages/accounts/AccountsDeptPage';
 
 function RequireAuth({ children, role }: { children: JSX.Element; role?: string | string[] }) {
   const { user } = useAuth();
@@ -127,18 +133,57 @@ export default function App() {
         <Route index element={<CEOPage />} />
       </Route>
 
+      {/* Delivery Incharge routes */}
+      <Route
+        path="/delivery"
+        element={
+          <RequireAuth role="DELIVERY_INCHARGE">
+            <DeliveryShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<DeliveryInchargePage />} />
+      </Route>
+
+      {/* Insurance routes */}
+      <Route
+        path="/insurance"
+        element={
+          <RequireAuth role="INSURANCE">
+            <InsuranceShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<InsurancePage />} />
+      </Route>
+
+      {/* Accounts Dept routes */}
+      <Route
+        path="/accounts"
+        element={
+          <RequireAuth role="ACCOUNTS_DEPT">
+            <AccountsShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<AccountsDeptPage />} />
+      </Route>
+
       {/* Root redirect — role-aware */}
       <Route
         path="/"
         element={
           user ? (
-            user.role === 'ADMIN'            ? <Navigate to="/admin"        replace /> :
-            user.role === 'FINANCE_OFFICER'  ? <Navigate to="/finance"      replace /> :
-            user.role === 'FINANCE_HEAD'     ? <Navigate to="/finance-head" replace /> :
-            user.role === 'CLUSTER_MANAGER'  ? <Navigate to="/cluster"      replace /> :
-            user.role === 'CEO'              ? <Navigate to="/ceo"          replace /> :
-            user.role === 'TEAM_LEADER'      ? <Navigate to="/sales"        replace /> :
-                                               <Navigate to="/sales"        replace />
+            user.role === 'ADMIN'              ? <Navigate to="/admin"        replace /> :
+            user.role === 'FINANCE_OFFICER'    ? <Navigate to="/finance"      replace /> :
+            user.role === 'FINANCE_HEAD'       ? <Navigate to="/finance-head" replace /> :
+            user.role === 'CLUSTER_MANAGER'    ? <Navigate to="/cluster"      replace /> :
+            user.role === 'CEO'                ? <Navigate to="/ceo"          replace /> :
+            user.role === 'DELIVERY_INCHARGE'  ? <Navigate to="/delivery"     replace /> :
+            user.role === 'INSURANCE'          ? <Navigate to="/insurance"    replace /> :
+            user.role === 'ACCOUNTS_DEPT'      ? <Navigate to="/accounts"     replace /> :
+            user.role === 'TEAM_LEADER'        ? <Navigate to="/sales"        replace /> :
+                                                 <Navigate to="/sales"        replace />
           ) : (
             <Navigate to="/login" replace />
           )

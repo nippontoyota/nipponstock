@@ -58,3 +58,27 @@ export function requireCeo(req: AuthRequest, res: Response, next: NextFunction) 
   }
   next();
 }
+
+export function requireDeliveryIncharge(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'DELIVERY_INCHARGE') {
+    res.status(403).json({ error: 'Delivery Incharge access required' });
+    return;
+  }
+  next();
+}
+
+export function requireInsurance(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'INSURANCE') {
+    res.status(403).json({ error: 'Insurance access required' });
+    return;
+  }
+  next();
+}
+
+export function requireAccountsDept(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'ACCOUNTS_DEPT') {
+    res.status(403).json({ error: 'Accounts Dept access required' });
+    return;
+  }
+  next();
+}

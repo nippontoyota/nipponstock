@@ -5,7 +5,7 @@ interface AuthUser {
   id: string;
   loginId: string;
   fullName: string;
-  role: 'ADMIN' | 'SALES_MANAGER' | 'TEAM_LEADER' | 'FINANCE_OFFICER' | 'FINANCE_HEAD' | 'CLUSTER_MANAGER' | 'CEO';
+  role: 'ADMIN' | 'SALES_MANAGER' | 'TEAM_LEADER' | 'FINANCE_OFFICER' | 'FINANCE_HEAD' | 'CLUSTER_MANAGER' | 'CEO' | 'DELIVERY_INCHARGE' | 'INSURANCE' | 'ACCOUNTS_DEPT';
   branchId: string | null;
   clusterNumber: number | null;
 }

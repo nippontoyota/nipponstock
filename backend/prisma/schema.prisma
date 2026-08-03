@@ -16,6 +16,19 @@ enum Role {
   FINANCE_HEAD
   CLUSTER_MANAGER
   CEO
+  DELIVERY_INCHARGE
+  INSURANCE
+  ACCOUNTS_DEPT
+}
+
+enum DeliveryStage {
+  DI_DOCUMENTS
+  INSURANCE
+  DI_VAHAAN_ENTRY
+  ACCOUNTS_TALLY
+  DI_VAHAAN_DONE
+  ACCOUNTS_ROAD_TAX
+  COMPLETED
 }
 
 enum VehicleStatus {
@@ -55,11 +68,12 @@ model Branch {
   location   String
   createdAt  DateTime @default(now())
 
-  users            User[]
-  blockings        BlockingRequest[]
-  vehicleRequests  VehicleRequest[]
-  physicalVehicles Vehicle[]         @relation("PhysicalStockBranch")
-  stockyardRanks   StockyardRank[]
+  users             User[]
+  blockings         BlockingRequest[]
+  vehicleRequests   VehicleRequest[]
+  physicalVehicles  Vehicle[]          @relation("PhysicalStockBranch")
+  stockyardRanks    StockyardRank[]
+  deliveryWorkflows DeliveryWorkflow[]
 }
 
 // Ranking of stockyard codes by proximity to a branch (1 = nearest), used by the
@@ -198,7 +212,8 @@ model BlockingRequest {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
-  financeRecord FinanceRecord?
+  financeRecord    FinanceRecord?
+  deliveryWorkflow DeliveryWorkflow?
 
   @@index([vehicleId])
   @@index([userId])
@@ -278,4 +293,50 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([performedAt])
+}
+
+// ── Delivery Workflow ─────────────────────────────────────────────────────────
+
+model DeliveryWorkflow {
+  id         String        @id @default(uuid())
+  blockingId String        @unique
+  blocking   BlockingRequest @relation(fields: [blockingId], references: [id])
+  branchId   String
+  branch     Branch        @relation(fields: [branchId], references: [id])
+  stage      DeliveryStage @default(DI_DOCUMENTS)
+
+  // Stage 1 — DI fills customer info + uploads docs
+  customerName   String?
+  salesOfficer   String?
+  teamLeaderName String?
+  panCardUrl     String?
+  aadharUrl      String?
+  fileFrontUrl   String?
+  fileBackUrl    String?
+
+  // Insurance stage
+  insuranceType    String?   // IN_HOUSE | OUT_HOUSE
+  insuranceCompany String?
+  payout           Float?
+  premium          Float?
+  insuranceRemarks String?
+
+  // Stage 2 — Vahaan Entry
+  form21Url String?
+
+  // Accounts — Tally
+  tallyNo   String?
+  tallyDate DateTime?
+
+  // Stage 3 — Vahaan Done
+  vaahanDone Boolean @default(false)
+
+  // Accounts — Road Tax
+  roadTaxReceiptNo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([branchId])
+  @@index([stage])
 }
