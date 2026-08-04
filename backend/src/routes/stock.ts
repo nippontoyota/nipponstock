@@ -182,6 +182,7 @@ router.get('/export', requireAdmin, async (_req: AuthRequest, res: Response) => 
     blockedBy: v.blockings[0]?.user.fullName ?? '',
     branch: v.blockings[0]?.branch.name ?? '',
     expiryAt: v.blockings[0]?.expiryAt?.toISOString() ?? '',
+    hidden: v.hiddenFromHeatmap,
   }));
 
   const wb = XLSX.utils.book_new();
