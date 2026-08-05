@@ -146,7 +146,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
 router.get('/offer-vehicles', async (_req: AuthRequest, res: Response) => {
   const vehicles = await prisma.vehicle.findMany({
     where: { status: 'OPEN', hiddenFromHeatmap: false },
-    select: { model: true, suffix: true, colour: true, chassisNumber: true, assignmentDate: true, stockStatus: true },
+    select: { model: true, suffix: true, colour: true, chassisNumber: true, assignmentDate: true, stockStatus: true, chassisYear: true },
     orderBy: { assignmentDate: 'asc' },
   });
   res.json(vehicles);
