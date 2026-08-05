@@ -9,6 +9,57 @@ import { emitHeatmapUpdate, emitBlockingUpdate } from '../services/events';
 const router = Router();
 router.use(authenticate);
 
+// Models whose chassis numbers are masked for SM/TL until Full Payment Received
+const MASKED_MODELS = ['INN', 'FRN', 'IMV'];
+
+function maskChassis(chassisNumber: string, model: string, paymentStatus: string | null): string {
+  return MASKED_MODELS.includes(model) && paymentStatus !== 'Full Payment Received'
+    ? '—'
+    : chassisNumber;
+}
+
+// Swap an INN/FRN/IMV or MDDP vehicle to a CTDMS/BND unit on Full Payment
+async function swapToCTDMSBND(blockingId: string, vehicleId: string) {
+  const vehicle = await prisma.vehicle.findUnique({
+    where: { id: vehicleId },
+    select: { id: true, model: true, suffix: true, colour: true, stockStatus: true },
+  });
+  if (!vehicle) return;
+
+  const needsSwap = MASKED_MODELS.includes(vehicle.model) || vehicle.stockStatus === 'MDDP';
+  if (!needsSwap) return;
+
+  const replacement = await prisma.vehicle.findFirst({
+    where: {
+      model: vehicle.model,
+      suffix: vehicle.suffix,
+      colour: vehicle.colour,
+      stockStatus: { in: ['CTDMS', 'BND'] },
+      status: { not: 'DELIVERED' },
+      id: { not: vehicleId },
+    },
+    orderBy: { assignmentDate: 'asc' },
+  });
+  if (!replacement) return; // no swap available — just leave chassis masked
+
+  // Release any active blocking on the replacement vehicle
+  await prisma.blockingRequest.updateMany({
+    where: { vehicleId: replacement.id, status: 'ACTIVE' },
+    data: { status: 'EXPIRED' },
+  });
+
+  // Swap vehicle on the current blocking
+  await prisma.blockingRequest.update({ where: { id: blockingId }, data: { vehicleId: replacement.id } });
+
+  // Mark replacement as HARD_BLOCKED, release original to OPEN
+  await Promise.all([
+    prisma.vehicle.update({ where: { id: replacement.id }, data: { status: 'HARD_BLOCKED' } }),
+    prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: 'OPEN' } }),
+  ]);
+
+  console.log(`[swap] blocking=${blockingId} ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} → ${replacement.id}`);
+}
+
 // Canonical payment status values — enforced at every write point
 const PAYMENT_STATUSES = [
   'Down Payment Received',
@@ -124,7 +175,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
         },
       });
 
-      return { ...blocking, chassisNumber: vehicle.chassisNumber };
+      return { ...blocking, chassisNumber: maskChassis(vehicle.chassisNumber, vehicle.model, null), model: vehicle.model };
     });
 
     emitHeatmapUpdate();
@@ -178,7 +229,7 @@ router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
       );
 
       const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
-      let vehicle: { id: string; chassisNumber: string } | null = null;
+      let vehicle: { id: string; chassisNumber: string; model: string } | null = null;
       for (const ss of PRIORITY) {
         vehicle = matching.find((v) => v.stockStatus === ss) ?? null;
         if (vehicle) break;
@@ -197,7 +248,7 @@ router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
           expiryAt: new Date(Date.now() + 5 * 60 * 1000),
         },
       });
-      return { ...blocking, chassisNumber: vehicle.chassisNumber };
+      return { ...blocking, chassisNumber: maskChassis(vehicle.chassisNumber, vehicle.model, null) };
     });
 
     emitHeatmapUpdate();
@@ -486,7 +537,13 @@ router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
   const updated = await prisma.blockingRequest.update({
     where: { id: req.params.id },
     data: { paymentStatus: parsed.data.paymentStatus, ...fpFields },
+    include: { vehicle: true },
   });
+
+  if (parsed.data.paymentStatus === 'Full Payment Received') {
+    await swapToCTDMSBND(req.params.id, updated.vehicle.id);
+    emitHeatmapUpdate();
+  }
 
   await logAudit({
     entityType: 'BLOCKING',
@@ -520,7 +577,14 @@ router.get('/my', async (req: AuthRequest, res: Response) => {
       user: { select: { id: true, fullName: true, role: true } },
     },
   });
-  res.json(blockings);
+
+  const masked = blockings.map((b) => ({
+    ...b,
+    vehicle: b.vehicle
+      ? { ...b.vehicle, chassisNumber: maskChassis(b.vehicle.chassisNumber, b.vehicle.model, b.paymentStatus) }
+      : b.vehicle,
+  }));
+  res.json(masked);
 });
 
 // GET /blocking/all — admin
@@ -612,7 +676,17 @@ router.patch('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   if (parsed.data.expectedBillingDate) data.expectedBillingDate = new Date(parsed.data.expectedBillingDate);
   if (parsed.data.paymentStatus) Object.assign(data, fullPaymentFields(parsed.data.paymentStatus, existing.paymentStatus));
 
-  const updated = await prisma.blockingRequest.update({ where: { id: req.params.id }, data });
+  const updated = await prisma.blockingRequest.update({
+    where: { id: req.params.id },
+    data,
+    include: { vehicle: true },
+  });
+
+  if (parsed.data.paymentStatus === 'Full Payment Received' && existing.paymentStatus !== 'Full Payment Received') {
+    await swapToCTDMSBND(req.params.id, updated.vehicle.id);
+    emitHeatmapUpdate();
+  }
+
   await logAudit({ entityType: 'BLOCKING', entityId: req.params.id, action: 'EDITED', performedById: req.user!.userId, previousValue: existing, newValue: updated });
 
   emitBlockingUpdate(req.params.id);

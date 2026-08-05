@@ -9,6 +9,7 @@ const sideNav = [
   { to: '/admin/branches', icon: 'corporate_fare', label: 'Branches' },
   { to: '/admin/cars', icon: 'directions_car', label: 'Car Catalogue' },
   { to: '/admin/vehicle-requests', icon: 'fact_check', label: 'Vehicle Requests' },
+  { to: '/admin/masked-upload', icon: 'visibility_off', label: 'Masked Upload' },
   { to: '/admin/config', icon: 'tune', label: 'Config' },
   { to: '/admin/users', icon: 'manage_accounts', label: 'Users' },
 ];

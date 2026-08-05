@@ -121,6 +121,63 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
   res.json({ total: rows.length, success, created, updated, rejected });
 });
 
+// Import masked vehicles (INN / FRN / IMV) — chassis stays hidden from SM/TL until Full Payment
+router.post('/import-masked', requireAdmin, upload.single('file'), async (req: AuthRequest, res: Response) => {
+  if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
+
+  const MASKED_MODELS = ['INN', 'FRN', 'IMV'];
+
+  const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+
+  const RowSchema = z.object({
+    chassisNumber: z.string().min(1),
+    chassisYear: z.coerce.number().int(),
+    model: z.string().min(1).refine((m) => MASKED_MODELS.includes(m.toUpperCase()), { message: 'Model must be INN, FRN, or IMV' }),
+    suffix: z.string().min(1),
+    colour: z.string().min(1),
+    stockyardLocation: z.string().default(''),
+    dateOfArrival: z.coerce.date(),
+    stockStatus: z.enum(['BND', 'MDDP', 'CTDMS']).optional(),
+  });
+
+  let success = 0, created = 0, updated = 0;
+  const rejected: { row: number; reason: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const normalised: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rows[i])) {
+      const key = k.replace(/\s+/g, '').replace(/^(.)/, (c) => c.toLowerCase());
+      normalised[key] = typeof v === 'string' ? v.trim() : v;
+    }
+    if (normalised.model && typeof normalised.model === 'string') {
+      normalised.model = normalised.model.toUpperCase();
+    }
+
+    const parsed = RowSchema.safeParse(normalised);
+    if (!parsed.success) {
+      rejected.push({ row: i + 2, reason: JSON.stringify(parsed.error.flatten().fieldErrors) });
+      continue;
+    }
+
+    try {
+      const existing = await prisma.vehicle.findUnique({ where: { chassisNumber: parsed.data.chassisNumber }, select: { id: true } });
+      await prisma.vehicle.upsert({
+        where: { chassisNumber: parsed.data.chassisNumber },
+        update: { ...parsed.data, hiddenFromHeatmap: false },
+        create: { ...parsed.data, status: 'OPEN', hiddenFromHeatmap: false },
+      });
+      success++;
+      if (existing) updated++; else created++;
+    } catch (e) {
+      rejected.push({ row: i + 2, reason: String(e) });
+    }
+  }
+
+  res.json({ total: rows.length, success, created, updated, rejected });
+});
+
 // Manual single-vehicle entry
 const ManualVehicleSchema = z.object({
   stockStatus: z.enum(['BND', 'MDDP', 'CTDMS']),
