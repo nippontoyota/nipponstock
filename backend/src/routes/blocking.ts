@@ -142,6 +142,76 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /blocking/offer-vehicles — OPEN vehicles for offers page (frontend does incentive lookup)
+router.get('/offer-vehicles', async (_req: AuthRequest, res: Response) => {
+  const vehicles = await prisma.vehicle.findMany({
+    where: { status: 'OPEN', hiddenFromHeatmap: false },
+    select: { model: true, suffix: true, colour: true, chassisNumber: true, assignmentDate: true, stockStatus: true },
+    orderBy: { assignmentDate: 'asc' },
+  });
+  res.json(vehicles);
+});
+
+// POST /blocking/offer-soft — soft block by model+suffix (earliest assignmentDate, BND→CTDMS priority)
+router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
+  const Schema = z.object({ model: z.string().min(1), suffix: z.string().min(1) });
+  const parsed = Schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const model = parsed.data.model.trim();
+  const suffix = parsed.data.suffix.trim();
+  const userId = req.user!.userId;
+  const branchId = req.user!.branchId;
+  if (!branchId) { res.status(403).json({ error: 'No branch assigned' }); return; }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const candidates = await tx.vehicle.findMany({
+        where: { status: 'OPEN', hiddenFromHeatmap: false },
+        select: { id: true, model: true, suffix: true, chassisNumber: true, assignmentDate: true, stockStatus: true },
+        orderBy: { assignmentDate: 'asc' },
+      });
+
+      const clean = (s: string) => s.replace(/[\s ​﻿]+/g, ' ').trim();
+      const matching = candidates.filter(
+        (v) => clean(v.model) === clean(model) && clean(v.suffix) === clean(suffix),
+      );
+
+      const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
+      let vehicle: { id: string; chassisNumber: string } | null = null;
+      for (const ss of PRIORITY) {
+        vehicle = matching.find((v) => v.stockStatus === ss) ?? null;
+        if (vehicle) break;
+      }
+      if (!vehicle) vehicle = matching[0] ?? null;
+      if (!vehicle) throw new Error('NO_VEHICLE');
+
+      await tx.vehicle.update({ where: { id: vehicle.id }, data: { status: 'SOFT_BLOCKED' } });
+      const blocking = await tx.blockingRequest.create({
+        data: {
+          vehicleId: vehicle.id,
+          userId,
+          branchId,
+          blockType: 'SOFT',
+          softBlockAt: new Date(),
+          expiryAt: new Date(Date.now() + 5 * 60 * 1000),
+        },
+      });
+      return { ...blocking, chassisNumber: vehicle.chassisNumber };
+    });
+
+    emitHeatmapUpdate();
+    res.status(201).json(result);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === 'NO_VEHICLE') {
+      res.status(409).json({ error: 'No open vehicle found for this combination' });
+    } else {
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+});
+
 // POST /blocking/hard — convert soft to hard block
 router.post('/hard', async (req: AuthRequest, res: Response) => {
   const isTeamLeader = req.user!.role === 'TEAM_LEADER';

@@ -5,6 +5,7 @@ const sideNav = [
   { to: '/sales', icon: 'analytics', label: 'Live Inventory', end: true },
   { to: '/sales/block', icon: 'directions_car', label: 'Reserve Vehicle' },
   { to: '/sales/my-blockings', icon: 'lock_clock', label: 'Active Blockings' },
+  { to: '/sales/offers', icon: 'local_offer', label: 'Offers' },
 ];
 
 export default function SalesShell() {
@@ -112,6 +113,7 @@ export default function SalesShell() {
             { to: '/sales', icon: 'analytics', label: 'Dash', end: true },
             { to: '/sales/block', icon: 'directions_car', label: 'Reserve' },
             { to: '/sales/my-blockings', icon: 'lock_clock', label: 'Blocks' },
+            { to: '/sales/offers', icon: 'local_offer', label: 'Offers' },
           ].map((item) => (
             <NavLink
               key={item.to}

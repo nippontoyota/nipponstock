@@ -20,6 +20,7 @@ import VehicleRequestsPage from './pages/admin/VehicleRequestsPage';
 import HeatmapPage from './pages/sales/HeatmapPage';
 import BlockPage from './pages/sales/BlockPage';
 import MyBlockingsPage from './pages/sales/MyBlockingsPage';
+import OffersPage from './pages/sales/OffersPage';
 
 import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
 import FinanceHeadPage from './pages/finance/FinanceHeadPage';
@@ -83,6 +84,7 @@ export default function App() {
         <Route index element={<HeatmapPage />} />
         <Route path="block" element={<BlockPage />} />
         <Route path="my-blockings" element={<MyBlockingsPage />} />
+        <Route path="offers" element={<OffersPage />} />
       </Route>
 
       {/* Finance Officer routes */}
