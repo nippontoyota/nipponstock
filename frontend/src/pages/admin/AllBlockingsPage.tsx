@@ -404,13 +404,7 @@ export default function AllBlockingsPage() {
               </div>
               <div><label className="label">Admin Notes</label><textarea className="input" rows={2} value={editForm.adminNotes} onChange={(e) => setEditForm((f) => ({ ...f, adminNotes: e.target.value }))} /></div>
 
-              <div className="pt-2" style={{ borderTop: '1px solid rgba(67,70,86,0.1)' }}>
-                <label className="label">Extend Expiry Date</label>
-                <div className="flex gap-2">
-                  <input className="input flex-1" type="datetime-local" value={extendDate} onChange={(e) => setExtendDate(e.target.value)} style={{ colorScheme: 'dark' }} />
-                  <button onClick={handleExtend} disabled={!extendDate} className="btn-secondary text-xs px-4 whitespace-nowrap disabled:opacity-40">Extend</button>
-                </div>
-              </div>
+              {/* Extend Expiry Date — temporarily hidden */}
             </div>
 
             {selected.status === 'ACTIVE' && (
