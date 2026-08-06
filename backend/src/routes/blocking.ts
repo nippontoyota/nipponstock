@@ -175,6 +175,15 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
   if (!vehicle || !MASKED_MODELS.includes(vehicle.model)) return;
 
   if (vehicle.stockStatus === 'MDDP') {
+    // Fetch branch name of the full-payment blocking so we can stamp it on evicted records
+    const fpBlocking = await prisma.blockingRequest.findUnique({
+      where: { id: blockingId },
+      select: { branch: { select: { name: true, branchCode: true } } },
+    });
+    const branchLabel = fpBlocking?.branch
+      ? `${fpBlocking.branch.name}${fpBlocking.branch.branchCode ? ` (${fpBlocking.branch.branchCode})` : ''}`
+      : 'Unknown branch';
+
     const replacement = await prisma.vehicle.findFirst({
       where: {
         model: vehicle.model,
@@ -189,13 +198,31 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
     });
     if (!replacement) { console.log(`[swap] no CTDMS/BND for ${vehicle.model}/${vehicle.suffix}/${vehicle.colour}`); return; }
 
-    await prisma.blockingRequest.updateMany({ where: { vehicleId: replacement.id, status: 'ACTIVE' }, data: { status: 'EXPIRED' } });
+    // Expire existing blockings on the CTDMS vehicle, stamping a remark on each
+    const evictedBlockings = await prisma.blockingRequest.findMany({
+      where: { vehicleId: replacement.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (evictedBlockings.length > 0) {
+      await Promise.all(
+        evictedBlockings.map((b) =>
+          prisma.blockingRequest.update({
+            where: { id: b.id },
+            data: {
+              status: 'EXPIRED',
+              adminNotes: `Vehicle swapped to Full Payment case — ${branchLabel}`,
+            },
+          })
+        )
+      );
+    }
+
     await prisma.blockingRequest.update({ where: { id: blockingId }, data: { vehicleId: replacement.id } });
     await Promise.all([
       prisma.vehicle.update({ where: { id: replacement.id }, data: { status: 'HARD_BLOCKED' } }),
       prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: 'OPEN' } }),
     ]);
-    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id}`);
+    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id} (evicted ${evictedBlockings.length} blocking(s) for ${branchLabel})`);
     await revealChassis(replacement.id);
   } else if (vehicle.stockStatus === 'CTDMS' || vehicle.stockStatus === 'BND') {
     await revealChassis(vehicleId);
