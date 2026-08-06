@@ -31,6 +31,24 @@ router.get('/years', async (_req: AuthRequest, res: Response, next: NextFunction
   } catch (err) { next(err); }
 });
 
+// Open vehicles matching model/suffix/colour/year — available to all authenticated users (SO, sales, admin)
+router.get('/open', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { model, suffix, colour, year } = req.query as Record<string, string>;
+    const where: Record<string, unknown> = { status: 'OPEN', hiddenFromHeatmap: false };
+    if (model) where.model = model;
+    if (suffix) where.suffix = suffix;
+    if (colour) where.colour = colour;
+    if (year) where.chassisYear = parseInt(year);
+    const vehicles = await prisma.vehicle.findMany({
+      where,
+      select: { id: true, chassisNumber: true, model: true, suffix: true, colour: true, chassisYear: true, stockStatus: true },
+      orderBy: { assignmentDate: 'asc' },
+    });
+    res.json(vehicles);
+  } catch (err) { next(err); }
+});
+
 // All stock — admin only
 router.get('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   const { status, model, chassis, stockStatus, page = '1', limit = '50' } = req.query as Record<string, string>;

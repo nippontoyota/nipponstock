@@ -34,6 +34,8 @@ import InsuranceShell from './layouts/InsuranceShell';
 import InsurancePage from './pages/insurance/InsurancePage';
 import AccountsShell from './layouts/AccountsShell';
 import AccountsDeptPage from './pages/accounts/AccountsDeptPage';
+import SOShell from './layouts/SOShell';
+import SOPage from './pages/so/SOPage';
 
 function RequireAuth({ children, role }: { children: JSX.Element; role?: string | string[] }) {
   const { user } = useAuth();
@@ -171,6 +173,18 @@ export default function App() {
         <Route index element={<AccountsDeptPage />} />
       </Route>
 
+      {/* Sales Officer routes */}
+      <Route
+        path="/so"
+        element={
+          <RequireAuth role="SO">
+            <SOShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<SOPage />} />
+      </Route>
+
       {/* Root redirect — role-aware */}
       <Route
         path="/"
@@ -184,6 +198,7 @@ export default function App() {
             user.role === 'DELIVERY_INCHARGE'  ? <Navigate to="/delivery"     replace /> :
             user.role === 'INSURANCE'          ? <Navigate to="/insurance"    replace /> :
             user.role === 'ACCOUNTS_DEPT'      ? <Navigate to="/accounts"     replace /> :
+            user.role === 'SO'                 ? <Navigate to="/so"           replace /> :
             user.role === 'TEAM_LEADER'        ? <Navigate to="/sales"        replace /> :
                                                  <Navigate to="/sales"        replace />
           ) : (

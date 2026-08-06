@@ -19,6 +19,7 @@ enum Role {
   DELIVERY_INCHARGE
   INSURANCE
   ACCOUNTS_DEPT
+  SO
 }
 
 enum DeliveryStage {
