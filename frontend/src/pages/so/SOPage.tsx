@@ -25,12 +25,12 @@ interface OpenVehicle {
 }
 
 const cellBg = { green: '#16a34a', yellow: '#ca8a04', red: '#dc2626' };
-const levelLabel = { green: 'High (>5 units)', yellow: 'Medium (3–4 units)', red: 'Critical (≤2 units)' };
+const levelLabel = { green: 'High Availability', yellow: 'Medium Availability', red: 'Critical — Low Stock' };
 
 export default function SOPage() {
   const [yearOptions, setYearOptions] = useState<number[]>([]);
   const [cells, setCells] = useState<HeatmapCell[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [selYear, setSelYear] = useState('');
   const [selModel, setSelModel] = useState('');
@@ -40,11 +40,10 @@ export default function SOPage() {
   const [openVehicles, setOpenVehicles] = useState<OpenVehicle[]>([]);
   const [incentiveLoading, setIncentiveLoading] = useState(false);
 
-  const fetchHeatmap = useCallback(async (year?: string) => {
+  const fetchHeatmap = useCallback(async (year: string) => {
     setLoading(true);
     try {
-      const params = year ? `?year=${year}` : '';
-      const { data } = await api.get(`/stock/heatmap${params}`);
+      const { data } = await api.get(`/stock/heatmap?year=${year}`);
       setCells(data);
     } finally {
       setLoading(false);
@@ -55,32 +54,34 @@ export default function SOPage() {
     api.get('/stock/years').then(({ data }) => setYearOptions(data));
   }, []);
 
+  // Only fetch heatmap once a year is chosen
   useEffect(() => {
-    fetchHeatmap(selYear || undefined);
     setSelModel(''); setSelSuffix(''); setSelColour('');
     setOpenVehicles([]);
+    if (selYear) fetchHeatmap(selYear);
+    else setCells([]);
   }, [selYear, fetchHeatmap]);
 
   useEffect(() => {
-    const handler = () => fetchHeatmap(selYear || undefined);
+    if (!selYear) return;
+    const handler = () => fetchHeatmap(selYear);
     socket.on('heatmap:update', handler);
     return () => { socket.off('heatmap:update', handler); };
   }, [selYear, fetchHeatmap]);
 
   // Fetch open vehicles when all 4 filters are selected
   useEffect(() => {
-    if (!selModel || !selSuffix || !selColour) { setOpenVehicles([]); return; }
+    if (!selModel || !selSuffix || !selColour || !selYear) { setOpenVehicles([]); return; }
     setIncentiveLoading(true);
-    const params = new URLSearchParams({ model: selModel, suffix: selSuffix, colour: selColour });
-    if (selYear) params.set('year', selYear);
+    const params = new URLSearchParams({ model: selModel, suffix: selSuffix, colour: selColour, year: selYear });
     api.get(`/stock/open?${params.toString()}`)
       .then(({ data }) => setOpenVehicles(data))
       .catch(() => setOpenVehicles([]))
       .finally(() => setIncentiveLoading(false));
   }, [selModel, selSuffix, selColour, selYear]);
 
-  // Derived options from heatmap cells
-  const models = [...new Set(cells.map((c) => c.model))].sort();
+  // Derived options — only populated once a year is selected
+  const models = selYear ? [...new Set(cells.map((c) => c.model))].sort() : [];
   const suffixes = selModel ? [...new Set(cells.filter((c) => c.model === selModel).map((c) => c.suffix))].sort() : [];
   const colours = (selModel && selSuffix)
     ? [...new Set(cells.filter((c) => c.model === selModel && c.suffix === selSuffix).map((c) => c.colour))].sort()
@@ -92,11 +93,7 @@ export default function SOPage() {
     : null;
 
   // Incentives from open vehicles
-  const incentives = openVehicles
-    .map((v) => getVehicleIncentive(v.chassisNumber))
-    .filter(Boolean);
-
-  // If all incentives have the same SO value, show it; otherwise show the range
+  const incentives = openVehicles.map((v) => getVehicleIncentive(v.chassisNumber)).filter(Boolean);
   const soValues = [...new Set(incentives.map((i) => i!.so))];
   const customerSchemeValues = [...new Set(incentives.map((i) => i!.customerScheme))];
   const hasIncentiveData = incentives.length > 0;
@@ -117,22 +114,25 @@ export default function SOPage() {
       <section className="bg-surface-container-low rounded-xl p-6 space-y-5 border border-zinc-800/40">
         <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Select Configuration</h3>
 
-        {/* YOM */}
+        {/* YOM — required first step */}
         <div>
-          <label className="label">Year of Manufacture (YOM)</label>
+          <label className="label">Year of Manufacture (YOM) <span className="text-tertiary">*</span></label>
           <div className="relative">
             <select
               className="input appearance-none pr-8"
               value={selYear}
-              onChange={(e) => { setSelYear(e.target.value); setSelModel(''); setSelSuffix(''); setSelColour(''); }}
+              onChange={(e) => setSelYear(e.target.value)}
             >
-              <option value="">All Years</option>
+              <option value="">Select year…</option>
               {yearOptions.map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
             <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm">expand_more</span>
           </div>
+          {!selYear && (
+            <p className="text-[10px] text-zinc-500 font-label mt-1">Select a year to unlock model options.</p>
+          )}
         </div>
 
         {/* Model */}
@@ -143,7 +143,7 @@ export default function SOPage() {
               className="input appearance-none pr-8"
               value={selModel}
               onChange={(e) => { setSelModel(e.target.value); setSelSuffix(''); setSelColour(''); }}
-              disabled={loading || models.length === 0}
+              disabled={!selYear || loading || models.length === 0}
             >
               <option value="">Select model…</option>
               {models.map((m) => (
@@ -197,7 +197,7 @@ export default function SOPage() {
       {selModel && selSuffix && selColour && (
         <section className="space-y-4">
           <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">
-            Result — {selModel} / {selSuffix} / {selColour}{selYear ? ` (YOM ${selYear})` : ''}
+            Result — {selModel} / {selSuffix} / {selColour} (YOM {selYear})
           </h3>
 
           {/* Availability */}
@@ -206,39 +206,27 @@ export default function SOPage() {
 
             {selectedCell ? (
               <div className="flex items-center gap-6">
-                {/* Coloured cell */}
+                {/* Coloured cell — P symbol only, no count */}
                 <div
-                  className="w-24 h-20 rounded-lg flex items-end p-2 relative flex-shrink-0"
+                  className="w-24 h-20 rounded-lg flex items-center justify-center relative flex-shrink-0"
                   style={{ backgroundColor: cellBg[selectedCell.level] }}
                 >
                   {selectedCell.hasPhysical && (
                     <span className="absolute bottom-2 left-2 text-sm font-black text-black/60 leading-none select-none">P</span>
                   )}
-                  <span className="text-2xl font-headline font-black text-white/90 leading-none ml-auto">{selectedCell.open}</span>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg[selectedCell.level] }} />
-                    <span className="font-headline font-bold text-on-surface text-lg uppercase">{selectedCell.level === 'green' ? 'High' : selectedCell.level === 'yellow' ? 'Medium' : 'Critical'}</span>
+                    <span className="font-headline font-bold text-on-surface text-lg uppercase">
+                      {selectedCell.level === 'green' ? 'High' : selectedCell.level === 'yellow' ? 'Medium' : 'Critical'}
+                    </span>
                   </div>
                   <p className="text-sm text-on-surface-variant font-body">{levelLabel[selectedCell.level]}</p>
-                  <div className="flex gap-4 pt-1">
-                    <div>
-                      <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Open</span>
-                      <p className="font-headline font-bold text-on-surface">{selectedCell.open}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Total</span>
-                      <p className="font-headline font-bold text-on-surface">{selectedCell.total}</p>
-                    </div>
-                    {selectedCell.hasPhysical && (
-                      <div>
-                        <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Physical</span>
-                        <p className="font-headline font-bold text-primary">P — Yes</p>
-                      </div>
-                    )}
-                  </div>
+                  {selectedCell.hasPhysical && (
+                    <p className="text-xs font-bold text-primary font-label">P — Physical Stock Available</p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -246,7 +234,7 @@ export default function SOPage() {
                 <span className="material-symbols-outlined text-2xl">inventory_2</span>
                 <div>
                   <p className="font-bold text-sm">No stock available</p>
-                  <p className="text-xs font-label">This variant has no open units{selYear ? ` for YOM ${selYear}` : ''}.</p>
+                  <p className="text-xs font-label">This variant has no open units for YOM {selYear}.</p>
                 </div>
               </div>
             )}
@@ -263,87 +251,46 @@ export default function SOPage() {
               </div>
             ) : hasIncentiveData ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {/* SO incentive — highlighted */}
                 <div className="col-span-2 md:col-span-1 bg-primary/10 border border-primary/30 rounded-xl p-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Your SO Incentive</p>
-                  <p className="text-3xl font-headline font-black text-primary">
-                    ₹{soValues.join(' / ')}
-                  </p>
+                  <p className="text-3xl font-headline font-black text-primary">₹{soValues.join(' / ')}</p>
                   {soValues.length > 1 && (
                     <p className="text-[10px] text-zinc-500 mt-1 font-label">varies by unit</p>
                   )}
                 </div>
-
-                {/* Customer scheme */}
                 <div className="bg-surface-container rounded-xl p-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">Customer Scheme</p>
-                  <p className="text-2xl font-headline font-bold text-on-surface">
-                    ₹{customerSchemeValues.join(' / ')}
-                  </p>
+                  <p className="text-2xl font-headline font-bold text-on-surface">₹{customerSchemeValues.join(' / ')}</p>
                 </div>
-
-                {/* TL incentive */}
                 <div className="bg-surface-container rounded-xl p-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">TL Incentive</p>
-                  <p className="text-2xl font-headline font-bold text-on-surface">
-                    ₹{[...new Set(incentives.map((i) => i!.tl))].join(' / ')}
-                  </p>
+                  <p className="text-2xl font-headline font-bold text-on-surface">₹{[...new Set(incentives.map((i) => i!.tl))].join(' / ')}</p>
                 </div>
-
-                {/* SM incentive */}
                 <div className="bg-surface-container rounded-xl p-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">SM Incentive</p>
-                  <p className="text-2xl font-headline font-bold text-on-surface">
-                    ₹{[...new Set(incentives.map((i) => i!.sm))].join(' / ')}
-                  </p>
+                  <p className="text-2xl font-headline font-bold text-on-surface">₹{[...new Set(incentives.map((i) => i!.sm))].join(' / ')}</p>
                 </div>
-              </div>
-            ) : openVehicles.length > 0 ? (
-              <div className="flex items-center gap-3 text-zinc-500">
-                <span className="material-symbols-outlined text-xl">info</span>
-                <p className="text-sm font-label">No scheme data available for the available units of this variant.</p>
               </div>
             ) : (
               <div className="flex items-center gap-3 text-zinc-500">
                 <span className="material-symbols-outlined text-xl">info</span>
-                <p className="text-sm font-label">Incentive data will appear once units are available.</p>
+                <p className="text-sm font-label">No scheme data available for this variant.</p>
               </div>
             )}
           </div>
-
-          {/* YOM breakdown if showing all years */}
-          {!selYear && selectedCell && selectedCell.yearBreakdown.length > 1 && (
-            <div className="bg-surface-container-low rounded-xl p-6 border border-zinc-800/40">
-              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-4">Year-wise Breakdown</p>
-              <div className="flex flex-wrap gap-3">
-                {selectedCell.yearBreakdown.map((y) => (
-                  <div
-                    key={y.chassisYear}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg"
-                    style={{ backgroundColor: cellBg[y.level] + '22', border: `1px solid ${cellBg[y.level]}55` }}
-                  >
-                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cellBg[y.level] }} />
-                    <div>
-                      <p className="font-headline font-bold text-on-surface text-sm">{y.chassisYear}</p>
-                      <p className="text-[10px] text-zinc-400 font-label">{y.open} open</p>
-                    </div>
-                    {y.hasPhysical && (
-                      <span className="text-xs font-black text-zinc-400">P</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
       )}
 
       {/* Empty prompt */}
-      {(!selModel || !selSuffix || !selColour) && !loading && (
+      {(!selYear || !selModel || !selSuffix || !selColour) && (
         <div className="bg-surface-container-low rounded-xl p-12 text-center border border-dashed border-zinc-700/40">
-          <span className="material-symbols-outlined text-4xl text-zinc-600 mb-3 block">search</span>
+          <span className="material-symbols-outlined text-4xl text-zinc-600 mb-3 block">
+            {!selYear ? 'calendar_month' : 'search'}
+          </span>
           <p className="text-on-surface-variant font-body text-sm">
-            Select a YOM, model, suffix, and colour above to see availability and your incentive.
+            {!selYear
+              ? 'Start by selecting a Year of Manufacture.'
+              : 'Select model, suffix, and colour to see availability.'}
           </p>
         </div>
       )}
