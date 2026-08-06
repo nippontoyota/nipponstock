@@ -206,14 +206,15 @@ export default function SOPage() {
 
             {selectedCell ? (
               <div className="flex items-center gap-6">
-                {/* Coloured cell — P symbol only, no count */}
+                {/* Coloured cell */}
                 <div
-                  className="w-24 h-20 rounded-lg flex items-center justify-center relative flex-shrink-0"
+                  className="w-24 h-20 rounded-lg flex items-end p-2 relative flex-shrink-0"
                   style={{ backgroundColor: cellBg[selectedCell.level] }}
                 >
                   {selectedCell.hasPhysical && (
                     <span className="absolute bottom-2 left-2 text-sm font-black text-black/60 leading-none select-none">P</span>
                   )}
+                  <span className="text-2xl font-headline font-black text-white/90 leading-none ml-auto">{selectedCell.open}</span>
                 </div>
 
                 <div className="space-y-2">
@@ -224,9 +225,22 @@ export default function SOPage() {
                     </span>
                   </div>
                   <p className="text-sm text-on-surface-variant font-body">{levelLabel[selectedCell.level]}</p>
-                  {selectedCell.hasPhysical && (
-                    <p className="text-xs font-bold text-primary font-label">P — Physical Stock Available</p>
-                  )}
+                  <div className="flex gap-4 pt-1">
+                    <div>
+                      <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Open</span>
+                      <p className="font-headline font-bold text-on-surface">{selectedCell.open}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Total</span>
+                      <p className="font-headline font-bold text-on-surface">{selectedCell.total}</p>
+                    </div>
+                    {selectedCell.hasPhysical && (
+                      <div>
+                        <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Physical</span>
+                        <p className="font-headline font-bold text-primary">P — Yes</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
