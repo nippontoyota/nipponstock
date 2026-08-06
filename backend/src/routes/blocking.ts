@@ -198,7 +198,7 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
     });
     if (!replacement) { console.log(`[swap] no CTDMS/BND for ${vehicle.model}/${vehicle.suffix}/${vehicle.colour}`); return; }
 
-    // Expire existing blockings on the CTDMS vehicle, stamping a remark on each
+    // Re-point existing CTDMS blockings to the MDDP vehicle (they keep their reservation)
     const evictedBlockings = await prisma.blockingRequest.findMany({
       where: { vehicleId: replacement.id, status: 'ACTIVE' },
       select: { id: true },
@@ -209,20 +209,23 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
           prisma.blockingRequest.update({
             where: { id: b.id },
             data: {
-              status: 'EXPIRED',
-              adminNotes: `Vehicle swapped to Full Payment case — ${branchLabel}`,
+              vehicleId: vehicle.id, // give them the MDDP vehicle
+              adminNotes: `CTDMS vehicle taken for Full Payment case — ${branchLabel}. Reassigned to MDDP unit.`,
             },
           })
         )
       );
     }
 
+    // Move the FP blocking to the CTDMS vehicle
     await prisma.blockingRequest.update({ where: { id: blockingId }, data: { vehicleId: replacement.id } });
+
+    // CTDMS → HARD_BLOCKED for FP case; MDDP → HARD_BLOCKED if someone was re-pointed there, else OPEN
     await Promise.all([
       prisma.vehicle.update({ where: { id: replacement.id }, data: { status: 'HARD_BLOCKED' } }),
-      prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: 'OPEN' } }),
+      prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: evictedBlockings.length > 0 ? 'HARD_BLOCKED' : 'OPEN' } }),
     ]);
-    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id} (evicted ${evictedBlockings.length} blocking(s) for ${branchLabel})`);
+    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id} | ${evictedBlockings.length} blocking(s) re-pointed to MDDP vehicle for ${branchLabel}`);
     await revealChassis(replacement.id);
   } else if (vehicle.stockStatus === 'CTDMS' || vehicle.stockStatus === 'BND') {
     await revealChassis(vehicleId);
