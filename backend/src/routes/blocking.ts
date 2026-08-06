@@ -97,7 +97,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
 
       // Priority: BND → CTDMS → MDDP → any (within each tier, sort order above applies)
       const PRIORITY = ['BND', 'CTDMS', 'MDDP'] as const;
-      let vehicle: { id: string; chassisNumber: string } | null = null;
+      let vehicle: { id: string; chassisNumber: string; model: string; suffix: string; colour: string; stockStatus: string | null; chassisYear: number; assignmentDate: Date | null } | null = null;
       for (const ss of PRIORITY) {
         vehicle = matching.find((v) => v.stockStatus === ss) ?? null;
         if (vehicle) break;
