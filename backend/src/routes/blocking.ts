@@ -183,6 +183,7 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
         stockStatus: { in: ['CTDMS', 'BND'] },
         status: { not: 'DELIVERED' },
         id: { not: vehicleId },
+        blockings: { none: { status: 'ACTIVE', paymentStatus: 'Full Payment Received' } },
       },
       orderBy: { assignmentDate: 'asc' },
     });
