@@ -1,5 +1,10 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+const sideNav = [
+  { to: '/so', icon: 'analytics', label: 'Availability', end: true },
+  { to: '/so/offers', icon: 'local_offer', label: 'Offers' },
+];
 
 export default function SOShell() {
   const { user, logout } = useAuth();
@@ -17,6 +22,22 @@ export default function SOShell() {
             <span className="material-symbols-outlined text-primary text-sm">storefront</span>
             Sales Officer Portal
           </div>
+          <nav className="hidden md:flex items-center gap-6 font-headline tracking-tighter uppercase text-sm pl-4">
+            {sideNav.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'text-primary border-b-2 border-primary pb-1'
+                    : 'text-zinc-400 font-medium hover:text-indigo-100 transition-colors duration-200'
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1 bg-surface-container rounded-full">
@@ -37,6 +58,27 @@ export default function SOShell() {
       <main className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-surface">
         <Outlet />
       </main>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-zinc-950/90 backdrop-blur-xl px-6 py-4 flex justify-around items-center z-50">
+        {sideNav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 ${isActive ? 'text-primary' : 'text-zinc-500'}`
+            }
+          >
+            <span className="material-symbols-outlined">{item.icon}</span>
+            <span className="text-[8px] uppercase font-label font-bold">{item.label}</span>
+          </NavLink>
+        ))}
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-zinc-500">
+          <span className="material-symbols-outlined">logout</span>
+          <span className="text-[8px] uppercase font-label font-bold">Exit</span>
+        </button>
+      </nav>
     </div>
   );
 }

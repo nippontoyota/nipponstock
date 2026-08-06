@@ -62,6 +62,7 @@ export default function OffersPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isTL = user?.role === 'TEAM_LEADER';
+  const isSO = user?.role === 'SO';
 
   const [vehicles, setVehicles] = useState<RawVehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -315,31 +316,44 @@ export default function OffersPage() {
           <p className="text-on-surface-variant">No offer vehicles available.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {colourYomOffers.map((c) => (
-              <button key={`${c.colour}::${c.year}`} disabled={placing}
-                onClick={() => handleColourYomClick(c.colour, c.year)}
-                className="text-left bg-surface-container hover:bg-surface-container-high rounded-2xl p-5 border border-outline-variant/20 hover:border-primary/40 transition-all active:scale-95 disabled:opacity-50 group">
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Colour / Year</span>
-                </div>
-                <div className="mb-1">
-                  <p className="font-headline font-bold text-xl text-on-surface group-hover:text-primary transition-colors flex items-center">
-                    {colourDot(c.colour)}{c.colour}
-                  </p>
-                  <p className="text-xs text-zinc-400 font-label uppercase tracking-widest mt-1">YOM {c.year}</p>
-                </div>
-                <div className="border-t border-outline-variant/20 pt-3 mt-3">
-                  <p className="text-[10px] font-label uppercase tracking-widest text-amber-400 mb-1">Consumer Offer</p>
-                  <p className="font-headline font-black text-2xl text-amber-300">₹{c.maxStr}</p>
-                </div>
-                {placing && (
-                  <div className="mt-3 flex items-center gap-2 text-primary text-xs font-bold">
-                    <span className="animate-spin material-symbols-outlined text-sm">progress_activity</span>
-                    Securing…
+            {colourYomOffers.map((c) => {
+              const cardContent = (
+                <>
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Colour / Year</span>
+                    {isSO && <span className="text-[9px] font-label uppercase tracking-widest text-zinc-600">View only</span>}
                   </div>
-                )}
-              </button>
-            ))}
+                  <div className="mb-1">
+                    <p className="font-headline font-bold text-xl text-on-surface group-hover:text-primary transition-colors flex items-center">
+                      {colourDot(c.colour)}{c.colour}
+                    </p>
+                    <p className="text-xs text-zinc-400 font-label uppercase tracking-widest mt-1">YOM {c.year}</p>
+                  </div>
+                  <div className="border-t border-outline-variant/20 pt-3 mt-3">
+                    <p className="text-[10px] font-label uppercase tracking-widest text-amber-400 mb-1">Consumer Offer</p>
+                    <p className="font-headline font-black text-2xl text-amber-300">₹{c.maxStr}</p>
+                  </div>
+                  {!isSO && placing && (
+                    <div className="mt-3 flex items-center gap-2 text-primary text-xs font-bold">
+                      <span className="animate-spin material-symbols-outlined text-sm">progress_activity</span>
+                      Securing…
+                    </div>
+                  )}
+                </>
+              );
+              return isSO ? (
+                <div key={`${c.colour}::${c.year}`}
+                  className="text-left bg-surface-container rounded-2xl p-5 border border-outline-variant/20 group">
+                  {cardContent}
+                </div>
+              ) : (
+                <button key={`${c.colour}::${c.year}`} disabled={placing}
+                  onClick={() => handleColourYomClick(c.colour, c.year)}
+                  className="text-left bg-surface-container hover:bg-surface-container-high rounded-2xl p-5 border border-outline-variant/20 hover:border-primary/40 transition-all active:scale-95 disabled:opacity-50 group">
+                  {cardContent}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

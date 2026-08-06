@@ -183,6 +183,7 @@ export default function App() {
         }
       >
         <Route index element={<SOPage />} />
+        <Route path="offers" element={<OffersPage />} />
       </Route>
 
       {/* Root redirect — role-aware */}
