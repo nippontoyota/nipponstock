@@ -30,12 +30,12 @@ const statusColor: Record<string, string> = {
 
 export default function AllBlockingsPage() {
   const { user } = useAuth();
-  const canExtendExpiry = user?.loginId === 'satish';
   const [blockings, setBlockings] = useState<Blocking[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ status: '', search: '', chassis: '', blockedFrom: '', blockedTo: '' });
   const [selected, setSelected] = useState<Blocking | null>(null);
+  const canExtendExpiry = selected ? !['INN', 'FRN', 'IMV'].includes(selected.vehicle?.model ?? '') : false;
   const [editForm, setEditForm] = useState<{ customerName: string; consultantName: string; paymentStatus: string; adminNotes: string }>({ customerName: '', consultantName: '', paymentStatus: '', adminNotes: '' });
   const [extendDate, setExtendDate] = useState('');
   const [retailId, setRetailId] = useState('');

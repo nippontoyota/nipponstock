@@ -170,7 +170,7 @@ async function revealChassis(vehicleId: string): Promise<void> {
 async function swapAndReveal(blockingId: string, vehicleId: string): Promise<void> {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: vehicleId },
-    select: { id: true, model: true, suffix: true, colour: true, stockStatus: true },
+    select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisNumber: true },
   });
   if (!vehicle || !MASKED_MODELS.includes(vehicle.model)) return;
 
@@ -199,6 +199,7 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
     if (!replacement) { console.log(`[swap] no CTDMS/BND for ${vehicle.model}/${vehicle.suffix}/${vehicle.colour}`); return; }
 
     // Re-point existing CTDMS blockings to the MDDP vehicle (they keep their reservation)
+    // Include MDDP chassis in the note so the donor knows exactly which vehicle they received
     const evictedBlockings = await prisma.blockingRequest.findMany({
       where: { vehicleId: replacement.id, status: 'ACTIVE' },
       select: { id: true },
@@ -210,7 +211,7 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
             where: { id: b.id },
             data: {
               vehicleId: vehicle.id, // give them the MDDP vehicle
-              adminNotes: `CTDMS vehicle taken for Full Payment case — ${branchLabel}. Reassigned to MDDP unit.`,
+              adminNotes: `CTDMS vehicle taken for Full Payment case — ${branchLabel}. Reassigned to MDDP unit (chassis: ${vehicle.chassisNumber}).`,
             },
           })
         )
@@ -225,8 +226,9 @@ async function swapAndReveal(blockingId: string, vehicleId: string): Promise<voi
       prisma.vehicle.update({ where: { id: replacement.id }, data: { status: 'HARD_BLOCKED' } }),
       prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: evictedBlockings.length > 0 ? 'HARD_BLOCKED' : 'OPEN' } }),
     ]);
-    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id} | ${evictedBlockings.length} blocking(s) re-pointed to MDDP vehicle for ${branchLabel}`);
-    await revealChassis(replacement.id);
+    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id} | ${evictedBlockings.length} blocking(s) re-pointed to MDDP ${vehicle.chassisNumber} for ${branchLabel}`);
+    // Reveal both: the CTDMS chassis for the FP customer, and the MDDP chassis for the donor
+    await Promise.all([revealChassis(replacement.id), revealChassis(vehicle.id)]);
   } else if (vehicle.stockStatus === 'CTDMS' || vehicle.stockStatus === 'BND') {
     await revealChassis(vehicleId);
   }
