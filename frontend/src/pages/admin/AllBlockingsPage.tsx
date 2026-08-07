@@ -407,7 +407,7 @@ export default function AllBlockingsPage() {
               </div>
               <div><label className="label">Admin Notes</label><textarea className="input" rows={2} value={editForm.adminNotes} onChange={(e) => setEditForm((f) => ({ ...f, adminNotes: e.target.value }))} /></div>
 
-              {canExtendExpiry && (
+              {canExtendExpiry && selected.status === 'ACTIVE' && (
                 <div>
                   <label className="label">Extend Expiry Date</label>
                   <div className="flex gap-2">
