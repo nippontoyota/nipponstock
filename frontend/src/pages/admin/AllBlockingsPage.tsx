@@ -30,7 +30,7 @@ const statusColor: Record<string, string> = {
 
 export default function AllBlockingsPage() {
   const { user } = useAuth();
-  const canExtendExpiry = user?.fullName?.toUpperCase() === 'SATISH KUMAR';
+  const canExtendExpiry = user?.loginId === 'satish';
   const [blockings, setBlockings] = useState<Blocking[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -407,7 +407,7 @@ export default function AllBlockingsPage() {
               </div>
               <div><label className="label">Admin Notes</label><textarea className="input" rows={2} value={editForm.adminNotes} onChange={(e) => setEditForm((f) => ({ ...f, adminNotes: e.target.value }))} /></div>
 
-              {canExtendExpiry && selected.status === 'ACTIVE' && (
+              {canExtendExpiry && (
                 <div>
                   <label className="label">Extend Expiry Date</label>
                   <div className="flex gap-2">
