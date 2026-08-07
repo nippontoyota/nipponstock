@@ -3,6 +3,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface FemDetail {
   row: number;
@@ -28,6 +29,8 @@ const statusColor: Record<string, string> = {
 };
 
 export default function AllBlockingsPage() {
+  const { user } = useAuth();
+  const canExtendExpiry = user?.fullName?.toUpperCase() === 'SATISH KUMAR';
   const [blockings, setBlockings] = useState<Blocking[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -404,7 +407,22 @@ export default function AllBlockingsPage() {
               </div>
               <div><label className="label">Admin Notes</label><textarea className="input" rows={2} value={editForm.adminNotes} onChange={(e) => setEditForm((f) => ({ ...f, adminNotes: e.target.value }))} /></div>
 
-              {/* Extend Expiry Date — temporarily hidden */}
+              {canExtendExpiry && selected.status === 'ACTIVE' && (
+                <div>
+                  <label className="label">Extend Expiry Date</label>
+                  <div className="flex gap-2">
+                    <input
+                      className="input flex-1"
+                      type="datetime-local"
+                      value={extendDate}
+                      onChange={(e) => setExtendDate(e.target.value)}
+                    />
+                    <button onClick={handleExtend} disabled={!extendDate} className="btn-primary text-xs px-4 whitespace-nowrap disabled:opacity-40">
+                      Extend
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {selected.status === 'ACTIVE' && (
