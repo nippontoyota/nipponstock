@@ -341,3 +341,11 @@ model DeliveryWorkflow {
   @@index([branchId])
   @@index([stage])
 }
+
+
+model ChassisMap {
+  id          String   @id @default(cuid())
+  maskedKey   String   @unique
+  realChassis String
+  createdAt   DateTime @default(now())
+}
