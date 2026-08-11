@@ -123,6 +123,7 @@ export default function App() {
         }
       >
         <Route index element={<ClusterManagerPage />} />
+        <Route path="availability" element={<SOPage />} />
       </Route>
 
       {/* CEO routes */}
