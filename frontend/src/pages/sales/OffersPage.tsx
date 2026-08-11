@@ -321,7 +321,10 @@ export default function OffersPage() {
                 <>
                   <div className="flex items-start justify-between mb-3">
                     <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Colour / Year</span>
-                    {isSO && <span className="text-[9px] font-label uppercase tracking-widest text-zinc-600">View only</span>}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-label font-bold bg-primary/15 text-primary px-2 py-0.5 rounded-full">{c.count} available</span>
+                      {isSO && <span className="text-[9px] font-label uppercase tracking-widest text-zinc-600">View only</span>}
+                    </div>
                   </div>
                   <div className="mb-1">
                     <p className="font-headline font-bold text-xl text-on-surface group-hover:text-primary transition-colors flex items-center">
@@ -384,6 +387,7 @@ export default function OffersPage() {
                 className="text-left bg-surface-container hover:bg-surface-container-high rounded-2xl p-5 border border-outline-variant/20 hover:border-primary/40 transition-all active:scale-95 group">
                 <div className="flex items-start justify-between mb-3">
                   <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Variant</span>
+                  <span className="text-[10px] font-label font-bold bg-primary/15 text-primary px-2 py-0.5 rounded-full">{s.count} available</span>
                 </div>
                 <p className="font-headline font-bold text-xl text-on-surface mb-2 group-hover:text-primary transition-colors">{s.suffix}</p>
                 <div className="flex flex-wrap gap-1 mb-3">
