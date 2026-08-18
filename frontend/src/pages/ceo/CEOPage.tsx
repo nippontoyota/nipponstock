@@ -216,7 +216,7 @@ export default function CEOPage() {
   const [stockAgeing, setStockAgeing]       = useState<R2[]>([]);
   const [blockingStockAgeing, setBlockingStockAgeing] = useState<R2[]>([]);
   const [blockingStockAgeingBranch, setBlockingStockAgeingBranch] = useState<R2[]>([]);
-  const [branchPerf, setBranchPerf]           = useState<{ name: string; blockings: number; fullPayment: number; mtdTally: number }[]>([]);
+  const [branchPerf, setBranchPerf]           = useState<{ name: string; branchCode: string; blockings: number; fullPayment: number; mtdTally: number }[]>([]);
   const [loading, setLoading]               = useState(true);
 
   const fetchAll = useCallback(async () => {
