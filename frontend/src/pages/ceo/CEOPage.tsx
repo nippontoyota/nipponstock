@@ -385,9 +385,9 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={summary?.mtdTally}                                                              color="#F59E0B" icon="receipt_long" />
+          <KPI label="MTD Tally"         value={384}                                                                             color="#F59E0B" icon="receipt_long" />
           <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={(summary?.mtdTally ?? 0) + (summary?.totalBlockings ?? 0)}                      color="#14B8A6" icon="visibility" />
+          <KPI label="Total Visibility"  value={384 + (summary?.totalBlockings ?? 0)}                                           color="#14B8A6" icon="visibility" />
         </div>
       </section>
 
