@@ -35,7 +35,7 @@ function mapModelKey(data: R2[], key: string): R2[] {
   return data.map((r) => ({ ...r, [key]: modelName(String(r[key])) }));
 }
 interface FinSummary {
-  totalBlockings: number; untouched: number; inHouse: number; outHouse: number; cash: number;
+  totalBlockings: number; untouched: number; inHouse: number; outHouse: number; cash: number; others: number;
   loginPending: number; loggedApprovalPending: number; loggedDocsPending: number;
   approved: number; disbursed: number;
   loginPendingNoFp: number; loggedApprovalPendingNoFp: number; loggedDocsPendingNoFp: number;
@@ -419,16 +419,17 @@ export default function CEOPage() {
       {/* ── Finance Overview KPIs ──────────────────────────────────────────── */}
       <section>
         <SectionHead title="Finance Overview" icon="account_balance" />
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KPI label="Active Blockings"      value={summary?.totalBlockings}          color="#3B82F6" icon="directions_car" />
           <KPI label="Full Payment Received" value={summary?.fullPaymentCollected}    color="#10B981" icon="check_circle" />
-          <KPI label="Not Updated by FO"     value={finSummary?.untouched}            color="#EF4444" icon="hourglass_empty" />
           <KPI label="Out House Finance"     value={finSummary?.outHouse}             color="#A855F7" icon="account_balance" />
           <KPI label="Cash"                  value={finSummary?.cash}                 color="#F59E0B" icon="payments" />
+          <KPI label="Not Updated by FO"     value={finSummary?.untouched}            color="#EF4444" icon="hourglass_empty" />
+          <KPI label="Others (Leasing / No Idea)" value={finSummary?.others}         color="#6B7280" icon="help" />
           <KPI label="Disbursed"             value={finSummary?.disbursedNoFp}        color="#10B981" icon="price_check" />
+          <KPI label="Approved"              value={finSummary?.approvedNoFp}         color="#8B5CF6" icon="verified" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-          <KPI label="Approved"                  value={finSummary?.approvedNoFp}               color="#8B5CF6" icon="verified" />
+        <div className="grid grid-cols-3 gap-4 mt-4">
           <KPI label="Logged / Approval Pending" value={finSummary?.loggedApprovalPendingNoFp}  color="#F97316" icon="approval" />
           <KPI label="Logged / Docs Pending"     value={finSummary?.loggedDocsPendingNoFp}      color="#EAB308" icon="description" />
           <KPI label="Login Pending"             value={finSummary?.loginPendingNoFp}           color="#F59E0B" icon="pending" />

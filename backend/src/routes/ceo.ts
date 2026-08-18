@@ -514,21 +514,29 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const finWhere = { blockingRequest: baseHard };
   const noFpFinWhere = { blockingRequest: { ...baseHard, paymentStatus: { not: 'Full Payment Received' } } };
 
+  const TRACKED_IN_HOUSE = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
+
   const [
-    totalBlockings, untouched, inHouse, outHouse, cash,
-    loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed,
+    totalBlockings, outHouse, cash, untouched, others,
     loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
   ] = await Promise.all([
     prisma.blockingRequest.count({ where: baseHard }),
-    prisma.blockingRequest.count({ where: { ...baseHard, financeRecord: null } }),
-    prisma.financeRecord.count({ where: { ...finWhere, purchaseMode: 'In House' } }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Out House' } }),
-    prisma.blockingRequest.count({ where: { ...baseHard, paymentMode: 'CASH', paymentStatus: { not: 'Full Payment Received' } } }),
-    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Login Pending' } }),
-    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Approval Pending' } }),
-    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Document Pending' } }),
-    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Approved' } }),
-    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Disbursed' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Cash' } }),
+    // Not Updated by FO = no financeRecord at all, non-FP
+    prisma.blockingRequest.count({ where: { ...baseHard, paymentStatus: { not: 'Full Payment Received' }, financeRecord: null } }),
+    // Others = No Idea / Leasing / Direct / null purchaseMode + In House with untracked status
+    prisma.financeRecord.count({
+      where: {
+        blockingRequest: { ...baseHard, paymentStatus: { not: 'Full Payment Received' } },
+        OR: [
+          { purchaseMode: { notIn: ['In House', 'Out House', 'Cash'] } },
+          { purchaseMode: null },
+          { purchaseMode: 'In House', financeStatus: { notIn: TRACKED_IN_HOUSE } },
+          { purchaseMode: 'In House', financeStatus: null },
+        ],
+      },
+    }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Login Pending' } }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Logged Approval Pending' } }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Logged Document Pending' } }),
@@ -537,9 +545,13 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   ]);
 
   res.json({
-    totalBlockings, untouched, inHouse, outHouse, cash,
-    loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed,
+    totalBlockings, untouched, outHouse, cash, others,
     loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
+    loginPending: loginPendingNoFp,
+    loggedApprovalPending: loggedApprovalPendingNoFp,
+    loggedDocsPending: loggedDocsPendingNoFp,
+    approved: approvedNoFp,
+    disbursed: disbursedNoFp,
   });
 });
 
