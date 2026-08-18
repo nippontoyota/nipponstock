@@ -316,8 +316,8 @@ export default function CEOPage() {
 
   const perfRows = BRANCH_TARGETS.map(({ display, target, mtdTallyHC }) => {
     const d          = perfMap.get(display)!;
-    // Use live mtdTally from API when available (after tally uploads begin); else hardcoded
-    const mtdTally   = d.mtdTally > 0 ? d.mtdTally : mtdTallyHC;
+    // Use live mtdTally once it reaches or exceeds the hardcoded baseline; else hardcoded
+    const mtdTally   = d.mtdTally >= mtdTallyHC ? d.mtdTally : mtdTallyHC;
     const vis        = mtdTally + d.fullPayment + d.blockings;
     const pct        = target > 0 ? Math.round((vis / target) * 100) : 0;
     const gap        = vis - target;
