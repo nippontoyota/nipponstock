@@ -628,27 +628,28 @@ router.get('/branch-performance', async (_req: AuthRequest, res: Response) => {
   const [blockings, tally] = await Promise.all([
     prisma.blockingRequest.findMany({
       where: { blockType: 'HARD', status: 'ACTIVE' },
-      select: { branch: { select: { name: true } }, paymentStatus: true },
+      select: { branch: { select: { name: true, branchCode: true } }, paymentStatus: true },
     }),
     prisma.deliveryWorkflow.findMany({
       where: { tallyDate: { gte: startOfMonth } },
-      select: { branch: { select: { name: true } } },
+      select: { branch: { select: { name: true, branchCode: true } } },
     }),
   ]);
 
-  const map = new Map<string, { blockings: number; fullPayment: number; mtdTally: number }>();
-  const ensure = (name: string) => {
-    if (!map.has(name)) map.set(name, { blockings: 0, fullPayment: 0, mtdTally: 0 });
-    return map.get(name)!;
+  const map = new Map<string, { name: string; branchCode: string; blockings: number; fullPayment: number; mtdTally: number }>();
+  const ensure = (name: string, branchCode: string) => {
+    const key = branchCode || name;
+    if (!map.has(key)) map.set(key, { name, branchCode, blockings: 0, fullPayment: 0, mtdTally: 0 });
+    return map.get(key)!;
   };
   for (const b of blockings) {
-    const e = ensure(b.branch.name);
-    e.blockings++;
+    const e = ensure(b.branch.name, b.branch.branchCode ?? '');
     if (b.paymentStatus === 'Full Payment Received') e.fullPayment++;
+    else e.blockings++;
   }
-  for (const w of tally) ensure(w.branch.name).mtdTally++;
+  for (const w of tally) ensure(w.branch.name, w.branch.branchCode ?? '').mtdTally++;
 
-  res.json(Array.from(map.entries()).map(([name, d]) => ({ name, ...d })));
+  res.json(Array.from(map.values()));
 });
 
 // ── Download: all hard active blockings ───────────────────────────────────────

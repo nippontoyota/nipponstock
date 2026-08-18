@@ -174,20 +174,22 @@ function PivotTable({ rowLabel, data, rowKey, colKey, activeCols, colorFn }: {
   );
 }
 
-// ── Branch performance targets (Pala merged into Kottayam) ───────────────────
+// ── Branch performance targets ────────────────────────────────────────────────
+// codes[]: branchCode values in DB. mtdTallyHC: hardcoded until tally upload goes live.
+// Pala (KT01B) merged into Kottayam (KT01A).
 const BRANCH_TARGETS = [
-  { display: 'Muvattupuzha',  target: 152, aliases: ['muvattupuzha'] },
-  { display: 'Pathanamthitta',target: 130, aliases: ['pathanamthitta'] },
-  { display: 'Irinjalakuda',  target: 129, aliases: ['irinjalakuda'] },
-  { display: 'Enjakkal',      target: 174, aliases: ['enjakkal'] },
-  { display: 'Kottayam',      target: 232, aliases: ['kottayam', 'pala'] },
-  { display: 'Kollam',        target: 183, aliases: ['kollam'] },
-  { display: 'Thiruvalla',    target:  92, aliases: ['thiruvalla'] },
-  { display: 'Kalamaserry',   target: 283, aliases: ['kalamaserry', 'kalamassery'] },
-  { display: 'Kazhakoottam',  target: 171, aliases: ['kazhakoottam', 'kazhakoottom'] },
-  { display: 'Trichur',       target: 199, aliases: ['trichur', 'thrissur'] },
-  { display: 'Kayamkulam',    target: 101, aliases: ['kayamkulam'] },
-  { display: 'Nettoor',       target: 154, aliases: ['nettoor'] },
+  { display: 'Muvattupuzha',  target: 152, codes: ['MV01A'],          mtdTallyHC: 37 },
+  { display: 'Pathanamthitta',target: 130, codes: ['PH01A'],          mtdTallyHC: 18 },
+  { display: 'Irinjalakuda',  target: 129, codes: ['IR01A'],          mtdTallyHC: 21 },
+  { display: 'Enjakkal',      target: 174, codes: ['TR01C'],          mtdTallyHC: 30 },
+  { display: 'Kottayam',      target: 232, codes: ['KT01A', 'KT01B'], mtdTallyHC: 33 },
+  { display: 'Kollam',        target: 183, codes: ['KL01A'],          mtdTallyHC: 45 },
+  { display: 'Thiruvalla',    target:  92, codes: ['TL01A'],          mtdTallyHC: 19 },
+  { display: 'Kalamaserry',   target: 283, codes: ['CO01B'],          mtdTallyHC: 50 },
+  { display: 'Kazhakoottam',  target: 171, codes: ['TR01A'],          mtdTallyHC: 37 },
+  { display: 'Trichur',       target: 199, codes: ['TI01A'],          mtdTallyHC: 52 },
+  { display: 'Kayamkulam',    target: 101, codes: ['KY01A'],          mtdTallyHC: 18 },
+  { display: 'Nettoor',       target: 154, codes: ['CO01A'],          mtdTallyHC: 24 },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -300,32 +302,26 @@ export default function CEOPage() {
   });
   const activeBarStockCols = Array.from(new Set(branchStockChart.map((r) => String(r['stockStatus']))));
 
-  // Branch performance table — match DB branch names to targets, merge Pala into Kottayam
-  const matchBranch = (dbName: string): string | null => {
-    const lower = dbName.toLowerCase();
-    for (const t of BRANCH_TARGETS) {
-      if (t.aliases.some((a) => lower.includes(a) || a.includes(lower))) return t.display;
-    }
-    return null;
-  };
-
+  // Branch performance table — match by branchCode (exact), merge Pala into Kottayam
   const perfMap = new Map<string, { blockings: number; fullPayment: number; mtdTally: number }>();
   BRANCH_TARGETS.forEach(({ display }) => perfMap.set(display, { blockings: 0, fullPayment: 0, mtdTally: 0 }));
   for (const row of branchPerf) {
-    const key = matchBranch(row.name);
-    if (!key) continue;
-    const e = perfMap.get(key)!;
+    const target = BRANCH_TARGETS.find((t) => t.codes.includes(row.branchCode));
+    if (!target) continue;
+    const e = perfMap.get(target.display)!;
     e.blockings   += row.blockings;
     e.fullPayment += row.fullPayment;
     e.mtdTally    += row.mtdTally;
   }
 
-  const perfRows = BRANCH_TARGETS.map(({ display, target }) => {
-    const d     = perfMap.get(display)!;
-    const vis   = d.mtdTally + d.blockings;
-    const pct   = target > 0 ? Math.round((vis / target) * 100) : 0;
-    const gap   = vis - target;
-    return { display, target, mtdTally: d.mtdTally, fullPayment: d.fullPayment, blockings: d.blockings, vis, pct, gap };
+  const perfRows = BRANCH_TARGETS.map(({ display, target, mtdTallyHC }) => {
+    const d          = perfMap.get(display)!;
+    // Use live mtdTally from API when available (after tally uploads begin); else hardcoded
+    const mtdTally   = d.mtdTally > 0 ? d.mtdTally : mtdTallyHC;
+    const vis        = mtdTally + d.fullPayment + d.blockings;
+    const pct        = target > 0 ? Math.round((vis / target) * 100) : 0;
+    const gap        = vis - target;
+    return { display, target, mtdTally, fullPayment: d.fullPayment, blockings: d.blockings, vis, pct, gap };
   }).sort((a, b) => a.pct - b.pct);
 
   const perfTotals = perfRows.reduce(
