@@ -620,6 +620,37 @@ router.get('/finance-bank', async (_req: AuthRequest, res: Response) => {
   res.json(rows);
 });
 
+// ── Branch Performance Table (Target vs MTD Tally vs Blockings) ──────────────
+router.get('/branch-performance', async (_req: AuthRequest, res: Response) => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [blockings, tally] = await Promise.all([
+    prisma.blockingRequest.findMany({
+      where: { blockType: 'HARD', status: 'ACTIVE' },
+      select: { branch: { select: { name: true } }, paymentStatus: true },
+    }),
+    prisma.deliveryWorkflow.findMany({
+      where: { tallyDate: { gte: startOfMonth } },
+      select: { branch: { select: { name: true } } },
+    }),
+  ]);
+
+  const map = new Map<string, { blockings: number; fullPayment: number; mtdTally: number }>();
+  const ensure = (name: string) => {
+    if (!map.has(name)) map.set(name, { blockings: 0, fullPayment: 0, mtdTally: 0 });
+    return map.get(name)!;
+  };
+  for (const b of blockings) {
+    const e = ensure(b.branch.name);
+    e.blockings++;
+    if (b.paymentStatus === 'Full Payment Received') e.fullPayment++;
+  }
+  for (const w of tally) ensure(w.branch.name).mtdTally++;
+
+  res.json(Array.from(map.entries()).map(([name, d]) => ({ name, ...d })));
+});
+
 // ── Download: all hard active blockings ───────────────────────────────────────
 router.get('/blockings-export', async (_req: AuthRequest, res: Response) => {
   const blockings = await prisma.blockingRequest.findMany({
