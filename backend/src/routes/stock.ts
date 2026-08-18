@@ -333,13 +333,15 @@ router.post('/upload-ctdms', requireAdmin, upload.single('file'), async (_req: A
 });
 
 // Tally Done — bulk deliver vehicles from Tally export
-// Excel columns: ChassisNumber | Tally Invoice No | Tally Done branch
+// Accepts the standard Tally export with columns:
+//   VIN NO. | TALLY Inv. No | TALLY Inv. Date | Dealer Code
+//   (also works with generic: ChassisNumber | TallyInvoiceNo | TallyDoneBranch)
 router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: AuthRequest, res: Response) => {
   if (!_req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
 
-  const wb = XLSX.read(_req.file.buffer, { type: 'buffer' });
+  const wb = XLSX.read(_req.file.buffer, { type: 'buffer', cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { raw: false });
 
   let successful = 0;
   let notFound = 0;
@@ -354,17 +356,40 @@ router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: Aut
   }
   const details: TallyDetail[] = [];
 
+  // Normalize key: strip non-alphanumeric chars, lowercase
+  const nk = (k: string) => k.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
   for (let i = 0; i < rows.length; i++) {
     const raw = rows[i];
-    // Normalise header keys: strip spaces, lowercase first char
     const norm: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(raw)) {
-      norm[k.replace(/\s+/g, '').replace(/^(.)/, (c) => c.toLowerCase())] = typeof v === 'string' ? v.trim() : v;
+      norm[nk(k)] = typeof v === 'string' ? v.trim() : v;
     }
 
-    const chassisNumber = String(norm.chassisNumber ?? '').trim().toUpperCase();
-    const tallyInvoiceNo = String(norm.tallyInvoiceNo ?? '').trim();
-    const tallyBranch    = String(norm.tallyDonebranch ?? norm.tallyDoneBranch ?? norm.branch ?? '').trim().toLowerCase();
+    // Column aliases: support "VIN NO.", "VIN NO", "ChassisNumber", "VINNO", etc.
+    const chassisNumber = String(
+      norm['vinno'] ?? norm['chassisnumber'] ?? norm['vin'] ?? norm['vinno'] ?? ''
+    ).trim().toUpperCase();
+
+    // "TALLY Inv. No" → "tallyinvno"
+    const tallyInvoiceNo = String(
+      norm['tallyinvno'] ?? norm['tallyinvoiceno'] ?? norm['tallyno'] ?? ''
+    ).trim();
+
+    // "TALLY Inv. Date" → "tallyinvdate"; could be a Date object (cellDates:true) or a string
+    const rawDate = norm['tallyinvdate'] ?? norm['tallydate'] ?? norm['tallyinvdate'];
+    let tallyDate: Date | null = null;
+    if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+      tallyDate = rawDate;
+    } else if (typeof rawDate === 'string' && rawDate) {
+      const parsed = new Date(rawDate);
+      if (!isNaN(parsed.getTime())) tallyDate = parsed;
+    }
+
+    // "Dealer Code" → "dealercode"; fallback to "branch" / "tallydonebranche" etc.
+    const tallyBranch = String(
+      norm['dealercode'] ?? norm['tallydonebranch'] ?? norm['branch'] ?? ''
+    ).trim().toUpperCase();
 
     if (!chassisNumber) {
       details.push({ row: i + 2, chassisNumber: '', status: 'skipped', note: 'Missing chassis number' });
@@ -375,10 +400,10 @@ router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: Aut
       where: { chassisNumber },
       include: {
         blockings: {
-          where: { status: 'ACTIVE' },
-          orderBy: { createdAt: 'desc' },
+          where: { status: { in: ['ACTIVE', 'DELIVERED'] } },
+          orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
           take: 1,
-          include: { branch: { select: { name: true } } },
+          include: { branch: { select: { id: true, name: true, branchCode: true } } },
         },
       },
     });
@@ -389,28 +414,48 @@ router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: Aut
       continue;
     }
 
-    // Always mark vehicle as DELIVERED
+    // Mark vehicle as DELIVERED
     await prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: 'DELIVERED' } });
 
-    const activeBlocking = vehicle.blockings[0] ?? null;
+    const blocking = vehicle.blockings[0] ?? null;
 
-    if (!activeBlocking) {
+    if (!blocking) {
       details.push({ row: i + 2, chassisNumber, status: 'no_blocking', note: 'Vehicle delivered — no active blocking found' });
       noBlocking++;
       continue;
     }
 
-    // Mark blocking as DELIVERED and fill in Tally Invoice No as retailId
+    // Mark blocking as DELIVERED and store tally invoice no
     await prisma.blockingRequest.update({
-      where: { id: activeBlocking.id },
+      where: { id: blocking.id },
       data: { status: 'DELIVERED', retailId: tallyInvoiceNo || null },
     });
 
-    // Compare branches (flexible: either contains the other, case-insensitive)
-    const blockingBranchLower = activeBlocking.branch.name.toLowerCase();
+    // Upsert DeliveryWorkflow so the CEO MTD tally count is accurate
+    await prisma.deliveryWorkflow.upsert({
+      where: { blockingId: blocking.id },
+      create: {
+        blockingId: blocking.id,
+        branchId: blocking.branch.id,
+        stage: 'ACCOUNTS_TALLY',
+        tallyNo: tallyInvoiceNo || null,
+        tallyDate: tallyDate ?? new Date(),
+      },
+      update: {
+        tallyNo: tallyInvoiceNo || null,
+        tallyDate: tallyDate ?? new Date(),
+        // Don't downgrade stage if already beyond ACCOUNTS_TALLY
+      },
+    });
+
+    // Branch match: compare dealer code OR name
+    const blockingBranchCode = (blocking.branch.branchCode ?? '').toUpperCase();
+    const blockingBranchName = blocking.branch.name.toLowerCase();
+    const tallyBranchLower   = tallyBranch.toLowerCase();
     const branchMatch = !tallyBranch ||
-      blockingBranchLower.includes(tallyBranch) ||
-      tallyBranch.includes(blockingBranchLower);
+      blockingBranchCode === tallyBranch ||
+      blockingBranchName.includes(tallyBranchLower) ||
+      tallyBranchLower.includes(blockingBranchName);
 
     if (branchMatch) {
       successful++;
@@ -419,7 +464,7 @@ router.post('/tally-done', requireAdmin, upload.single('file'), async (_req: Aut
       branchMismatch++;
       details.push({
         row: i + 2, chassisNumber, status: 'branch_mismatch',
-        note: `Booking branch: ${activeBlocking.branch.name} | Tally branch: ${tallyBranch}`,
+        note: `Booking branch: ${blocking.branch.branchCode ?? blocking.branch.name} | Tally branch: ${tallyBranch}`,
       });
     }
   }
