@@ -511,8 +511,12 @@ router.get('/full-payment-ageing', async (_req: AuthRequest, res: Response) => {
 // ── 13. Finance KPI Summary ───────────────────────────────────────────────────
 router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
-  const finWhere = { blockingRequest: baseHard };
-  const noFpFinWhere = { blockingRequest: { ...baseHard, paymentStatus: { not: 'Full Payment Received' } } };
+
+  // Prisma `paymentStatus: { not: 'X' }` generates SQL `<>` which silently drops NULLs.
+  // Use an explicit OR to include blockings where paymentStatus is null.
+  const noFpOr = { OR: [{ paymentStatus: null }, { paymentStatus: { not: 'Full Payment Received' } }] };
+  const noFpBlockingWhere = { ...baseHard, ...noFpOr } as const;
+  const noFpFinWhere = { blockingRequest: noFpBlockingWhere };
 
   const TRACKED_IN_HOUSE = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
 
@@ -523,12 +527,12 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
     prisma.blockingRequest.count({ where: baseHard }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Out House' } }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Cash' } }),
-    // Not Updated by FO = no financeRecord at all, non-FP
-    prisma.blockingRequest.count({ where: { ...baseHard, paymentStatus: { not: 'Full Payment Received' }, financeRecord: null } }),
+    // Not Updated by FO = no financeRecord at all, non-FP (including null paymentStatus)
+    prisma.blockingRequest.count({ where: { ...noFpBlockingWhere, financeRecord: null } }),
     // Others = No Idea / Leasing / Direct / null purchaseMode + In House with untracked status
     prisma.financeRecord.count({
       where: {
-        blockingRequest: { ...baseHard, paymentStatus: { not: 'Full Payment Received' } },
+        blockingRequest: noFpBlockingWhere,
         OR: [
           { purchaseMode: { notIn: ['In House', 'Out House', 'Cash'] } },
           { purchaseMode: null },
@@ -537,11 +541,12 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
         ],
       },
     }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Login Pending' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Logged Approval Pending' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Logged Document Pending' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Approved' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Disbursed' } }),
+    // In House tracked status buckets — filter purchaseMode to avoid double-counting non-InHouse records
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Login Pending' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Logged Approval Pending' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Logged Document Pending' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Approved' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Disbursed' } }),
   ]);
 
   res.json({
