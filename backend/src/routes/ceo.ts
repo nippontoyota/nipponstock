@@ -508,20 +508,33 @@ router.get('/full-payment-ageing', async (_req: AuthRequest, res: Response) => {
 router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
   const finWhere = { blockingRequest: baseHard };
+  const noFpFinWhere = { blockingRequest: { ...baseHard, paymentStatus: { not: 'Full Payment Received' } } };
 
-  const [totalBlockings, untouched, inHouse, loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed] =
-    await Promise.all([
-      prisma.blockingRequest.count({ where: baseHard }),
-      prisma.blockingRequest.count({ where: { ...baseHard, financeRecord: null } }),
-      prisma.financeRecord.count({ where: { ...finWhere, purchaseMode: 'In House' } }),
-      prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Login Pending' } }),
-      prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Approval Pending' } }),
-      prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Document Pending' } }),
-      prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Approved' } }),
-      prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Disbursed' } }),
-    ]);
+  const [
+    totalBlockings, untouched, inHouse,
+    loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed,
+    loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
+  ] = await Promise.all([
+    prisma.blockingRequest.count({ where: baseHard }),
+    prisma.blockingRequest.count({ where: { ...baseHard, financeRecord: null } }),
+    prisma.financeRecord.count({ where: { ...finWhere, purchaseMode: 'In House' } }),
+    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Login Pending' } }),
+    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Approval Pending' } }),
+    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Document Pending' } }),
+    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Approved' } }),
+    prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Disbursed' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Login Pending' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Logged Approval Pending' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Logged Document Pending' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Approved' } }),
+    prisma.financeRecord.count({ where: { ...noFpFinWhere, financeStatus: 'Disbursed' } }),
+  ]);
 
-  res.json({ totalBlockings, untouched, inHouse, loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed });
+  res.json({
+    totalBlockings, untouched, inHouse,
+    loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed,
+    loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
+  });
 });
 
 // ── 13. Finance Branch × Purchase Mode ───────────────────────────────────────

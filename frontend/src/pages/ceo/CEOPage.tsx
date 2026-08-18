@@ -38,6 +38,8 @@ interface FinSummary {
   totalBlockings: number; untouched: number; inHouse: number;
   loginPending: number; loggedApprovalPending: number; loggedDocsPending: number;
   approved: number; disbursed: number;
+  loginPendingNoFp: number; loggedApprovalPendingNoFp: number; loggedDocsPendingNoFp: number;
+  approvedNoFp: number; disbursedNoFp: number;
 }
 interface DateRow       { date: string; count: number; }
 interface BankRow       { bankName: string; count: number; }
@@ -352,20 +354,42 @@ export default function CEOPage() {
         </div>
       </div>
 
-      {/* ── Summary KPIs ───────────────────────────────────────────────────── */}
+      {/* ── Stock Status KPIs ──────────────────────────────────────────────── */}
       <section>
-        <SectionHead title="Business Overview" icon="dashboard" />
+        <SectionHead title="Stock Status" icon="warehouse" />
+        <div className="grid grid-cols-3 gap-4">
+          <KPI label="Physical Stock (BND + CTDMS)" value={summary?.physicalStock}                              color="#6750A4" icon="warehouse" />
+          <KPI label="MDDP Stock"                   value={summary?.mddpStock}                                  color="#10B981" icon="inventory_2" />
+          <KPI label="Total Stock"                  value={(summary?.physicalStock ?? 0) + (summary?.mddpStock ?? 0)} color="#3B82F6" icon="layers" />
+        </div>
+      </section>
+
+      {/* ── Finance Overview KPIs ──────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Finance Overview" icon="account_balance" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPI label="Physical Stock (BND+CTDMS)" value={summary?.physicalStock}      color="#6750A4" icon="warehouse" />
-          <KPI label="MDDP Stock"                 value={summary?.mddpStock}          color="#10B981" icon="inventory_2" />
-          <KPI label="Total Active Blockings"     value={summary?.totalBlockings}     color="#3B82F6" icon="directions_car" />
-          <KPI label="Cash Blockings"             value={summary?.cashBlockings}      color="#F59E0B" icon="payments" />
+          <KPI label="Active Blockings"      value={summary?.totalBlockings}          color="#3B82F6" icon="directions_car" />
+          <KPI label="Full Payment Received" value={summary?.fullPaymentCollected}    color="#10B981" icon="check_circle" />
+          <KPI label="Not Updated by FO"     value={finSummary?.untouched}            color="#EF4444" icon="hourglass_empty" />
+          <KPI label="Disbursed"             value={finSummary?.disbursedNoFp}        color="#10B981" icon="payments" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-          <KPI label="Finance Blockings (by FO)"  value={summary?.financeBlockings}   color="#8B5CF6" icon="account_balance" />
-          <KPI label="Approved Finance Cases"     value={summary?.approvedFinance}    color="#14B8A6" icon="verified" />
-          <KPI label="Full Payment Collected"     value={summary?.fullPaymentCollected} color="#10B981" icon="check_circle" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <KPI label="Approved"                  value={finSummary?.approvedNoFp}               color="#8B5CF6" icon="verified" />
+          <KPI label="Logged / Approval Pending" value={finSummary?.loggedApprovalPendingNoFp}  color="#F97316" icon="approval" />
+          <KPI label="Logged / Docs Pending"     value={finSummary?.loggedDocsPendingNoFp}      color="#EAB308" icon="description" />
+          <KPI label="Login Pending"             value={finSummary?.loginPendingNoFp}           color="#F59E0B" icon="pending" />
         </div>
+      </section>
+
+      {/* ── Current Business Status KPIs ───────────────────────────────────── */}
+      <section>
+        <SectionHead title="Current Business Status" icon="trending_up" />
+        <div className="grid grid-cols-3 gap-4">
+          <KPI label="MTD Tally"         value={undefined}                                                   color="#F59E0B" icon="receipt_long" />
+          <KPI label="Active Blockings"  value={summary?.totalBlockings}                                     color="#3B82F6" icon="directions_car" />
+          <KPI label="Total Visibility"  value={summary?.totalBlockings}                                     color="#14B8A6" icon="visibility" />
+        </div>
+        <p className="text-[10px] font-label text-zinc-500 mt-2">* MTD Tally pending — Total Visibility will update once tally data is connected.</p>
       </section>
 
       {/* ── STOCK SECTION ─────────────────────────────────────────────────── */}
@@ -711,22 +735,6 @@ export default function CEOPage() {
       {/* ── FINANCE SECTION ───────────────────────────────────────────────── */}
       <Divider label="Finance Overview" />
 
-      {/* Finance KPIs */}
-      <section>
-        <SectionHead title="Finance KPIs" icon="account_balance" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPI label="Total Hard Blockings"        value={finSummary?.totalBlockings}         color="#6750A4" icon="directions_car" />
-          <KPI label="Not Updated by FO"           value={finSummary?.untouched}              color="#EF4444" icon="hourglass_empty" />
-          <KPI label="In House Finance"            value={finSummary?.inHouse}                color="#3B82F6" icon="account_balance" />
-          <KPI label="Login Pending"               value={finSummary?.loginPending}           color="#F59E0B" icon="pending" />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-          <KPI label="Logged / Approval Pending"   value={finSummary?.loggedApprovalPending}  color="#F97316" icon="approval" />
-          <KPI label="Logged / Docs Pending"       value={finSummary?.loggedDocsPending}      color="#EAB308" icon="description" />
-          <KPI label="Approved"                    value={finSummary?.approved}               color="#8B5CF6" icon="verified" />
-          <KPI label="Disbursed"                   value={finSummary?.disbursed}              color="#10B981" icon="payments" />
-        </div>
-      </section>
 
       {/* Finance Branch × Purchase Mode */}
       <section>
