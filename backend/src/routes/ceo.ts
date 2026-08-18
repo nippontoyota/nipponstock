@@ -8,6 +8,8 @@ router.use(authenticate, requireCeo);
 // ── 1. Summary KPIs ───────────────────────────────────────────────────────────
 router.get('/summary', async (_req: AuthRequest, res: Response) => {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [
     physicalStock,
@@ -17,6 +19,7 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     financeBlockings,
     approvedFinance,
     fullPaymentCollected,
+    mtdTally,
   ] = await Promise.all([
     prisma.vehicle.count({ where: { stockStatus: { in: ['BND', 'CTDMS'] }, status: { not: 'DELIVERED' } } }),
     prisma.vehicle.count({ where: { stockStatus: 'MDDP', status: { not: 'DELIVERED' } } }),
@@ -25,9 +28,10 @@ router.get('/summary', async (_req: AuthRequest, res: Response) => {
     prisma.blockingRequest.count({ where: { ...baseHard, paymentMode: 'FINANCE' } }),
     prisma.financeRecord.count({ where: { blockingRequest: baseHard, financeStatus: 'Approved' } }),
     prisma.blockingRequest.count({ where: { ...baseHard, paymentStatus: 'Full Payment Received' } }),
+    prisma.deliveryWorkflow.count({ where: { tallyDate: { gte: startOfMonth } } }),
   ]);
 
-  res.json({ physicalStock, mddpStock, totalBlockings, cashBlockings, financeBlockings, approvedFinance, fullPaymentCollected });
+  res.json({ physicalStock, mddpStock, totalBlockings, cashBlockings, financeBlockings, approvedFinance, fullPaymentCollected, mtdTally });
 });
 
 // ── 2. Stock Status × Chassis Year pivot ─────────────────────────────────────

@@ -12,7 +12,7 @@ import api from '../../api';
 interface Summary {
   physicalStock: number; mddpStock: number; totalBlockings: number;
   cashBlockings: number; financeBlockings: number; approvedFinance: number;
-  fullPaymentCollected: number;
+  fullPaymentCollected: number; mtdTally: number;
 }
 
 // ── Model code → display name ─────────────────────────────────────────────────
@@ -385,11 +385,10 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={undefined}                                                   color="#F59E0B" icon="receipt_long" />
-          <KPI label="Active Blockings"  value={summary?.totalBlockings}                                     color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={summary?.totalBlockings}                                     color="#14B8A6" icon="visibility" />
+          <KPI label="MTD Tally"         value={summary?.mtdTally}                                                              color="#F59E0B" icon="receipt_long" />
+          <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
+          <KPI label="Total Visibility"  value={(summary?.mtdTally ?? 0) + (summary?.totalBlockings ?? 0)}                      color="#14B8A6" icon="visibility" />
         </div>
-        <p className="text-[10px] font-label text-zinc-500 mt-2">* MTD Tally pending — Total Visibility will update once tally data is connected.</p>
       </section>
 
       {/* ── STOCK SECTION ─────────────────────────────────────────────────── */}
