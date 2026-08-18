@@ -515,13 +515,15 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const noFpFinWhere = { blockingRequest: { ...baseHard, paymentStatus: { not: 'Full Payment Received' } } };
 
   const [
-    totalBlockings, untouched, inHouse,
+    totalBlockings, untouched, inHouse, outHouse, cash,
     loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed,
     loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
   ] = await Promise.all([
     prisma.blockingRequest.count({ where: baseHard }),
     prisma.blockingRequest.count({ where: { ...baseHard, financeRecord: null } }),
     prisma.financeRecord.count({ where: { ...finWhere, purchaseMode: 'In House' } }),
+    prisma.financeRecord.count({ where: { ...finWhere, purchaseMode: 'Out House' } }),
+    prisma.blockingRequest.count({ where: { ...baseHard, paymentMode: 'CASH' } }),
     prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Login Pending' } }),
     prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Approval Pending' } }),
     prisma.financeRecord.count({ where: { ...finWhere, financeStatus: 'Logged Document Pending' } }),
@@ -535,7 +537,7 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   ]);
 
   res.json({
-    totalBlockings, untouched, inHouse,
+    totalBlockings, untouched, inHouse, outHouse, cash,
     loginPending, loggedApprovalPending, loggedDocsPending, approved, disbursed,
     loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
   });
