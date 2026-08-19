@@ -178,18 +178,18 @@ function PivotTable({ rowLabel, data, rowKey, colKey, activeCols, colorFn }: {
 // codes[]: branchCode values in DB. mtdTallyHC: hardcoded until tally upload goes live.
 // Pala (KT01B) merged into Kottayam (KT01A).
 const BRANCH_TARGETS = [
-  { display: 'Muvattupuzha',  target: 152, codes: ['MV01A'],          mtdTallyHC: 37 },
-  { display: 'Pathanamthitta',target: 130, codes: ['PH01A'],          mtdTallyHC: 18 },
-  { display: 'Irinjalakuda',  target: 129, codes: ['IR01A'],          mtdTallyHC: 21 },
-  { display: 'Enjakkal',      target: 174, codes: ['TR01C'],          mtdTallyHC: 30 },
-  { display: 'Kottayam',      target: 232, codes: ['KT01A', 'KT01B'], mtdTallyHC: 33 },
-  { display: 'Kollam',        target: 183, codes: ['KL01A'],          mtdTallyHC: 45 },
-  { display: 'Thiruvalla',    target:  92, codes: ['TL01A'],          mtdTallyHC: 19 },
-  { display: 'Kalamaserry',   target: 283, codes: ['CO01B'],          mtdTallyHC: 50 },
-  { display: 'Kazhakoottam',  target: 171, codes: ['TR01A'],          mtdTallyHC: 37 },
-  { display: 'Trichur',       target: 199, codes: ['TI01A'],          mtdTallyHC: 52 },
-  { display: 'Kayamkulam',    target: 101, codes: ['KY01A'],          mtdTallyHC: 18 },
-  { display: 'Nettoor',       target: 154, codes: ['CO01A'],          mtdTallyHC: 24 },
+  { display: 'Muvattupuzha',  target: 152, codes: ['MV01A'],          mtdTallyHC: 42 },
+  { display: 'Pathanamthitta',target: 130, codes: ['PH01A'],          mtdTallyHC: 19 },
+  { display: 'Irinjalakuda',  target: 129, codes: ['IR01A'],          mtdTallyHC: 25 },
+  { display: 'Enjakkal',      target: 174, codes: ['TR01C'],          mtdTallyHC: 34 },
+  { display: 'Kottayam',      target: 232, codes: ['KT01A', 'KT01B'], mtdTallyHC: 36 },
+  { display: 'Kollam',        target: 183, codes: ['KL01A'],          mtdTallyHC: 51 },
+  { display: 'Thiruvalla',    target:  92, codes: ['TL01A'],          mtdTallyHC: 22 },
+  { display: 'Kalamaserry',   target: 283, codes: ['CO01B'],          mtdTallyHC: 57 },
+  { display: 'Kazhakoottam',  target: 171, codes: ['TR01A'],          mtdTallyHC: 43 },
+  { display: 'Trichur',       target: 199, codes: ['TI01A'],          mtdTallyHC: 62 },
+  { display: 'Kayamkulam',    target: 101, codes: ['KY01A'],          mtdTallyHC: 20 },
+  { display: 'Nettoor',       target: 154, codes: ['CO01A'],          mtdTallyHC: 33 },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
