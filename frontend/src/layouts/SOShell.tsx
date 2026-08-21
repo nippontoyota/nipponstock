@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ConsumerOfferPopup from '../components/ConsumerOfferPopup';
 
 const sideNav = [
   { to: '/so', icon: 'analytics', label: 'Availability', end: true },
@@ -14,6 +15,7 @@ export default function SOShell() {
 
   return (
     <div className="bg-background min-h-screen flex flex-col">
+      <ConsumerOfferPopup role={user?.role ?? ''} offersPath="/so/offers" />
       {/* Top Header */}
       <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3 border-b border-zinc-800/50">
         <div className="flex items-center gap-4">

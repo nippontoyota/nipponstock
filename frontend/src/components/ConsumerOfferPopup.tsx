@@ -8,7 +8,7 @@ interface Counts { u5: number; u6: number }
 const SESSION_KEY = 'consumer_offer_dismissed';
 const ROLES_SHOWN = ['SO', 'TEAM_LEADER', 'SALES_MANAGER'];
 
-export default function ConsumerOfferPopup({ role }: { role: string }) {
+export default function ConsumerOfferPopup({ role, offersPath = '/sales/offers' }: { role: string; offersPath?: string }) {
   const [visible, setVisible] = useState(false);
   const [counts, setCounts] = useState<Counts>({ u5: 0, u6: 0 });
   const navigate = useNavigate();
@@ -42,7 +42,7 @@ export default function ConsumerOfferPopup({ role }: { role: string }) {
 
   const goToOffers = () => {
     dismiss();
-    navigate('/sales/offers');
+    navigate(offersPath);
   };
 
   if (!visible) return null;
