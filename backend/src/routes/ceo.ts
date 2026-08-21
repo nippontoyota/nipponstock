@@ -618,7 +618,7 @@ router.get('/finance-branch-status', async (_req: AuthRequest, res: Response) =>
 
 // ── 14b. Finance Branch × Purchase Mode (No FP) ─────────────────────────────
 router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Response) => {
-  const noFpOr = { OR: [{ paymentStatus: null }, { paymentStatus: { not: 'Full Payment Received' } }] } as const;
+  const noFpOr = { OR: [{ paymentStatus: null as null }, { paymentStatus: { not: 'Full Payment Received' as string } }] };
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const, ...noFpOr };
 
   const [records, blockings] = await Promise.all([
@@ -654,7 +654,7 @@ router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Respo
 
 // ── 14c. Finance Branch × Finance Status (No FP) ────────────────────────────
 router.get('/finance-branch-status-nofp', async (_req: AuthRequest, res: Response) => {
-  const noFpOr = { OR: [{ paymentStatus: null }, { paymentStatus: { not: 'Full Payment Received' } }] } as const;
+  const noFpOr = { OR: [{ paymentStatus: null as null }, { paymentStatus: { not: 'Full Payment Received' as string } }] };
   const records = await prisma.financeRecord.findMany({
     where: {
       blockingRequest: { blockType: 'HARD', status: 'ACTIVE', ...noFpOr },
