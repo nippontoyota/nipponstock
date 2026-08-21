@@ -117,8 +117,7 @@ export default function ConsumerOfferPopup({ role, offersPath = '/sales/offers' 
               <div>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Important notes</p>
                 <ul style={{ margin: 0, paddingLeft: '1rem', listStyle: 'disc' }}>
-                  <li style={{ fontSize: 13, color: '#fcd34d', marginBottom: 4 }}>No Nandilath Coupon for both U5 and U6</li>
-                  <li style={{ fontSize: 13, color: '#fcd34d' }}>G-Hybrid — Make B2B insurance and pass 360 camera complimentary</li>
+                  <li style={{ fontSize: 13, color: '#fcd34d' }}>No Nandilath Coupon for both U5 and U6</li>
                 </ul>
               </div>
             </div>
