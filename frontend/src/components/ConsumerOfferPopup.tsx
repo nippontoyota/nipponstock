@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { getVehicleIncentive } from '../lib/vehicleIncentives';
 
 interface Counts { u5: number; u6: number }
 
@@ -18,9 +19,17 @@ export default function ConsumerOfferPopup({ role }: { role: string }) {
     setVisible(true);
     api.get('/blocking/offer-vehicles')
       .then((res) => {
-        const vehicles: { model: string; suffix: string }[] = res.data;
-        const u5 = vehicles.filter((v) => v.model === 'D22' && v.suffix === 'D22U5').length;
-        const u6 = vehicles.filter((v) => v.model === 'D22' && v.suffix === 'D22U6').length;
+        const vehicles: { model: string; suffix: string; chassisNumber: string }[] = res.data;
+        const u5 = vehicles.filter((v) => {
+          if (v.model !== 'D22' || v.suffix !== 'D22U5') return false;
+          const inc = getVehicleIncentive(v.chassisNumber);
+          return inc?.customerScheme === '2,30,688';
+        }).length;
+        const u6 = vehicles.filter((v) => {
+          if (v.model !== 'D22' || v.suffix !== 'D22U6') return false;
+          const inc = getVehicleIncentive(v.chassisNumber);
+          return inc?.customerScheme === '2,46,164';
+        }).length;
         setCounts({ u5, u6 });
       })
       .catch(() => {});
