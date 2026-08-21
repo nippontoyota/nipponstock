@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ConsumerOfferPopup from '../components/ConsumerOfferPopup';
 
 const sideNav = [
   { to: '/sales', icon: 'analytics', label: 'Live Inventory', end: true },
@@ -70,6 +71,7 @@ export default function SalesShell() {
       </aside>
 
       {/* Main Canvas */}
+      <ConsumerOfferPopup role={user?.role ?? ''} />
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         {/* Top Header */}
         <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3">
