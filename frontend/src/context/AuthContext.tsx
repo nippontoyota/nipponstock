@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (t: string, u: AuthUser) => {
     localStorage.setItem('token', t);
     localStorage.setItem('user', JSON.stringify(u));
+    sessionStorage.removeItem('consumer_offer_dismissed');
     setToken(t);
     setUser(u);
     socket.connect();
