@@ -499,6 +499,10 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Finance Overview — Branch Wise" icon="account_balance" />
         {(() => {
+          // Build code → branch name map from branchPerf (which has both branchCode and name)
+          const codeToName = new Map<string, string>();
+          for (const p of branchPerf) codeToName.set(p.branchCode, p.name);
+
           // Build per-branch lookup maps
           type BranchFinRow = {
             display: string;
@@ -508,8 +512,11 @@ export default function CEOPage() {
           };
 
           const rows: BranchFinRow[] = BRANCH_TARGETS.map(({ display, codes }) => {
+            // Resolve all DB branch names for this display group
+            const names = codes.map((c) => codeToName.get(c)).filter(Boolean) as string[];
+
             const matchBranch = (data: R2[], branchField: string) =>
-              data.filter((r) => codes.some((c) => String(r[branchField]) === c));
+              data.filter((r) => names.some((n) => String(r[branchField]) === n));
 
             const sumBy = (data: R2[], branchField: string, filterField: string, filterVal: string | string[]) => {
               const vals = Array.isArray(filterVal) ? filterVal : [filterVal];
@@ -520,16 +527,16 @@ export default function CEOPage() {
             const sumAll = (data: R2[], branchField: string) =>
               matchBranch(data, branchField).reduce((s, r) => s + Number(r['count']), 0);
 
-            // Active blockings: total from branchBlockPay
-            const active = sumAll(branchBlockPay, 'branch');
-            // Full Payment
-            const fp = sumBy(branchBlockPay, 'branch', 'paymentStatus', 'Full Payment Received');
-            // Purchase modes
+            // Active blockings & FP: use branchPerf (matched by code) for accuracy
+            const perfEntries = branchPerf.filter((p) => codes.includes(p.branchCode));
+            const active = perfEntries.reduce((s, p) => s + p.blockings, 0);
+            const fp     = perfEntries.reduce((s, p) => s + p.fullPayment, 0);
+            // Purchase modes (branch name matched)
             const outHouse   = sumBy(finPurchase, 'branch', 'purchaseMode', 'Out House');
             const cash       = sumBy(finPurchase, 'branch', 'purchaseMode', 'Cash');
             const notUpdated = sumBy(finPurchase, 'branch', 'purchaseMode', 'Not Updated');
             const others     = sumBy(finPurchase, 'branch', 'purchaseMode', ['Leasing', 'No Idea']);
-            // Finance statuses
+            // Finance statuses (branch name matched)
             const disbursed  = sumBy(finStatus, 'branch', 'financeStatus', 'Disbursed');
             const approved   = sumBy(finStatus, 'branch', 'financeStatus', 'Approved');
             const loggedAppr = sumBy(finStatus, 'branch', 'financeStatus', 'Logged Approval Pending');
