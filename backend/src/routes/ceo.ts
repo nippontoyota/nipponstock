@@ -616,6 +616,68 @@ router.get('/finance-branch-status', async (_req: AuthRequest, res: Response) =>
   res.json(rows);
 });
 
+// ── 14b. Finance Branch × Purchase Mode (No FP) ─────────────────────────────
+router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Response) => {
+  const noFpOr = { OR: [{ paymentStatus: null }, { paymentStatus: { not: 'Full Payment Received' } }] } as const;
+  const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const, ...noFpOr };
+
+  const [records, blockings] = await Promise.all([
+    prisma.financeRecord.findMany({
+      where: { blockingRequest: baseHard },
+      select: { purchaseMode: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
+    }),
+    prisma.blockingRequest.findMany({
+      where: baseHard,
+      select: { branch: { select: { name: true } }, financeRecord: { select: { id: true } } },
+    }),
+  ]);
+
+  const map = new Map<string, number>();
+  for (const r of records) {
+    const key = `${r.blockingRequest.branch.name}\x01${r.purchaseMode ?? 'Not Set'}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  for (const b of blockings) {
+    if (!b.financeRecord) {
+      const key = `${b.branch.name}\x01Not Updated`;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+  }
+
+  const rows: { branch: string; purchaseMode: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ branch: key.slice(0, sep), purchaseMode: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── 14c. Finance Branch × Finance Status (No FP) ────────────────────────────
+router.get('/finance-branch-status-nofp', async (_req: AuthRequest, res: Response) => {
+  const noFpOr = { OR: [{ paymentStatus: null }, { paymentStatus: { not: 'Full Payment Received' } }] } as const;
+  const records = await prisma.financeRecord.findMany({
+    where: {
+      blockingRequest: { blockType: 'HARD', status: 'ACTIVE', ...noFpOr },
+      purchaseMode: 'In House',
+    },
+    select: { financeStatus: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
+  });
+
+  const map = new Map<string, number>();
+  for (const r of records) {
+    if (!r.financeStatus) continue;
+    const key = `${r.blockingRequest.branch.name}\x01${r.financeStatus}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { branch: string; financeStatus: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ branch: key.slice(0, sep), financeStatus: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── 15. Finance Bank × Count ──────────────────────────────────────────────────
 router.get('/finance-bank', async (_req: AuthRequest, res: Response) => {
   const records = await prisma.financeRecord.findMany({

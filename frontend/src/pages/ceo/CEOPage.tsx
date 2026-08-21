@@ -200,6 +200,8 @@ export default function CEOPage() {
   const [modelBlockStock, setModelBlockStock] = useState<R2[]>([]);
   const [modelBlockPay, setModelBlockPay] = useState<R2[]>([]);
   const [branchBlockPay, setBranchBlockPay] = useState<R2[]>([]);
+  const [finPurchaseNoFp, setFinPurchaseNoFp] = useState<R2[]>([]);
+  const [finStatusNoFp, setFinStatusNoFp]     = useState<R2[]>([]);
   const [branchAgeing, setBranchAgeing] = useState<R2[]>([]);
   const [branchModel, setBranchModel]   = useState<R2[]>([]);
   const [branchStockChart, setBranchStockChart] = useState<R2[]>([]);
@@ -221,7 +223,7 @@ export default function CEOPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa, bbp, bsab, perf] = await Promise.all([
+    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa, bbp, bsab, perf, fpNofp, fstNofp] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
@@ -245,6 +247,8 @@ export default function CEOPage() {
       api.get('/ceo/branch-blocking-payment'),
       api.get('/ceo/blocking-stock-ageing-branch'),
       api.get('/ceo/branch-performance'),
+      api.get('/ceo/finance-branch-purchase-nofp'),
+      api.get('/ceo/finance-branch-status-nofp'),
     ]);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
@@ -263,6 +267,8 @@ export default function CEOPage() {
     setBranchBlockPay(bbp.data);
     setBlockingStockAgeingBranch(bsab.data);
     setBranchPerf(perf.data);
+    setFinPurchaseNoFp(fpNofp.data);
+    setFinStatusNoFp(fstNofp.data);
     setLoading(false);
   }, []);
 
@@ -531,17 +537,17 @@ export default function CEOPage() {
             const perfEntries = branchPerf.filter((p) => codes.includes(p.branchCode));
             const active = perfEntries.reduce((s, p) => s + p.blockings, 0);
             const fp     = perfEntries.reduce((s, p) => s + p.fullPayment, 0);
-            // Purchase modes (branch name matched)
-            const outHouse   = sumBy(finPurchase, 'branch', 'purchaseMode', 'Out House');
-            const cash       = sumBy(finPurchase, 'branch', 'purchaseMode', 'Cash');
-            const notUpdated = sumBy(finPurchase, 'branch', 'purchaseMode', 'Not Updated');
-            const others     = sumBy(finPurchase, 'branch', 'purchaseMode', ['Leasing', 'No Idea']);
-            // Finance statuses (branch name matched)
-            const disbursed  = sumBy(finStatus, 'branch', 'financeStatus', 'Disbursed');
-            const approved   = sumBy(finStatus, 'branch', 'financeStatus', 'Approved');
-            const loggedAppr = sumBy(finStatus, 'branch', 'financeStatus', 'Logged Approval Pending');
-            const loggedDocs = sumBy(finStatus, 'branch', 'financeStatus', 'Logged Document Pending');
-            const loginPend  = sumBy(finStatus, 'branch', 'financeStatus', 'Login Pending');
+            // Purchase modes — NoFp (branch name matched)
+            const outHouse   = sumBy(finPurchaseNoFp, 'branch', 'purchaseMode', 'Out House');
+            const cash       = sumBy(finPurchaseNoFp, 'branch', 'purchaseMode', 'Cash');
+            const notUpdated = sumBy(finPurchaseNoFp, 'branch', 'purchaseMode', 'Not Updated');
+            const others     = sumBy(finPurchaseNoFp, 'branch', 'purchaseMode', ['Leasing', 'No Idea']);
+            // Finance statuses — NoFp (branch name matched)
+            const disbursed  = sumBy(finStatusNoFp, 'branch', 'financeStatus', 'Disbursed');
+            const approved   = sumBy(finStatusNoFp, 'branch', 'financeStatus', 'Approved');
+            const loggedAppr = sumBy(finStatusNoFp, 'branch', 'financeStatus', 'Logged Approval Pending');
+            const loggedDocs = sumBy(finStatusNoFp, 'branch', 'financeStatus', 'Logged Document Pending');
+            const loginPend  = sumBy(finStatusNoFp, 'branch', 'financeStatus', 'Login Pending');
 
             return { display, active, fp, outHouse, cash, notUpdated, others, disbursed, approved, loggedAppr, loggedDocs, loginPend };
           });
