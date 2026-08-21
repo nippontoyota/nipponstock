@@ -495,6 +495,110 @@ export default function CEOPage() {
         </div>
       </section>
 
+      {/* ── Finance Overview — Branch Wise ────────────────────────────────── */}
+      <section>
+        <SectionHead title="Finance Overview — Branch Wise" icon="account_balance" />
+        {(() => {
+          // Build per-branch lookup maps
+          type BranchFinRow = {
+            display: string;
+            active: number; fp: number; outHouse: number; cash: number;
+            notUpdated: number; others: number; disbursed: number; approved: number;
+            loggedAppr: number; loggedDocs: number; loginPend: number;
+          };
+
+          const rows: BranchFinRow[] = BRANCH_TARGETS.map(({ display, codes }) => {
+            const matchBranch = (data: R2[], branchField: string) =>
+              data.filter((r) => codes.some((c) => String(r[branchField]) === c));
+
+            const sumBy = (data: R2[], branchField: string, filterField: string, filterVal: string | string[]) => {
+              const vals = Array.isArray(filterVal) ? filterVal : [filterVal];
+              return matchBranch(data, branchField)
+                .filter((r) => vals.includes(String(r[filterField])))
+                .reduce((s, r) => s + Number(r['count']), 0);
+            };
+            const sumAll = (data: R2[], branchField: string) =>
+              matchBranch(data, branchField).reduce((s, r) => s + Number(r['count']), 0);
+
+            // Active blockings: total from branchBlockPay
+            const active = sumAll(branchBlockPay, 'branch');
+            // Full Payment
+            const fp = sumBy(branchBlockPay, 'branch', 'paymentStatus', 'Full Payment Received');
+            // Purchase modes
+            const outHouse   = sumBy(finPurchase, 'branch', 'purchaseMode', 'Out House');
+            const cash       = sumBy(finPurchase, 'branch', 'purchaseMode', 'Cash');
+            const notUpdated = sumBy(finPurchase, 'branch', 'purchaseMode', 'Not Updated');
+            const others     = sumBy(finPurchase, 'branch', 'purchaseMode', ['Leasing', 'No Idea']);
+            // Finance statuses
+            const disbursed  = sumBy(finStatus, 'branch', 'financeStatus', 'Disbursed');
+            const approved   = sumBy(finStatus, 'branch', 'financeStatus', 'Approved');
+            const loggedAppr = sumBy(finStatus, 'branch', 'financeStatus', 'Logged Approval Pending');
+            const loggedDocs = sumBy(finStatus, 'branch', 'financeStatus', 'Logged Document Pending');
+            const loginPend  = sumBy(finStatus, 'branch', 'financeStatus', 'Login Pending');
+
+            return { display, active, fp, outHouse, cash, notUpdated, others, disbursed, approved, loggedAppr, loggedDocs, loginPend };
+          });
+
+          const tot = rows.reduce((acc, r) => ({
+            active: acc.active + r.active, fp: acc.fp + r.fp,
+            outHouse: acc.outHouse + r.outHouse, cash: acc.cash + r.cash,
+            notUpdated: acc.notUpdated + r.notUpdated, others: acc.others + r.others,
+            disbursed: acc.disbursed + r.disbursed, approved: acc.approved + r.approved,
+            loggedAppr: acc.loggedAppr + r.loggedAppr, loggedDocs: acc.loggedDocs + r.loggedDocs,
+            loginPend: acc.loginPend + r.loginPend,
+          }), { active: 0, fp: 0, outHouse: 0, cash: 0, notUpdated: 0, others: 0, disbursed: 0, approved: 0, loggedAppr: 0, loggedDocs: 0, loginPend: 0 });
+
+          const COL_HEADERS: { key: keyof typeof tot; label: string; color: string }[] = [
+            { key: 'active',     label: 'Active Blockings',         color: '#3B82F6' },
+            { key: 'fp',         label: 'Full Payment',             color: '#10B981' },
+            { key: 'outHouse',   label: 'Out House Finance',        color: '#A855F7' },
+            { key: 'cash',       label: 'Cash',                     color: '#F59E0B' },
+            { key: 'notUpdated', label: 'Not Updated by FO',        color: '#EF4444' },
+            { key: 'others',     label: 'Others (Leasing/No Idea)', color: '#6B7280' },
+            { key: 'disbursed',  label: 'Disbursed',                color: '#10B981' },
+            { key: 'approved',   label: 'Approved',                 color: '#8B5CF6' },
+            { key: 'loggedAppr', label: 'Logged / Appr. Pending',   color: '#F97316' },
+            { key: 'loggedDocs', label: 'Logged / Docs Pending',    color: '#EAB308' },
+            { key: 'loginPend',  label: 'Login Pending',            color: '#F59E0B' },
+          ];
+
+          return (
+            <div className="bg-surface-container-low rounded-xl overflow-auto">
+              <table className="w-full text-sm font-body">
+                <thead className="bg-surface-container">
+                  <tr>
+                    <th className={`${thCls} text-left`}>Branch</th>
+                    {COL_HEADERS.map((h) => (
+                      <th key={h.key} className={thCls} style={{ color: h.color }}>{h.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={r.display} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                      <td className={tdBrCls}>{r.display}</td>
+                      {COL_HEADERS.map((h) => (
+                        <td key={h.key} className={tdCls} style={{ color: h.color }}>
+                          {r[h.key] ? r[h.key] : <span className="text-zinc-600">—</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  <tr className="bg-surface-container">
+                    <td className={`${tdBrCls} text-primary`}>Total</td>
+                    {COL_HEADERS.map((h) => (
+                      <td key={h.key} className={tdTotCls} style={{ color: h.color }}>
+                        {tot[h.key] || <span className="text-zinc-600">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+      </section>
+
       {/* ── STOCK SECTION ─────────────────────────────────────────────────── */}
       <Divider label="Stock Analysis" />
 
