@@ -154,7 +154,8 @@ model Vehicle {
   model             String
   suffix            String
   colour            String
-  stockyardLocation   String        @default("")
+  stockyardLocation   String        @default("") // manual/admin-entered note, shown in blocking/finance/cluster views
+  stockyardLiveLocation String      @default("") // auto-synced from the stockyard scanning app, by chassisNumber
   dateOfArrival       DateTime      @default(now())
   status              VehicleStatus @default(OPEN)
   hiddenFromHeatmap   Boolean       @default(false)
