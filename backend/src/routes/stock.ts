@@ -1,4 +1,5 @@
-import { Router, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
@@ -7,6 +8,65 @@ import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getHeatmap } from '../services/heatmap';
 
 const router = Router();
+
+function syncSecretOk(req: Request): boolean {
+  const secret = process.env.LOCATION_SYNC_SECRET;
+  if (!secret) return false;
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return false;
+  const token = Buffer.from(header.slice(7));
+  const expected = Buffer.from(secret);
+  return token.length === expected.length && crypto.timingSafeEqual(token, expected);
+}
+
+const SyncLocationsSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        chassisNumber: z.string().min(1),
+        stockyardLocation: z.string(),
+      }),
+    )
+    .max(5000),
+});
+
+// Machine sync from stockyard — before JWT so a shared secret works.
+router.post('/sync-locations', async (req: Request, res: Response) => {
+  if (!process.env.LOCATION_SYNC_SECRET) {
+    res.status(503).json({ error: 'LOCATION_SYNC_SECRET not configured' });
+    return;
+  }
+  if (!syncSecretOk(req)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const parsed = SyncLocationsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  // Dedupe by chassis (last wins); normalize case for match.
+  const byChassis = new Map<string, string>();
+  for (const u of parsed.data.updates) {
+    byChassis.set(u.chassisNumber.trim().toUpperCase(), u.stockyardLocation);
+  }
+
+  let updated = 0;
+  let notFound = 0;
+  for (const [chassisNumber, stockyardLocation] of byChassis) {
+    const result = await prisma.vehicle.updateMany({
+      where: { chassisNumber: { equals: chassisNumber, mode: 'insensitive' } },
+      data: { stockyardLocation },
+    });
+    if (result.count > 0) updated += result.count;
+    else notFound += 1;
+  }
+
+  res.json({ total: byChassis.size, updated, notFound });
+});
+
 router.use(authenticate);
 
 // Heatmap — available to all authenticated users
