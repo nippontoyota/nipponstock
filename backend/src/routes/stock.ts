@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getHeatmap } from '../services/heatmap';
@@ -38,16 +39,20 @@ router.post('/sync-locations', verifySyncSecret, async (req: Request, res: Respo
     const parsed = SyncLocationsSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-    let updated = 0;
-    let notFound = 0;
+    if (parsed.data.updates.length === 0) { res.json({ updated: 0, notFound: 0 }); return; }
 
-    for (const { chassisNumber, stockyardLocation } of parsed.data.updates) {
-      const result = await prisma.vehicle.updateMany({
-        where: { chassisNumber: chassisNumber.trim().toUpperCase() },
-        data: { stockyardLocation },
-      });
-      if (result.count > 0) updated += result.count; else notFound++;
-    }
+    // Single bulk UPDATE instead of one round-trip per row — a 500-row chunk
+    // of sequential queries blows past the caller's 30s fetch timeout.
+    const rows = parsed.data.updates.map(
+      (u) => Prisma.sql`(${u.chassisNumber.trim().toUpperCase()}, ${u.stockyardLocation})`,
+    );
+    const updated = await prisma.$executeRaw`
+      UPDATE "Vehicle" AS v
+      SET "stockyardLocation" = data.loc
+      FROM (VALUES ${Prisma.join(rows)}) AS data(chassis, loc)
+      WHERE v."chassisNumber" = data.chassis
+    `;
+    const notFound = parsed.data.updates.length - updated;
 
     res.json({ updated, notFound });
   } catch (err) { next(err); }
