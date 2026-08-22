@@ -4,7 +4,7 @@ import api from '../../api';
 
 interface Vehicle {
   id: string; chassisNumber: string; chassisYear: number; model: string; suffix: string;
-  colour: string; stockyardLocation: string; dateOfArrival: string; status: string;
+  colour: string; stockyardLocation: string; stockyardLiveLocation: string; dateOfArrival: string; status: string;
   stockStatus?: string | null;
   hiddenFromHeatmap: boolean;
   blockings: { user: { fullName: string } }[];
@@ -425,7 +425,7 @@ export default function StockAdminPage() {
           <table className="w-full text-sm font-body">
             <thead className="bg-surface-container">
               <tr>
-                {['Chassis No.', 'Year', 'Model', 'Suffix', 'Colour', 'Stock Status', 'Yard Location', 'Arrived', 'Status', 'Blocked By', '', 'Heatmap'].map((h) => (
+                {['Chassis No.', 'Year', 'Model', 'Suffix', 'Colour', 'Stock Status', 'Yard Location', 'Live Location', 'Arrived', 'Status', 'Blocked By', '', 'Heatmap'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -433,7 +433,7 @@ export default function StockAdminPage() {
             <tbody>
               {vehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-20 text-center">
+                  <td colSpan={13} className="py-20 text-center">
                     <span className="material-symbols-outlined text-4xl text-zinc-700 block mb-3">inventory_2</span>
                     <p className="text-on-surface-variant font-label text-xs uppercase tracking-widest">No stock found. Import a file or add a vehicle manually.</p>
                   </td>
@@ -451,6 +451,7 @@ export default function StockAdminPage() {
                     ) : <span className="text-zinc-600 text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-on-surface-variant">{v.stockyardLocation || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-on-surface-variant">{v.stockyardLiveLocation || '—'}</td>
                   <td className="px-4 py-3 text-xs text-on-surface-variant">{new Date(v.dateOfArrival).toLocaleDateString()}</td>
                   <td className="px-4 py-3"><span className={`badge ${statusColor[v.status] ?? 'bg-surface-container text-zinc-500'}`}>{v.status}</span></td>
                   <td className="px-4 py-3 text-xs text-on-surface-variant">{v.blockings[0]?.user.fullName ?? '—'}</td>

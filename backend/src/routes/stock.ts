@@ -25,8 +25,12 @@ function verifySyncSecret(req: Request, res: Response, next: NextFunction) {
 }
 
 // Stockyard location sync — pushed every 5 minutes by the stockyard app's
-// syncNipponstockLocations job. Only updates stockyardLocation on vehicles
-// that already exist here (matched by chassisNumber); never creates vehicles.
+// syncNipponstockLocations job. Writes to stockyardLiveLocation (auto-synced),
+// which is separate from stockyardLocation (admin/manual entry — shown in
+// blocking/finance/cluster views). Only updates vehicles that already exist
+// here (matched by chassisNumber); never creates vehicles. The wire payload
+// field is still named "stockyardLocation" — that's stockyard's contract,
+// not this table's column.
 const SyncLocationsSchema = z.object({
   updates: z.array(z.object({
     chassisNumber: z.string().min(1),
@@ -48,7 +52,7 @@ router.post('/sync-locations', verifySyncSecret, async (req: Request, res: Respo
     );
     const updated = await prisma.$executeRaw`
       UPDATE "Vehicle" AS v
-      SET "stockyardLocation" = data.loc
+      SET "stockyardLiveLocation" = data.loc
       FROM (VALUES ${Prisma.join(rows)}) AS data(chassis, loc)
       WHERE v."chassisNumber" = data.chassis
     `;
@@ -303,6 +307,7 @@ router.get('/export', requireAdmin, async (_req: AuthRequest, res: Response) => 
     colour: v.colour,
     stockStatus: v.stockStatus ?? '',
     stockyardLocation: v.stockyardLocation,
+    stockyardLiveLocation: v.stockyardLiveLocation,
     dateOfArrival: v.dateOfArrival.toISOString().split('T')[0],
     status: v.status,
     blockedBy: v.blockings[0]?.user.fullName ?? '',
