@@ -1,4 +1,5 @@
-import { Router, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
@@ -7,6 +8,51 @@ import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getHeatmap } from '../services/heatmap';
 
 const router = Router();
+
+// Shared-secret auth for the stockyard location sync — service-to-service, not a user session.
+function verifySyncSecret(req: Request, res: Response, next: NextFunction) {
+  const secret = process.env.LOCATION_SYNC_SECRET;
+  const header = req.headers.authorization;
+  if (!secret || !header?.startsWith('Bearer ')) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const provided = Buffer.from(header.slice(7));
+  const expected = Buffer.from(secret);
+  if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
+// Stockyard location sync — pushed every 5 minutes by the stockyard app's
+// syncNipponstockLocations job. Only updates stockyardLocation on vehicles
+// that already exist here (matched by chassisNumber); never creates vehicles.
+const SyncLocationsSchema = z.object({
+  updates: z.array(z.object({
+    chassisNumber: z.string().min(1),
+    stockyardLocation: z.string(),
+  })).max(1000),
+});
+
+router.post('/sync-locations', verifySyncSecret, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = SyncLocationsSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+    let updated = 0;
+    let notFound = 0;
+
+    for (const { chassisNumber, stockyardLocation } of parsed.data.updates) {
+      const result = await prisma.vehicle.updateMany({
+        where: { chassisNumber: chassisNumber.trim().toUpperCase() },
+        data: { stockyardLocation },
+      });
+      if (result.count > 0) updated += result.count; else notFound++;
+    }
+
+    res.json({ updated, notFound });
+  } catch (err) { next(err); }
+});
+
 router.use(authenticate);
 
 // Heatmap — available to all authenticated users
