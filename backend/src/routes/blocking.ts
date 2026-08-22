@@ -565,6 +565,11 @@ router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
 
   if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
 
+  // Lock: once Full Payment Received is set, no role except ADMIN can change it
+  if (existing.paymentStatus === 'Full Payment Received' && !isAdmin) {
+    res.status(403).json({ error: 'Payment status is locked — Full Payment Received cannot be changed' }); return;
+  }
+
   const fpFields = fullPaymentFields(parsed.data.paymentStatus, existing.paymentStatus);
   const updated = await prisma.blockingRequest.update({
     where: { id: req.params.id },

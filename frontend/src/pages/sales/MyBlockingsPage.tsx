@@ -471,8 +471,8 @@ export default function MyBlockingsPage() {
                         Edit Details
                       </button>
                     )}
-                    {/* Update Payment Status — SM (all options) or TL (restricted options, own blockings only) */}
-                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && (
+                    {/* Update Payment Status — SM (all options) or TL (restricted options, own blockings only). Locked once FP is set. */}
+                    {b.status === 'ACTIVE' && b.blockType === 'HARD' && b.paymentStatus !== 'Full Payment Received' && (
                       (authUser?.role === 'SALES_MANAGER' && (isMyOwn || isTlBlocking)) ||
                       (authUser?.role === 'TEAM_LEADER' && isMyOwn)
                     ) && (
