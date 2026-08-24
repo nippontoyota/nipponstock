@@ -47,9 +47,13 @@ router.post('/sync-locations', verifySyncSecret, async (req: Request, res: Respo
 
     // Single bulk UPDATE instead of one round-trip per row — a 500-row chunk
     // of sequential queries blows past the caller's 30s fetch timeout.
-    const rows = parsed.data.updates.map(
-      (u) => Prisma.sql`(${u.chassisNumber.trim().toUpperCase()}, ${u.stockyardLocation})`,
-    );
+    const rows = parsed.data.updates.map((u) => {
+      // Stockyard sends chassis numbers with a trailing "~<scan tag>" (e.g.
+      // "MBJCA3AV603700358~0826") — only the part before "~" is the actual
+      // chassis number we match on; the tag itself carries no meaning here.
+      const chassisNumber = u.chassisNumber.trim().toUpperCase().split('~')[0];
+      return Prisma.sql`(${chassisNumber}, ${u.stockyardLocation})`;
+    });
     const updated = await prisma.$executeRaw`
       UPDATE "Vehicle" AS v
       SET "stockyardLiveLocation" = data.loc
