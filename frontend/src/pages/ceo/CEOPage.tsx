@@ -178,18 +178,18 @@ function PivotTable({ rowLabel, data, rowKey, colKey, activeCols, colorFn }: {
 // codes[]: branchCode values in DB. mtdTallyHC: hardcoded until tally upload goes live.
 // Pala (KT01B) merged into Kottayam (KT01A).
 const BRANCH_TARGETS = [
-  { display: 'Muvattupuzha',  target: 152, codes: ['MV01A'],          mtdTallyHC: 58 },
-  { display: 'Pathanamthitta',target: 130, codes: ['PH01A'],          mtdTallyHC: 39 },
-  { display: 'Irinjalakuda',  target: 129, codes: ['IR01A'],          mtdTallyHC: 57 },
-  { display: 'Enjakkal',      target: 174, codes: ['TR01C'],          mtdTallyHC: 56 },
-  { display: 'Kottayam',      target: 232, codes: ['KT01A', 'KT01B'], mtdTallyHC: 61 },
-  { display: 'Kollam',        target: 183, codes: ['KL01A'],          mtdTallyHC: 75 },
-  { display: 'Thiruvalla',    target:  92, codes: ['TL01A'],          mtdTallyHC: 43 },
-  { display: 'Kalamaserry',   target: 283, codes: ['CO01B'],          mtdTallyHC: 102 },
-  { display: 'Kazhakoottam',  target: 171, codes: ['TR01A'],          mtdTallyHC: 75 },
-  { display: 'Trichur',       target: 199, codes: ['TI01A'],          mtdTallyHC: 100 },
-  { display: 'Kayamkulam',    target: 101, codes: ['KY01A'],          mtdTallyHC: 39 },
-  { display: 'Nettoor',       target: 154, codes: ['CO01A'],          mtdTallyHC: 67 },
+  { display: 'Muvattupuzha',  target: 152, codes: ['MV01A'],          mtdTallyHC: 65 },
+  { display: 'Pathanamthitta',target: 130, codes: ['PH01A'],          mtdTallyHC: 42 },
+  { display: 'Irinjalakuda',  target: 129, codes: ['IR01A'],          mtdTallyHC: 64 },
+  { display: 'Enjakkal',      target: 174, codes: ['TR01C'],          mtdTallyHC: 65 },
+  { display: 'Kottayam',      target: 232, codes: ['KT01A', 'KT01B'], mtdTallyHC: 73 },
+  { display: 'Kollam',        target: 183, codes: ['KL01A'],          mtdTallyHC: 86 },
+  { display: 'Thiruvalla',    target:  92, codes: ['TL01A'],          mtdTallyHC: 48 },
+  { display: 'Kalamaserry',   target: 283, codes: ['CO01B'],          mtdTallyHC: 123 },
+  { display: 'Kazhakoottam',  target: 171, codes: ['TR01A'],          mtdTallyHC: 85 },
+  { display: 'Trichur',       target: 199, codes: ['TI01A'],          mtdTallyHC: 122 },
+  { display: 'Kayamkulam',    target: 101, codes: ['KY01A'],          mtdTallyHC: 47 },
+  { display: 'Nettoor',       target: 154, codes: ['CO01A'],          mtdTallyHC: 71 },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -446,9 +446,9 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={Math.max(summary?.mtdTally ?? 0, 772)}                                        color="#F59E0B" icon="receipt_long" />
+          <KPI label="MTD Tally"         value={Math.max(summary?.mtdTally ?? 0, 891)}                                        color="#F59E0B" icon="receipt_long" />
           <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={Math.max(summary?.mtdTally ?? 0, 772) + (summary?.totalBlockings ?? 0)}        color="#14B8A6" icon="visibility" />
+          <KPI label="Total Visibility"  value={Math.max(summary?.mtdTally ?? 0, 891) + (summary?.totalBlockings ?? 0)}        color="#14B8A6" icon="visibility" />
         </div>
       </section>
 
