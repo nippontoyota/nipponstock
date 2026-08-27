@@ -19,14 +19,14 @@ export default function ConsumerOfferPopup({ role, offersPath = '/sales/offers' 
     setVisible(true);
     api.get('/blocking/offer-vehicles')
       .then((res) => {
-        const vehicles: { model: string; suffix: string; chassisNumber: string }[] = res.data;
+        const vehicles: { model: string; suffix: string; colour: string; chassisNumber: string }[] = res.data;
         const u5 = vehicles.filter((v) => {
           if (v.model !== 'D22' || v.suffix !== 'D22U5') return false;
           const inc = getVehicleIncentive(v.chassisNumber);
           return inc?.customerScheme === '2,30,688';
         }).length;
         const u6 = vehicles.filter((v) => {
-          if (v.model !== 'D22' || v.suffix !== 'D22U6') return false;
+          if (v.model !== 'D22' || v.suffix !== 'D22U6' || v.colour === 'WBG') return false;
           const inc = getVehicleIncentive(v.chassisNumber);
           return inc?.customerScheme === '2,46,164';
         }).length;
