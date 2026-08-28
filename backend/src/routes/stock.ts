@@ -58,7 +58,7 @@ router.post('/sync-locations', verifySyncSecret, async (req: Request, res: Respo
       UPDATE "Vehicle" AS v
       SET "stockyardLiveLocation" = data.loc
       FROM (VALUES ${Prisma.join(rows)}) AS data(chassis, loc)
-      WHERE v."chassisNumber" = data.chassis
+      WHERE UPPER(SPLIT_PART(BTRIM(v."chassisNumber"), '~', 1)) = data.chassis
     `;
     const notFound = parsed.data.updates.length - updated;
 
