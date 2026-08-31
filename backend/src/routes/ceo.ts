@@ -733,6 +733,27 @@ router.get('/branch-performance', async (_req: AuthRequest, res: Response) => {
   res.json(Array.from(map.values()));
 });
 
+// ── Total Visibility history (today) — snapshots captured every 15 min ───────
+router.get('/visibility-history', async (_req: AuthRequest, res: Response) => {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const snapshots = await prisma.visibilitySnapshot.findMany({
+    where: { capturedAt: { gte: startOfDay } },
+    select: { capturedAt: true, totalVisibility: true },
+    orderBy: { capturedAt: 'asc' },
+  });
+
+  let highest: { capturedAt: Date; totalVisibility: number } | null = null;
+  let lowest: { capturedAt: Date; totalVisibility: number } | null = null;
+  for (const s of snapshots) {
+    if (!highest || s.totalVisibility > highest.totalVisibility) highest = s;
+    if (!lowest || s.totalVisibility < lowest.totalVisibility) lowest = s;
+  }
+
+  res.json({ snapshots, highest, lowest });
+});
+
 // ── Download: all hard active blockings ───────────────────────────────────────
 router.get('/blockings-export', async (_req: AuthRequest, res: Response) => {
   const blockings = await prisma.blockingRequest.findMany({

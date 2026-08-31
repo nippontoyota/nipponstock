@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, LabelList,
+  LineChart, Line, CartesianGrid, LabelList, ReferenceDot,
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -219,7 +219,17 @@ export default function CEOPage() {
   const [blockingStockAgeing, setBlockingStockAgeing] = useState<R2[]>([]);
   const [blockingStockAgeingBranch, setBlockingStockAgeingBranch] = useState<R2[]>([]);
   const [branchPerf, setBranchPerf]           = useState<{ name: string; branchCode: string; blockings: number; fullPayment: number; mtdTally: number }[]>([]);
+  const [visHistory, setVisHistory]         = useState<{ capturedAt: string; totalVisibility: number }[]>([]);
+  const [visHighest, setVisHighest]         = useState<{ capturedAt: string; totalVisibility: number } | null>(null);
+  const [visLowest, setVisLowest]           = useState<{ capturedAt: string; totalVisibility: number } | null>(null);
   const [loading, setLoading]               = useState(true);
+
+  const fetchVisibilityHistory = useCallback(async () => {
+    const res = await api.get('/ceo/visibility-history');
+    setVisHistory(res.data.snapshots);
+    setVisHighest(res.data.highest);
+    setVisLowest(res.data.lowest);
+  }, []);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -273,6 +283,11 @@ export default function CEOPage() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchVisibilityHistory();
+    const id = setInterval(fetchVisibilityHistory, 60_000);
+    return () => clearInterval(id);
+  }, [fetchVisibilityHistory]);
 
   // Derived active cols (only show cols with data)
   const activeStockYearCols  = Array.from(new Set(stockVsYear.map((r) => String(r['chassisYear'])))).sort();
@@ -498,6 +513,60 @@ export default function CEOPage() {
               </tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* ── Total Visibility — Today's Trend ──────────────────────────────── */}
+      <section>
+        <SectionHead title="Total Visibility — Today's Trend" icon="show_chart" />
+        <div className="bg-surface-container-low rounded-xl p-4">
+          {visHistory.length === 0 ? (
+            <p className="text-sm text-zinc-500 py-8 text-center">No snapshots captured yet today. Data updates every 15 minutes.</p>
+          ) : (
+            <>
+              <div className="flex gap-4 mb-3 text-xs">
+                {visHighest && (
+                  <span style={{ color: '#10B981', fontWeight: 600 }}>
+                    ▲ Today's High: {visHighest.totalVisibility} @ {format(new Date(visHighest.capturedAt), 'HH:mm')}
+                  </span>
+                )}
+                {visLowest && (
+                  <span style={{ color: '#EF4444', fontWeight: 600 }}>
+                    ▼ Today's Low: {visLowest.totalVisibility} @ {format(new Date(visLowest.capturedAt), 'HH:mm')}
+                  </span>
+                )}
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={visHistory.map((s) => ({ ...s, time: format(new Date(s.capturedAt), 'HH:mm') }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
+                  <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} domain={['dataMin - 20', 'dataMax + 20']} />
+                  <Tooltip labelFormatter={(l) => `Time: ${l}`} formatter={(v: number) => [v, 'Total Visibility']} />
+                  <Line type="monotone" dataKey="totalVisibility" stroke="#14B8A6" strokeWidth={2} dot={{ r: 2 }} />
+                  {visHighest && (
+                    <ReferenceDot
+                      x={format(new Date(visHighest.capturedAt), 'HH:mm')}
+                      y={visHighest.totalVisibility}
+                      r={6}
+                      fill="#10B981"
+                      stroke="none"
+                      label={{ value: 'High', position: 'top', fill: '#10B981', fontSize: 11 }}
+                    />
+                  )}
+                  {visLowest && (
+                    <ReferenceDot
+                      x={format(new Date(visLowest.capturedAt), 'HH:mm')}
+                      y={visLowest.totalVisibility}
+                      r={6}
+                      fill="#EF4444"
+                      stroke="none"
+                      label={{ value: 'Low', position: 'bottom', fill: '#EF4444', fontSize: 11 }}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </>
+          )}
         </div>
       </section>
 

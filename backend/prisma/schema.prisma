@@ -297,6 +297,16 @@ model AuditLog {
   @@index([performedAt])
 }
 
+// ── CEO Visibility Snapshots ───────────────────────────────────────────────────
+
+model VisibilitySnapshot {
+  id              String   @id @default(uuid())
+  capturedAt      DateTime @default(now())
+  totalVisibility Int
+
+  @@index([capturedAt])
+}
+
 // ── Delivery Workflow ─────────────────────────────────────────────────────────
 
 model DeliveryWorkflow {

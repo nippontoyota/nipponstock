@@ -11,6 +11,7 @@ process.on('unhandledRejection', (reason) => {
 
 import { setIO } from './services/events';
 import { startExpiryJob } from './services/expiry';
+import { startVisibilitySnapshotJob, captureVisibilitySnapshot } from './services/visibilitySnapshot';
 
 import authRouter from './routes/auth';
 import stockRouter from './routes/stock';
@@ -26,6 +27,7 @@ import financeHeadRouter from './routes/financeHead';
 import clusterManagerRouter from './routes/clusterManager';
 import ceoRouter from './routes/ceo';
 import deliveryRouter from './routes/delivery';
+import adminRouter from './routes/admin';
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +59,7 @@ app.use('/finance-head', financeHeadRouter);
 app.use('/cluster-manager', clusterManagerRouter);
 app.use('/ceo', ceoRouter);
 app.use('/delivery', deliveryRouter);
+app.use('/admin', adminRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
@@ -73,6 +76,8 @@ io.on('connection', (socket) => {
 });
 
 startExpiryJob();
+startVisibilitySnapshotJob();
+captureVisibilitySnapshot().catch((err) => console.error('Initial visibility snapshot failed:', err));
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
