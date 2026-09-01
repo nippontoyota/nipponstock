@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import prisma from '../lib/prisma';
 
 // Must be kept in sync with the MTD Tally floor in frontend/src/pages/ceo/CEOPage.tsx (KPI cards).
-export const MTD_TALLY_FLOOR = 1146;
+export const MTD_TALLY_FLOOR = 1538;
 
 export async function captureVisibilitySnapshot() {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
