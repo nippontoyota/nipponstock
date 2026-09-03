@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, LabelList, ReferenceDot,
+  LineChart, Line, CartesianGrid, LabelList,
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -82,7 +82,6 @@ const STOCK_COLS    = ['BND', 'CTDMS', 'MDDP', 'Unknown', 'Not Set'];
 const AGE_COLS      = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
 const FIN_STATUS_COLS = ['Login Pending','Logged Approval Pending','Logged Document Pending','Approved','Agreement Done','Disbursed','Rejected'];
-const PAY_STATUS_COLS = ['Down Payment Received','Only Booking Received','Part Payment Received','Full Payment Received','Ready for Disbursement','Not Updated'];
 const FP_AGE_COLS     = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
 const STOCK_AGE_COLS  = ['<30d', '30-50d', '51-70d', '71-100d', '101-150d', '150+d'];
 
@@ -101,11 +100,12 @@ function statusColour(s: string): string {
 }
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
-function KPI({ label, value, color, icon }: { label: string; value: number | undefined; color: string; icon: string }) {
+function KPI({ label, value, color, icon, sub }: { label: string; value: number | undefined; color: string; icon: string; sub?: string }) {
   return (
     <div className="bg-surface-container-low rounded-xl p-5 relative overflow-hidden" style={{ borderLeft: `3px solid ${color}` }}>
       <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant mb-1">{label}</p>
       <p className="font-headline text-3xl font-extrabold text-on-surface">{value ?? '—'}</p>
+      {sub && <p className="font-label text-[10px] text-on-surface-variant mt-1">{sub}</p>}
       <div className="absolute right-3 bottom-3 opacity-10">
         <span className="material-symbols-outlined" style={{ fontSize: '40px', color }}>{icon}</span>
       </div>
@@ -197,9 +197,8 @@ export default function CEOPage() {
   const [summary, setSummary]           = useState<Summary | null>(null);
   const [stockVsYear, setStockVsYear]   = useState<R2[]>([]);
   const [modelPhysical, setModelPhysical] = useState<R2[]>([]);
+  const [modelOpenStock, setModelOpenStock] = useState<R2[]>([]);
   const [modelBlockStock, setModelBlockStock] = useState<R2[]>([]);
-  const [modelBlockPay, setModelBlockPay] = useState<R2[]>([]);
-  const [branchBlockPay, setBranchBlockPay] = useState<R2[]>([]);
   const [finPurchaseNoFp, setFinPurchaseNoFp] = useState<R2[]>([]);
   const [finStatusNoFp, setFinStatusNoFp]     = useState<R2[]>([]);
   const [branchAgeing, setBranchAgeing] = useState<R2[]>([]);
@@ -219,26 +218,16 @@ export default function CEOPage() {
   const [blockingStockAgeing, setBlockingStockAgeing] = useState<R2[]>([]);
   const [blockingStockAgeingBranch, setBlockingStockAgeingBranch] = useState<R2[]>([]);
   const [branchPerf, setBranchPerf]           = useState<{ name: string; branchCode: string; blockings: number; fullPayment: number; mtdTally: number }[]>([]);
-  const [visHistory, setVisHistory]         = useState<{ capturedAt: string; totalVisibility: number }[]>([]);
-  const [visHighest, setVisHighest]         = useState<{ capturedAt: string; totalVisibility: number } | null>(null);
-  const [visLowest, setVisLowest]           = useState<{ capturedAt: string; totalVisibility: number } | null>(null);
   const [loading, setLoading]               = useState(true);
-
-  const fetchVisibilityHistory = useCallback(async () => {
-    const res = await api.get('/ceo/visibility-history');
-    setVisHistory(res.data.snapshots);
-    setVisHighest(res.data.highest);
-    setVisLowest(res.data.lowest);
-  }, []);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mbs, mbp, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa, bbp, bsab, perf, fpNofp, fstNofp] = await Promise.all([
+    const [s, sy, mp, mos, mbs, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa, bsab, perf, fpNofp, fstNofp] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
+      api.get('/ceo/model-open-stock'),
       api.get('/ceo/model-blocking-stock'),
-      api.get('/ceo/model-blocking-payment'),
       api.get('/ceo/branch-blocking-ageing'),
       api.get('/ceo/branch-model-blocking'),
       api.get('/ceo/branch-stock-blocking'),
@@ -254,7 +243,6 @@ export default function CEOPage() {
       api.get('/ceo/full-payment-ageing'),
       api.get('/ceo/stock-ageing'),
       api.get('/ceo/blocking-stock-ageing'),
-      api.get('/ceo/branch-blocking-payment'),
       api.get('/ceo/blocking-stock-ageing-branch'),
       api.get('/ceo/branch-performance'),
       api.get('/ceo/finance-branch-purchase-nofp'),
@@ -262,8 +250,8 @@ export default function CEOPage() {
     ]);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
+    setModelOpenStock(mapModelKey(mos.data, 'model'));
     setModelBlockStock(mapModelKey(mbs.data, 'model'));
-    setModelBlockPay(mapModelKey(mbp.data, 'model'));
     setBranchAgeing(ba.data);
     setBranchModel(mapModelKey(bm.data, 'model'));
     setBranchStockChart(bsc.data); setByDate(bd.data);
@@ -274,7 +262,6 @@ export default function CEOPage() {
     setFpAge(fpa.data);
     setStockAgeing(mapModelKey(sa.data, 'model'));
     setBlockingStockAgeing(mapModelKey(bsa.data, 'model'));
-    setBranchBlockPay(bbp.data);
     setBlockingStockAgeingBranch(bsab.data);
     setBranchPerf(perf.data);
     setFinPurchaseNoFp(fpNofp.data);
@@ -283,18 +270,16 @@ export default function CEOPage() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
-  useEffect(() => {
-    fetchVisibilityHistory();
-    const id = setInterval(fetchVisibilityHistory, 60_000);
-    return () => clearInterval(id);
-  }, [fetchVisibilityHistory]);
+
+  // BND / CTDMS bifurcation for the Physical Stock KPI card
+  const bndCount   = modelPhysical.filter((r) => r['stockStatus'] === 'BND').reduce((s, r) => s + Number(r['count']), 0);
+  const ctdmsCount = modelPhysical.filter((r) => r['stockStatus'] === 'CTDMS').reduce((s, r) => s + Number(r['count']), 0);
 
   // Derived active cols (only show cols with data)
   const activeStockYearCols  = Array.from(new Set(stockVsYear.map((r) => String(r['chassisYear'])))).sort();
   const activePhysicalCols   = STOCK_COLS.filter((c) => modelPhysical.some((r) => r['stockStatus'] === c));
+  const activeOpenStockCols  = STOCK_COLS.filter((c) => modelOpenStock.some((r) => r['stockStatus'] === c));
   const activeBlockStockCols = STOCK_COLS.filter((c) => modelBlockStock.some((r) => r['stockStatus'] === c));
-  const activeBlockPayCols       = PAY_STATUS_COLS.filter((c) => modelBlockPay.some((r) => r['paymentStatus'] === c));
-  const activeBranchPayCols      = PAY_STATUS_COLS.filter((c) => branchBlockPay.some((r) => r['paymentStatus'] === c));
   const activeAgeCols        = AGE_COLS.filter((c) => branchAgeing.some((r) => r['ageBucket'] === c));
   const activeModelCols      = Array.from(new Set(branchModel.map((r) => String(r['model'])))).sort();
   const activePurchaseCols   = PURCHASE_COLS.filter((c) => finPurchase.some((r) => r['purchaseMode'] === c));
@@ -431,7 +416,7 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Stock Status" icon="warehouse" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="Physical Stock (BND + CTDMS)" value={summary?.physicalStock}                              color="#6750A4" icon="warehouse" />
+          <KPI label="Physical Stock (BND + CTDMS)" value={summary?.physicalStock} sub={`BND: ${bndCount} · CTDMS: ${ctdmsCount}`} color="#6750A4" icon="warehouse" />
           <KPI label="MDDP Stock"                   value={summary?.mddpStock}                                  color="#10B981" icon="inventory_2" />
           <KPI label="Total Stock"                  value={(summary?.physicalStock ?? 0) + (summary?.mddpStock ?? 0)} color="#3B82F6" icon="layers" />
         </div>
@@ -460,9 +445,8 @@ export default function CEOPage() {
       {/* ── Current Business Status KPIs ───────────────────────────────────── */}
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <KPI label="MTD Tally"         value={Math.max(summary?.mtdTally ?? 0, 1538)}                                        color="#F59E0B" icon="receipt_long" />
-          <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
           <KPI label="Total Visibility"  value={Math.max(summary?.mtdTally ?? 0, 1538) + (summary?.totalBlockings ?? 0)}        color="#14B8A6" icon="visibility" />
         </div>
       </section>
@@ -513,60 +497,6 @@ export default function CEOPage() {
               </tr>
             </tbody>
           </table>
-        </div>
-      </section>
-
-      {/* ── Total Visibility — Today's Trend ──────────────────────────────── */}
-      <section>
-        <SectionHead title="Total Visibility — Today's Trend" icon="show_chart" />
-        <div className="bg-surface-container-low rounded-xl p-4">
-          {visHistory.length === 0 ? (
-            <p className="text-sm text-zinc-500 py-8 text-center">No snapshots captured yet today. Data updates every 15 minutes.</p>
-          ) : (
-            <>
-              <div className="flex gap-4 mb-3 text-xs">
-                {visHighest && (
-                  <span style={{ color: '#10B981', fontWeight: 600 }}>
-                    ▲ Today's High: {visHighest.totalVisibility} @ {format(new Date(visHighest.capturedAt), 'HH:mm')}
-                  </span>
-                )}
-                {visLowest && (
-                  <span style={{ color: '#EF4444', fontWeight: 600 }}>
-                    ▼ Today's Low: {visLowest.totalVisibility} @ {format(new Date(visLowest.capturedAt), 'HH:mm')}
-                  </span>
-                )}
-              </div>
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={visHistory.map((s) => ({ ...s, time: format(new Date(s.capturedAt), 'HH:mm') }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
-                  <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} domain={['dataMin - 20', 'dataMax + 20']} />
-                  <Tooltip labelFormatter={(l) => `Time: ${l}`} formatter={(v: number) => [v, 'Total Visibility']} />
-                  <Line type="monotone" dataKey="totalVisibility" stroke="#14B8A6" strokeWidth={2} dot={{ r: 2 }} />
-                  {visHighest && (
-                    <ReferenceDot
-                      x={format(new Date(visHighest.capturedAt), 'HH:mm')}
-                      y={visHighest.totalVisibility}
-                      r={6}
-                      fill="#10B981"
-                      stroke="none"
-                      label={{ value: 'High', position: 'top', fill: '#10B981', fontSize: 11 }}
-                    />
-                  )}
-                  {visLowest && (
-                    <ReferenceDot
-                      x={format(new Date(visLowest.capturedAt), 'HH:mm')}
-                      y={visLowest.totalVisibility}
-                      r={6}
-                      fill="#EF4444"
-                      stroke="none"
-                      label={{ value: 'Low', position: 'bottom', fill: '#EF4444', fontSize: 11 }}
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            </>
-          )}
         </div>
       </section>
 
@@ -692,7 +622,7 @@ export default function CEOPage() {
 
       {/* Table 2: Model wise Physical Stock */}
       <section>
-        <SectionHead title="Table 2 — Model wise Physical Stock (BND + CTDMS, Non-Delivered)" icon="directions_car" />
+        <SectionHead title="Table 2 — Model wise Stock (BND + CTDMS + MDDP, Non-Delivered)" icon="directions_car" />
         <PivotTable rowLabel="Model" data={modelPhysical} rowKey="model" colKey="stockStatus" activeCols={activePhysicalCols} />
       </section>
 
@@ -705,16 +635,10 @@ export default function CEOPage() {
         <PivotTable rowLabel="Model" data={modelBlockStock} rowKey="model" colKey="stockStatus" activeCols={activeBlockStockCols} />
       </section>
 
-      {/* Table 4: Model × Payment Status */}
+      {/* Open Model wise × Stock Status (No blockings) */}
       <section>
-        <SectionHead title="Table 4 — Model wise Blockings × Payment Status" icon="receipt_long" />
-        <PivotTable rowLabel="Model" data={modelBlockPay} rowKey="model" colKey="paymentStatus" activeCols={activeBlockPayCols} />
-      </section>
-
-      {/* Table 4b: Branch × Payment Status */}
-      <section>
-        <SectionHead title="Branch vs Payment Status" icon="account_balance" />
-        <PivotTable rowLabel="Branch" data={branchBlockPay} rowKey="branch" colKey="paymentStatus" activeCols={activeBranchPayCols} />
+        <SectionHead title="Open Model wise × Stock Status (No Blockings)" icon="lock_open" />
+        <PivotTable rowLabel="Model" data={modelOpenStock} rowKey="model" colKey="stockStatus" activeCols={activeOpenStockCols} />
       </section>
 
       {/* Table 5: Branch × Ageing */}

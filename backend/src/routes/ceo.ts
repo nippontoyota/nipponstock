@@ -56,10 +56,31 @@ router.get('/stock-vs-year', async (_req: AuthRequest, res: Response) => {
   res.json(rows);
 });
 
-// ── 3. Model wise Physical Stock (BND + CTDMS, non-delivered) ─────────────────
+// ── 3. Model wise Physical Stock (BND + CTDMS + MDDP, non-delivered) ──────────
 router.get('/model-physical-stock', async (_req: AuthRequest, res: Response) => {
   const vehicles = await prisma.vehicle.findMany({
-    where: { stockStatus: { in: ['BND', 'CTDMS'] }, status: { not: 'DELIVERED' } },
+    where: { stockStatus: { in: ['BND', 'CTDMS', 'MDDP'] }, status: { not: 'DELIVERED' } },
+    select: { model: true, stockStatus: true },
+  });
+
+  const map = new Map<string, number>();
+  for (const v of vehicles) {
+    const key = `${v.model}\x01${v.stockStatus}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; stockStatus: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), stockStatus: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── 3b. Open Model wise × Stock Status (OPEN vehicles, no active blocking) ────
+router.get('/model-open-stock', async (_req: AuthRequest, res: Response) => {
+  const vehicles = await prisma.vehicle.findMany({
+    where: { status: 'OPEN', stockStatus: { in: ['BND', 'CTDMS', 'MDDP'] } },
     select: { model: true, stockStatus: true },
   });
 
