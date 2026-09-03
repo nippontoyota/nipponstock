@@ -422,6 +422,16 @@ export default function CEOPage() {
         </div>
       </section>
 
+      {/* ── Current Business Status KPIs ───────────────────────────────────── */}
+      <section>
+        <SectionHead title="Current Business Status" icon="trending_up" />
+        <div className="grid grid-cols-3 gap-4">
+          <KPI label="MTD Tally"         value={Math.max(summary?.mtdTally ?? 0, 1538)}                                        color="#F59E0B" icon="receipt_long" />
+          <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
+          <KPI label="Total Visibility"  value={Math.max(summary?.mtdTally ?? 0, 1538) + (summary?.totalBlockings ?? 0)}        color="#14B8A6" icon="visibility" />
+        </div>
+      </section>
+
       {/* ── Finance Overview KPIs ──────────────────────────────────────────── */}
       <section>
         <SectionHead title="Finance Overview" icon="account_balance" />
@@ -439,15 +449,6 @@ export default function CEOPage() {
           <KPI label="Logged / Approval Pending" value={finSummary?.loggedApprovalPendingNoFp}  color="#F97316" icon="approval" />
           <KPI label="Logged / Docs Pending"     value={finSummary?.loggedDocsPendingNoFp}      color="#EAB308" icon="description" />
           <KPI label="Login Pending"             value={finSummary?.loginPendingNoFp}           color="#F59E0B" icon="pending" />
-        </div>
-      </section>
-
-      {/* ── Current Business Status KPIs ───────────────────────────────────── */}
-      <section>
-        <SectionHead title="Current Business Status" icon="trending_up" />
-        <div className="grid grid-cols-2 gap-4">
-          <KPI label="MTD Tally"         value={Math.max(summary?.mtdTally ?? 0, 1538)}                                        color="#F59E0B" icon="receipt_long" />
-          <KPI label="Total Visibility"  value={Math.max(summary?.mtdTally ?? 0, 1538) + (summary?.totalBlockings ?? 0)}        color="#14B8A6" icon="visibility" />
         </div>
       </section>
 
