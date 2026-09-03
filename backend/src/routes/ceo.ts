@@ -201,6 +201,40 @@ router.get('/branch-blocking-ageing', async (_req: AuthRequest, res: Response) =
   res.json(rows);
 });
 
+// ── 6b. Model wise Blocked Vehicles Ageing (days from block date) ─────────────
+router.get('/model-blocking-ageing', async (_req: AuthRequest, res: Response) => {
+  const blockings = await prisma.blockingRequest.findMany({
+    where: { blockType: 'HARD', status: 'ACTIVE' },
+    select: { hardBlockAt: true, vehicle: { select: { model: true } } },
+  });
+
+  const now = new Date();
+  const ageBucket = (days: number) => {
+    if (days <= 7)  return '0–7 days';
+    if (days <= 15) return '8–15 days';
+    if (days <= 30) return '16–30 days';
+    return '31+ days';
+  };
+
+  const map = new Map<string, number>();
+  for (const b of blockings) {
+    const model = b.vehicle.model;
+    const days = b.hardBlockAt
+      ? Math.floor((now.getTime() - new Date(b.hardBlockAt).getTime()) / 86_400_000)
+      : 0;
+    const bucket = ageBucket(days);
+    const key = `${model}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
 // ── 7. Branch × Model blocking pivot ─────────────────────────────────────────
 router.get('/branch-model-blocking', async (_req: AuthRequest, res: Response) => {
   const blockings = await prisma.blockingRequest.findMany({
@@ -307,6 +341,31 @@ router.get('/stock-ageing', async (_req: AuthRequest, res: Response) => {
       stockStatus: { in: ['BND', 'CTDMS'] },
       status: { in: ['OPEN', 'SOFT_BLOCKED', 'HARD_BLOCKED'] },
     },
+    select: { model: true, assignmentDate: true, createdAt: true },
+  });
+
+  const now = new Date();
+  const map = new Map<string, number>();
+  for (const v of vehicles) {
+    const ref = v.assignmentDate ?? v.createdAt;
+    const days = Math.floor((now.getTime() - new Date(ref).getTime()) / 86_400_000);
+    const bucket = stockAgeBucket(days);
+    const key = `${v.model}\x01${bucket}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const rows: { model: string; ageBucket: string; count: number }[] = [];
+  for (const [key, count] of map) {
+    const sep = key.indexOf('\x01');
+    rows.push({ model: key.slice(0, sep), ageBucket: key.slice(sep + 1), count });
+  }
+  res.json(rows);
+});
+
+// ── 11a2. Open Vehicles (no blocking) Ageing — Physical BND/CTDMS (model × age bucket) ─
+router.get('/open-stock-ageing', async (_req: AuthRequest, res: Response) => {
+  const vehicles = await prisma.vehicle.findMany({
+    where: { stockStatus: { in: ['BND', 'CTDMS'] }, status: 'OPEN' },
     select: { model: true, assignmentDate: true, createdAt: true },
   });
 

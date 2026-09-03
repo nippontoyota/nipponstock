@@ -81,23 +81,12 @@ function cell(v: number | undefined) {
 const STOCK_COLS    = ['BND', 'CTDMS', 'MDDP', 'Unknown', 'Not Set'];
 const AGE_COLS      = ['0–7 days', '8–15 days', '16–30 days', '31+ days'];
 const PURCHASE_COLS = ['In House', 'Out House', 'Cash', 'Leasing', 'No Idea', 'Not Set', 'Not Updated'];
-const FIN_STATUS_COLS = ['Login Pending','Logged Approval Pending','Logged Document Pending','Approved','Agreement Done','Disbursed','Rejected'];
 const FP_AGE_COLS     = ['0', '1', '2', '3', '4', '5', '6', '7', '8+'];
 const STOCK_AGE_COLS  = ['<30d', '30-50d', '51-70d', '71-100d', '101-150d', '150+d'];
 
 // ── Chart colours ─────────────────────────────────────────────────────────────
 const STOCK_COLORS: Record<string, string> = { BND: '#6750A4', CTDMS: '#F59E0B', MDDP: '#10B981', Unknown: '#6b7280' };
 const CHART_BLUE = '#3B82F6';
-
-function statusColour(s: string): string {
-  if (s === 'Disbursed')      return 'text-green-400';
-  if (s === 'Approved')       return 'text-primary';
-  if (s === 'Agreement Done') return 'text-teal-400';
-  if (s === 'Rejected')       return 'text-red-400';
-  if (s === 'Login Pending')  return 'text-yellow-400';
-  if (s.startsWith('Logged')) return 'text-orange-400';
-  return 'text-zinc-400';
-}
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
 function KPI({ label, value, color, icon, sub }: { label: string; value: number | undefined; color: string; icon: string; sub?: string }) {
@@ -199,22 +188,20 @@ export default function CEOPage() {
   const [modelPhysical, setModelPhysical] = useState<R2[]>([]);
   const [modelOpenStock, setModelOpenStock] = useState<R2[]>([]);
   const [modelBlockStock, setModelBlockStock] = useState<R2[]>([]);
+  const [modelBlockAgeing, setModelBlockAgeing] = useState<R2[]>([]);
   const [finPurchaseNoFp, setFinPurchaseNoFp] = useState<R2[]>([]);
   const [finStatusNoFp, setFinStatusNoFp]     = useState<R2[]>([]);
   const [branchAgeing, setBranchAgeing] = useState<R2[]>([]);
   const [branchModel, setBranchModel]   = useState<R2[]>([]);
   const [branchStockChart, setBranchStockChart] = useState<R2[]>([]);
   const [byDate, setByDate]             = useState<DateRow[]>([]);
-  const [billing, setBilling]           = useState<DateRow[]>([]);
   const [release, setRelease]           = useState<ReleaseData | null>(null);
   const [finSummary, setFinSummary]     = useState<FinSummary | null>(null);
-  const [finPurchase, setFinPurchase]   = useState<R2[]>([]);
-  const [finStatus, setFinStatus]       = useState<R2[]>([]);
   const [banks, setBanks]               = useState<BankRow[]>([]);
   const [modelPurchase, setModelPurchase]   = useState<R2[]>([]);
-  const [modelFinStatus, setModelFinStatus] = useState<R2[]>([]);
   const [fpAge, setFpAge]                   = useState<R2[]>([]);
   const [stockAgeing, setStockAgeing]       = useState<R2[]>([]);
+  const [openStockAgeing, setOpenStockAgeing] = useState<R2[]>([]);
   const [blockingStockAgeing, setBlockingStockAgeing] = useState<R2[]>([]);
   const [blockingStockAgeingBranch, setBlockingStockAgeingBranch] = useState<R2[]>([]);
   const [branchPerf, setBranchPerf]           = useState<{ name: string; branchCode: string; blockings: number; fullPayment: number; mtdTally: number }[]>([]);
@@ -222,26 +209,24 @@ export default function CEOPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mos, mbs, ba, bm, bsc, bd, bp, ra, fs, fp, fst, fbank, mpur, mfst, fpa, sa, bsa, bsab, perf, fpNofp, fstNofp] = await Promise.all([
+    const [s, sy, mp, mos, mbs, mba, ba, bm, bsc, bd, ra, fs, fbank, mpur, fpa, sa, osa, bsa, bsab, perf, fpNofp, fstNofp] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
       api.get('/ceo/model-open-stock'),
       api.get('/ceo/model-blocking-stock'),
+      api.get('/ceo/model-blocking-ageing'),
       api.get('/ceo/branch-blocking-ageing'),
       api.get('/ceo/branch-model-blocking'),
       api.get('/ceo/branch-stock-blocking'),
       api.get('/ceo/blockings-by-date'),
-      api.get('/ceo/billing-pipeline'),
       api.get('/ceo/release-analysis'),
       api.get('/ceo/finance-summary'),
-      api.get('/ceo/finance-branch-purchase'),
-      api.get('/ceo/finance-branch-status'),
       api.get('/ceo/finance-bank'),
       api.get('/ceo/model-purchase'),
-      api.get('/ceo/model-finance-status'),
       api.get('/ceo/full-payment-ageing'),
       api.get('/ceo/stock-ageing'),
+      api.get('/ceo/open-stock-ageing'),
       api.get('/ceo/blocking-stock-ageing'),
       api.get('/ceo/blocking-stock-ageing-branch'),
       api.get('/ceo/branch-performance'),
@@ -252,15 +237,16 @@ export default function CEOPage() {
     setModelPhysical(mapModelKey(mp.data, 'model'));
     setModelOpenStock(mapModelKey(mos.data, 'model'));
     setModelBlockStock(mapModelKey(mbs.data, 'model'));
+    setModelBlockAgeing(mapModelKey(mba.data, 'model'));
     setBranchAgeing(ba.data);
     setBranchModel(mapModelKey(bm.data, 'model'));
     setBranchStockChart(bsc.data); setByDate(bd.data);
-    setBilling(bp.data); setRelease(ra.data); setFinSummary(fs.data);
-    setFinPurchase(fp.data); setFinStatus(fst.data); setBanks(fbank.data);
+    setRelease(ra.data); setFinSummary(fs.data);
+    setBanks(fbank.data);
     setModelPurchase(mapModelKey(mpur.data, 'model'));
-    setModelFinStatus(mapModelKey(mfst.data, 'model'));
     setFpAge(fpa.data);
     setStockAgeing(mapModelKey(sa.data, 'model'));
+    setOpenStockAgeing(mapModelKey(osa.data, 'model'));
     setBlockingStockAgeing(mapModelKey(bsa.data, 'model'));
     setBlockingStockAgeingBranch(bsab.data);
     setBranchPerf(perf.data);
@@ -281,13 +267,12 @@ export default function CEOPage() {
   const activeOpenStockCols  = STOCK_COLS.filter((c) => modelOpenStock.some((r) => r['stockStatus'] === c));
   const activeBlockStockCols = STOCK_COLS.filter((c) => modelBlockStock.some((r) => r['stockStatus'] === c));
   const activeAgeCols        = AGE_COLS.filter((c) => branchAgeing.some((r) => r['ageBucket'] === c));
+  const activeModelAgeCols   = AGE_COLS.filter((c) => modelBlockAgeing.some((r) => r['ageBucket'] === c));
   const activeModelCols      = Array.from(new Set(branchModel.map((r) => String(r['model'])))).sort();
-  const activePurchaseCols   = PURCHASE_COLS.filter((c) => finPurchase.some((r) => r['purchaseMode'] === c));
-  const activeFinStatusCols  = FIN_STATUS_COLS.filter((c) => finStatus.some((r) => r['financeStatus'] === c));
   const activeModelPurchaseCols = PURCHASE_COLS.filter((c) => modelPurchase.some((r) => r['purchaseMode'] === c));
-  const activeModelFinStatusCols = FIN_STATUS_COLS.filter((c) => modelFinStatus.some((r) => r['financeStatus'] === c));
   const activeFpAgeCols          = FP_AGE_COLS.filter((c) => fpAge.some((r) => r['dayBucket'] === c));
   const activeStockAgeingCols    = STOCK_AGE_COLS.filter((c) => stockAgeing.some((r) => r['ageBucket'] === c));
+  const activeOpenStockAgeingCols = STOCK_AGE_COLS.filter((c) => openStockAgeing.some((r) => r['ageBucket'] === c));
   const activeBlockingStockAgeCols = STOCK_AGE_COLS.filter((c) => blockingStockAgeing.some((r) => r['ageBucket'] === c));
   const activeBlockingStockAgeBranchCols = STOCK_AGE_COLS.filter((c) => blockingStockAgeingBranch.some((r) => r['ageBucket'] === c));
 
@@ -648,6 +633,12 @@ export default function CEOPage() {
         <PivotTable rowLabel="Branch" data={branchAgeing} rowKey="branch" colKey="ageBucket" activeCols={activeAgeCols} />
       </section>
 
+      {/* Model wise Locked Vehicles Ageing */}
+      <section>
+        <SectionHead title="Model wise Locked Vehicles Ageing (Days from Block Date)" icon="schedule" />
+        <PivotTable rowLabel="Model" data={modelBlockAgeing} rowKey="model" colKey="ageBucket" activeCols={activeModelAgeCols} />
+      </section>
+
       {/* Table 6: Branch × Model */}
       <section>
         <SectionHead title="Table 6 — Branch wise Model wise Blockings" icon="grid_view" />
@@ -695,26 +686,6 @@ export default function CEOPage() {
               <Line type="monotone" dataKey="count" stroke={CHART_BLUE} strokeWidth={2} dot={{ r: 3, fill: CHART_BLUE }} name="Blockings" label={{ position: 'top', fontSize: 9, fill: '#9ca3af' }} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* Column Chart: Expected Billing Pipeline */}
-      <section>
-        <SectionHead title="Expected Billing Pipeline" icon="event" />
-        <div className="bg-surface-container-low rounded-xl p-6">
-          {billing.length === 0 ? (
-            <p className="text-center text-on-surface-variant text-sm py-12">No billing dates set on active blockings</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={billing} margin={{ top: 4, right: 16, left: 0, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(67,70,86,0.2)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} angle={-35} textAnchor="end" interval={0} tickFormatter={(d) => d.slice(5)} />
-                <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                <Tooltip contentStyle={{ background: '#1e1e2e', border: '1px solid rgba(67,70,86,0.4)', borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="count" fill="#8B5CF6" name="Vehicles" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
         </div>
       </section>
 
@@ -785,6 +756,56 @@ export default function CEOPage() {
             <tbody>
               {(() => {
                 const pivot = buildPivot(blockingStockAgeing, 'model', 'ageBucket', activeBlockingStockAgeCols);
+                return <>
+                  {pivot.branches.map((m, i) => (
+                    <tr key={m} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                      <td className={tdBrCls}>{m}</td>
+                      {STOCK_AGE_COLS.map((c) => {
+                        const v = pivot.lookup.get(`${m}\x01${c}`);
+                        const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                        return <td key={c} className={`${tdCls} ${v ? col : ''}`}>{v ? v : <span className="text-zinc-600">—</span>}</td>;
+                      })}
+                      <td className={tdTotCls}>{pivot.rowTotals.get(m) ?? 0}</td>
+                    </tr>
+                  ))}
+                  {pivot.branches.length === 0 && (
+                    <tr><td colSpan={STOCK_AGE_COLS.length + 2} className="px-4 py-8 text-center text-on-surface-variant text-sm">No data</td></tr>
+                  )}
+                  {pivot.branches.length > 0 && (
+                    <tr className="bg-surface-container">
+                      <td className={`${tdBrCls} text-primary`}>Total</td>
+                      {STOCK_AGE_COLS.map((c) => {
+                        const col = c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : '';
+                        const v = pivot.colTotals.get(c);
+                        return <td key={c} className={`${tdTotCls} ${col}`}>{v ? v : <span className="text-zinc-600">—</span>}</td>;
+                      })}
+                      <td className={`${tdTotCls} text-primary`}>{pivot.grand}</td>
+                    </tr>
+                  )}
+                </>;
+              })()}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Open Vehicles (no blocking) Ageing: Physical BND/CTDMS ────────── */}
+      <section>
+        <SectionHead title="Open Vehicles (No Blocking) Ageing — Physical BND/CTDMS (by Vehicle Assignment Date)" icon="lock_open" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Model</th>
+                {STOCK_AGE_COLS.map((c) => (
+                  <th key={c} className={`${thCls} ${c === '150+d' ? 'text-red-400' : c === '101-150d' ? 'text-orange-400' : c === '71-100d' ? 'text-yellow-400' : 'text-green-400'}`}>{c}</th>
+                ))}
+                <th className={thTotCls}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const pivot = buildPivot(openStockAgeing, 'model', 'ageBucket', activeOpenStockAgeingCols);
                 return <>
                   {pivot.branches.map((m, i) => (
                     <tr key={m} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
@@ -950,28 +971,10 @@ export default function CEOPage() {
       <Divider label="Finance Overview" />
 
 
-      {/* Finance Branch × Purchase Mode */}
-      <section>
-        <SectionHead title="Branch × Purchase Mode" icon="storefront" />
-        <PivotTable rowLabel="Branch" data={finPurchase} rowKey="branch" colKey="purchaseMode" activeCols={activePurchaseCols} />
-      </section>
-
-      {/* Finance Branch × Finance Status */}
-      <section>
-        <SectionHead title="Branch × Finance Status" icon="timeline" />
-        <PivotTable rowLabel="Branch" data={finStatus} rowKey="branch" colKey="financeStatus" activeCols={activeFinStatusCols} colorFn={statusColour} />
-      </section>
-
       {/* Model × Purchase Mode */}
       <section>
         <SectionHead title="Model × Purchase Mode" icon="directions_car" />
         <PivotTable rowLabel="Model" data={modelPurchase} rowKey="model" colKey="purchaseMode" activeCols={activeModelPurchaseCols} />
-      </section>
-
-      {/* Model × Finance Status (In House only) */}
-      <section>
-        <SectionHead title="Model × Finance Status (In House Cases)" icon="account_tree" />
-        <PivotTable rowLabel="Model" data={modelFinStatus} rowKey="model" colKey="financeStatus" activeCols={activeModelFinStatusCols} colorFn={statusColour} />
       </section>
 
       {/* Full Payment Ageing */}
