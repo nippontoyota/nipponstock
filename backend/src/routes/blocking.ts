@@ -11,6 +11,15 @@ router.use(authenticate);
 
 const MASKED_MODELS = ['INN', 'FRN', 'IMV'];
 
+// Blocking is under maintenance for Sales Manager / Team Leader accounts.
+function blockingUnderMaintenance(req: AuthRequest, res: Response, next: () => void) {
+  if (req.user!.role === 'SALES_MANAGER' || req.user!.role === 'TEAM_LEADER') {
+    res.status(503).json({ error: 'Blocking is under maintenance. Will be back soon.' });
+    return;
+  }
+  next();
+}
+
 // Reveal actual chassis number by looking up the ChassisMap table
 async function revealChassis(vehicleId: string): Promise<void> {
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { chassisNumber: true } });
@@ -129,7 +138,7 @@ function fullPaymentFields(newStatus: string, existingStatus?: string | null): R
 }
 
 // POST /blocking/soft — atomic soft block
-router.post('/soft', async (req: AuthRequest, res: Response) => {
+router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
     model: z.string().min(1),
     suffix: z.string().min(1),
@@ -236,7 +245,7 @@ router.get('/offer-vehicles', async (_req: AuthRequest, res: Response) => {
 });
 
 // POST /blocking/offer-soft — soft block by model+suffix (earliest assignmentDate, BND→CTDMS priority)
-router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
+router.post('/offer-soft', blockingUnderMaintenance, async (req: AuthRequest, res: Response) => {
   const Schema = z.object({ model: z.string().min(1), suffix: z.string().min(1) });
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
@@ -296,7 +305,7 @@ router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /blocking/hard — convert soft to hard block
-router.post('/hard', async (req: AuthRequest, res: Response) => {
+router.post('/hard', blockingUnderMaintenance, async (req: AuthRequest, res: Response) => {
   const isTeamLeader = req.user!.role === 'TEAM_LEADER';
 
   // Team Leaders only submit customer credentials — no financial payload
