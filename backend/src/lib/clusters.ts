@@ -31,3 +31,15 @@ export async function getClusterCodesForUser(role: string, branchId: string | nu
 
   return CLUSTER_BRANCHES[clusterNum];
 }
+
+/**
+ * Builds a Prisma where-fragment matching vehicles whose stockyardLocation
+ * belongs to one of the given branch codes. stockyardLocation values look like
+ * "TR01A", "TR01A · Yard-1, Mess area, Kazhakkuttam", "In transit → CO01A · ...",
+ * or "OUT · TI01A · ...". A prefix match on the bare code correctly matches the
+ * first two forms while naturally excluding "In transit →" and "OUT ·" entries
+ * (vehicles not physically present at that branch).
+ */
+export function stockyardClusterWhere(codes: string[]) {
+  return { OR: codes.map((code) => ({ stockyardLocation: { startsWith: code } })) };
+}

@@ -5,7 +5,7 @@ import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getBlockingDays } from '../services/modelDuration';
 import { logAudit } from '../services/audit';
 import { emitHeatmapUpdate, emitBlockingUpdate } from '../services/events';
-import { getClusterCodesForUser } from '../lib/clusters';
+import { getClusterCodesForUser, stockyardClusterWhere } from '../lib/clusters';
 
 const router = Router();
 router.use(authenticate);
@@ -166,7 +166,7 @@ router.post('/soft', async (req: AuthRequest, res: Response) => {
           status: 'OPEN',
           hiddenFromHeatmap: false,
           ...(chassisYear ? { chassisYear } : {}),
-          ...(clusterCodes ? { stockyardLocation: { in: clusterCodes } } : {}),
+          ...(clusterCodes ? stockyardClusterWhere(clusterCodes) : {}),
         },
         select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisYear: true, assignmentDate: true, chassisNumber: true },
       });
@@ -242,7 +242,7 @@ router.get('/offer-vehicles', async (req: AuthRequest, res: Response) => {
     where: {
       status: 'OPEN',
       hiddenFromHeatmap: false,
-      ...(clusterCodes ? { stockyardLocation: { in: clusterCodes } } : {}),
+      ...(clusterCodes ? stockyardClusterWhere(clusterCodes) : {}),
     },
     select: { model: true, suffix: true, colour: true, chassisNumber: true, assignmentDate: true, stockStatus: true, chassisYear: true },
     orderBy: { assignmentDate: 'asc' },
@@ -274,7 +274,7 @@ router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
         where: {
           status: 'OPEN',
           hiddenFromHeatmap: false,
-          ...(clusterCodes ? { stockyardLocation: { in: clusterCodes } } : {}),
+          ...(clusterCodes ? stockyardClusterWhere(clusterCodes) : {}),
         },
         select: { id: true, model: true, suffix: true, chassisNumber: true, assignmentDate: true, stockStatus: true },
         orderBy: { assignmentDate: 'asc' },
