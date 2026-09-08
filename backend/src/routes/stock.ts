@@ -148,6 +148,19 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
 
+  // Values are applied exactly as given in the file — no cross-check against the
+  // model/suffix/colour catalog. Only chassisNumber/chassisYear/model/suffix/colour
+  // are mandatory; stockyardLocation, hiddenFromHeatmap, stockStatus, and
+  // assignmentDate are optional.
+  const boolFromCell = (v: unknown): boolean | undefined => {
+    if (v === undefined || v === null || v === '') return undefined;
+    if (typeof v === 'boolean') return v;
+    const s = String(v).trim().toLowerCase();
+    if (['true', 'yes', 'y', '1'].includes(s)) return true;
+    if (['false', 'no', 'n', '0'].includes(s)) return false;
+    return undefined;
+  };
+
   const RowSchema = z.object({
     chassisNumber: z.string().min(1),
     chassisYear: z.coerce.number().int(),
@@ -155,8 +168,9 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
     suffix: z.string().min(1),
     colour: z.string().min(1),
     stockyardLocation: z.string().default(''),
-    dateOfArrival: z.coerce.date(),
+    hiddenFromHeatmap: z.boolean().optional(),
     stockStatus: z.enum(['BND', 'MDDP', 'CTDMS']).optional(),
+    assignmentDate: z.coerce.date().optional(),
   });
 
   let success = 0;
@@ -173,6 +187,7 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
       // Trim string values to remove trailing spaces from Excel cells
       normalised[key] = typeof v === 'string' ? v.trim() : v;
     }
+    normalised.hiddenFromHeatmap = boolFromCell(normalised.hiddenFromHeatmap);
 
     const parsed = RowSchema.safeParse(normalised);
     if (!parsed.success) {
