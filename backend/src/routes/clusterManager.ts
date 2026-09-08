@@ -1,10 +1,17 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, requireClusterManager, AuthRequest } from '../middleware/auth';
-import { CLUSTER_BRANCHES } from '../lib/clusters';
 
 const router = Router();
 router.use(authenticate, requireClusterManager);
+
+// ── Cluster branch code mapping ───────────────────────────────────────────────
+const CLUSTER_BRANCHES: Record<number, string[]> = {
+  1: ['CO01A', 'CO01B', 'KY01A'],
+  2: ['TR01A', 'TR01C', 'KL01A'],
+  3: ['IR01A', 'TI01A', 'MV01A'],
+  4: ['KT01A', 'PH01A', 'TL01A', 'KT01B'],
+};
 
 async function getClusterBranchIds(clusterNumber: number): Promise<string[]> {
   const codes = CLUSTER_BRANCHES[clusterNumber] ?? [];

@@ -1,5 +1,4 @@
 import prisma from '../lib/prisma';
-import { stockyardClusterWhere } from '../lib/clusters';
 
 export interface HeatmapYearBreakdown {
   chassisYear: number;
@@ -26,15 +25,12 @@ function levelFor(open: number): 'green' | 'yellow' | 'red' {
   return open >= 5 ? 'green' : open >= 3 ? 'yellow' : 'red';
 }
 
-export async function getHeatmap(year?: number, stockyardCodes?: string[] | null): Promise<HeatmapCell[]> {
-  if (stockyardCodes && stockyardCodes.length === 0) return [];
-
+export async function getHeatmap(year?: number): Promise<HeatmapCell[]> {
   const where: Record<string, unknown> = {
     status: { not: 'DELIVERED' },
     hiddenFromHeatmap: false,
   };
   if (year) where.chassisYear = year;
-  if (stockyardCodes) Object.assign(where, stockyardClusterWhere(stockyardCodes));
 
   const vehicles = await prisma.vehicle.findMany({
     where,

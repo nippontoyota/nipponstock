@@ -5,7 +5,6 @@ import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getBlockingDays } from '../services/modelDuration';
 import { logAudit } from '../services/audit';
 import { emitHeatmapUpdate, emitBlockingUpdate } from '../services/events';
-import { getClusterCodesForUser, stockyardClusterWhere } from '../lib/clusters';
 
 const router = Router();
 router.use(authenticate);
@@ -159,12 +158,6 @@ router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Res
 
   if (!branchId) { res.status(403).json({ error: 'No branch assigned to your account — contact admin' }); return; }
 
-  const clusterCodes = await getClusterCodesForUser(req.user!.role, branchId);
-  if (clusterCodes && clusterCodes.length === 0) {
-    res.status(409).json({ error: 'No open vehicle found for this combination — please select again' });
-    return;
-  }
-
   // Atomic: find an OPEN vehicle and soft-block it in a single transaction
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -175,7 +168,6 @@ router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Res
           status: 'OPEN',
           hiddenFromHeatmap: false,
           ...(chassisYear ? { chassisYear } : {}),
-          ...(clusterCodes ? stockyardClusterWhere(clusterCodes) : {}),
         },
         select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisYear: true, assignmentDate: true, chassisNumber: true },
       });
@@ -243,16 +235,9 @@ router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Res
 });
 
 // GET /blocking/offer-vehicles — OPEN vehicles for offers page (frontend does incentive lookup)
-router.get('/offer-vehicles', async (req: AuthRequest, res: Response) => {
-  const clusterCodes = await getClusterCodesForUser(req.user!.role, req.user!.branchId);
-  if (clusterCodes && clusterCodes.length === 0) { res.json([]); return; }
-
+router.get('/offer-vehicles', async (_req: AuthRequest, res: Response) => {
   const vehicles = await prisma.vehicle.findMany({
-    where: {
-      status: 'OPEN',
-      hiddenFromHeatmap: false,
-      ...(clusterCodes ? stockyardClusterWhere(clusterCodes) : {}),
-    },
+    where: { status: 'OPEN', hiddenFromHeatmap: false },
     select: { model: true, suffix: true, colour: true, chassisNumber: true, assignmentDate: true, stockStatus: true, chassisYear: true },
     orderBy: { assignmentDate: 'asc' },
   });
@@ -271,20 +256,10 @@ router.post('/offer-soft', blockingUnderMaintenance, async (req: AuthRequest, re
   const branchId = req.user!.branchId;
   if (!branchId) { res.status(403).json({ error: 'No branch assigned' }); return; }
 
-  const clusterCodes = await getClusterCodesForUser(req.user!.role, branchId);
-  if (clusterCodes && clusterCodes.length === 0) {
-    res.status(409).json({ error: 'No open vehicle found for this combination' });
-    return;
-  }
-
   try {
     const result = await prisma.$transaction(async (tx) => {
       const candidates = await tx.vehicle.findMany({
-        where: {
-          status: 'OPEN',
-          hiddenFromHeatmap: false,
-          ...(clusterCodes ? stockyardClusterWhere(clusterCodes) : {}),
-        },
+        where: { status: 'OPEN', hiddenFromHeatmap: false },
         select: { id: true, model: true, suffix: true, chassisNumber: true, assignmentDate: true, stockStatus: true },
         orderBy: { assignmentDate: 'asc' },
       });
