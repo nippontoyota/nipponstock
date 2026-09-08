@@ -3,8 +3,8 @@ import prisma from './prisma';
 // Cluster grouping — also used by the Cluster Manager role's own dashboard.
 export const CLUSTER_BRANCHES: Record<number, string[]> = {
   1: ['CO01A', 'CO01B', 'KY01A'],
-  2: ['TR01A', 'TR01C', 'KL01A'],
-  3: ['IR01A', 'TI01A', 'MV01A'],
+  2: ['TR01A', 'TR01C', 'KL01A', 'TR01B'],
+  3: ['IR01A', 'TI01A', 'MV01A', 'TI01B', 'TI01C'],
   4: ['KT01A', 'PH01A', 'TL01A', 'KT01B'],
 };
 
