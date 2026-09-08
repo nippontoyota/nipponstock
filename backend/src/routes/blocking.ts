@@ -5,20 +5,12 @@ import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getBlockingDays } from '../services/modelDuration';
 import { logAudit } from '../services/audit';
 import { emitHeatmapUpdate, emitBlockingUpdate } from '../services/events';
+import { getClusterCodesForUser } from '../lib/clusters';
 
 const router = Router();
 router.use(authenticate);
 
 const MASKED_MODELS = ['INN', 'FRN', 'IMV'];
-
-// Blocking is under maintenance for Sales Manager / Team Leader accounts.
-function blockingUnderMaintenance(req: AuthRequest, res: Response, next: () => void) {
-  if (req.user!.role === 'SALES_MANAGER' || req.user!.role === 'TEAM_LEADER') {
-    res.status(503).json({ error: 'Blocking is under maintenance. Will be back soon.' });
-    return;
-  }
-  next();
-}
 
 // Reveal actual chassis number by looking up the ChassisMap table
 async function revealChassis(vehicleId: string): Promise<void> {
@@ -138,7 +130,7 @@ function fullPaymentFields(newStatus: string, existingStatus?: string | null): R
 }
 
 // POST /blocking/soft — atomic soft block
-router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Response) => {
+router.post('/soft', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({
     model: z.string().min(1),
     suffix: z.string().min(1),
@@ -158,6 +150,12 @@ router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Res
 
   if (!branchId) { res.status(403).json({ error: 'No branch assigned to your account — contact admin' }); return; }
 
+  const clusterCodes = await getClusterCodesForUser(req.user!.role, branchId);
+  if (clusterCodes && clusterCodes.length === 0) {
+    res.status(409).json({ error: 'No open vehicle found for this combination — please select again' });
+    return;
+  }
+
   // Atomic: find an OPEN vehicle and soft-block it in a single transaction
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -168,6 +166,7 @@ router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Res
           status: 'OPEN',
           hiddenFromHeatmap: false,
           ...(chassisYear ? { chassisYear } : {}),
+          ...(clusterCodes ? { stockyardLocation: { in: clusterCodes } } : {}),
         },
         select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisYear: true, assignmentDate: true, chassisNumber: true },
       });
@@ -235,9 +234,16 @@ router.post('/soft', blockingUnderMaintenance, async (req: AuthRequest, res: Res
 });
 
 // GET /blocking/offer-vehicles — OPEN vehicles for offers page (frontend does incentive lookup)
-router.get('/offer-vehicles', async (_req: AuthRequest, res: Response) => {
+router.get('/offer-vehicles', async (req: AuthRequest, res: Response) => {
+  const clusterCodes = await getClusterCodesForUser(req.user!.role, req.user!.branchId);
+  if (clusterCodes && clusterCodes.length === 0) { res.json([]); return; }
+
   const vehicles = await prisma.vehicle.findMany({
-    where: { status: 'OPEN', hiddenFromHeatmap: false },
+    where: {
+      status: 'OPEN',
+      hiddenFromHeatmap: false,
+      ...(clusterCodes ? { stockyardLocation: { in: clusterCodes } } : {}),
+    },
     select: { model: true, suffix: true, colour: true, chassisNumber: true, assignmentDate: true, stockStatus: true, chassisYear: true },
     orderBy: { assignmentDate: 'asc' },
   });
@@ -245,7 +251,7 @@ router.get('/offer-vehicles', async (_req: AuthRequest, res: Response) => {
 });
 
 // POST /blocking/offer-soft — soft block by model+suffix (earliest assignmentDate, BND→CTDMS priority)
-router.post('/offer-soft', blockingUnderMaintenance, async (req: AuthRequest, res: Response) => {
+router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
   const Schema = z.object({ model: z.string().min(1), suffix: z.string().min(1) });
   const parsed = Schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
@@ -256,10 +262,20 @@ router.post('/offer-soft', blockingUnderMaintenance, async (req: AuthRequest, re
   const branchId = req.user!.branchId;
   if (!branchId) { res.status(403).json({ error: 'No branch assigned' }); return; }
 
+  const clusterCodes = await getClusterCodesForUser(req.user!.role, branchId);
+  if (clusterCodes && clusterCodes.length === 0) {
+    res.status(409).json({ error: 'No open vehicle found for this combination' });
+    return;
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const candidates = await tx.vehicle.findMany({
-        where: { status: 'OPEN', hiddenFromHeatmap: false },
+        where: {
+          status: 'OPEN',
+          hiddenFromHeatmap: false,
+          ...(clusterCodes ? { stockyardLocation: { in: clusterCodes } } : {}),
+        },
         select: { id: true, model: true, suffix: true, chassisNumber: true, assignmentDate: true, stockStatus: true },
         orderBy: { assignmentDate: 'asc' },
       });
@@ -305,7 +321,7 @@ router.post('/offer-soft', blockingUnderMaintenance, async (req: AuthRequest, re
 });
 
 // POST /blocking/hard — convert soft to hard block
-router.post('/hard', blockingUnderMaintenance, async (req: AuthRequest, res: Response) => {
+router.post('/hard', async (req: AuthRequest, res: Response) => {
   const isTeamLeader = req.user!.role === 'TEAM_LEADER';
 
   // Team Leaders only submit customer credentials — no financial payload

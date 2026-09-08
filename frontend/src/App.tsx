@@ -17,9 +17,10 @@ import BranchesPage from './pages/admin/BranchesPage';
 import CarsPage from './pages/admin/CarsPage';
 import VehicleRequestsPage from './pages/admin/VehicleRequestsPage';
 
+import HeatmapPage from './pages/sales/HeatmapPage';
+import BlockPage from './pages/sales/BlockPage';
 import MyBlockingsPage from './pages/sales/MyBlockingsPage';
 import OffersPage from './pages/sales/OffersPage';
-import MaintenancePage from './components/MaintenancePage';
 
 import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
 import FinanceHeadPage from './pages/finance/FinanceHeadPage';
@@ -82,8 +83,8 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<MaintenancePage />} />
-        <Route path="block" element={<MaintenancePage />} />
+        <Route index element={<HeatmapPage />} />
+        <Route path="block" element={<BlockPage />} />
         <Route path="my-blockings" element={<MyBlockingsPage />} />
         <Route path="offers" element={<OffersPage />} />
       </Route>

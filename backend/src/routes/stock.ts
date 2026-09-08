@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getHeatmap } from '../services/heatmap';
+import { getClusterCodesForUser } from '../lib/clusters';
 
 const router = Router();
 
@@ -72,7 +73,8 @@ router.use(authenticate);
 router.get('/heatmap', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const year = req.query.year ? parseInt(req.query.year as string) : undefined;
-    const data = await getHeatmap(year);
+    const clusterCodes = await getClusterCodesForUser(req.user!.role, req.user!.branchId);
+    const data = await getHeatmap(year, clusterCodes);
     res.json(data);
   } catch (err) { next(err); }
 });
