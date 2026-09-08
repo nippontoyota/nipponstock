@@ -429,10 +429,6 @@ export default function HeatmapPage() {
               <p className="text-4xl font-headline font-extrabold" style={{ color: cellBg.red }}>{cells.filter((c) => c.level === 'red').length}</p>
               <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Critical Low</p>
             </div>
-            <div>
-              <p className="text-4xl font-headline font-extrabold text-primary">{cells.reduce((s, c) => s + c.open, 0)}</p>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Units Available</p>
-            </div>
           </div>
           <div className="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
             <span className="material-symbols-outlined" style={{ fontSize: '120px' }}>hub</span>

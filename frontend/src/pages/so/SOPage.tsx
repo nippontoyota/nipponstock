@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '../../api';
 import socket from '../../socket';
 import { getVehicleIncentive } from '../../lib/vehicleIncentives';
+import { useAuth } from '../../context/AuthContext';
 
 interface HeatmapCell {
   model: string;
@@ -28,6 +29,8 @@ const cellBg = { green: '#16a34a', yellow: '#ca8a04', red: '#dc2626' };
 const levelLabel = { green: 'High Availability', yellow: 'Medium Availability', red: 'Critical — Low Stock' };
 
 export default function SOPage() {
+  const { user } = useAuth();
+  const hideCounts = user?.role === 'SO';
   const [yearOptions, setYearOptions] = useState<number[]>([]);
   const [cells, setCells] = useState<HeatmapCell[]>([]);
   const [loading, setLoading] = useState(false);
@@ -214,7 +217,9 @@ export default function SOPage() {
                   {selectedCell.hasPhysical && (
                     <span className="absolute bottom-2 left-2 text-sm font-black text-black/60 leading-none select-none">P</span>
                   )}
-                  <span className="text-2xl font-headline font-black text-white/90 leading-none ml-auto">{selectedCell.open}</span>
+                  {!hideCounts && (
+                    <span className="text-2xl font-headline font-black text-white/90 leading-none ml-auto">{selectedCell.open}</span>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -226,14 +231,18 @@ export default function SOPage() {
                   </div>
                   <p className="text-sm text-on-surface-variant font-body">{levelLabel[selectedCell.level]}</p>
                   <div className="flex gap-4 pt-1">
-                    <div>
-                      <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Open</span>
-                      <p className="font-headline font-bold text-on-surface">{selectedCell.open}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Total</span>
-                      <p className="font-headline font-bold text-on-surface">{selectedCell.total}</p>
-                    </div>
+                    {!hideCounts && (
+                      <>
+                        <div>
+                          <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Open</span>
+                          <p className="font-headline font-bold text-on-surface">{selectedCell.open}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Total</span>
+                          <p className="font-headline font-bold text-on-surface">{selectedCell.total}</p>
+                        </div>
+                      </>
+                    )}
                     {selectedCell.hasPhysical && (
                       <div>
                         <span className="text-[10px] font-label uppercase tracking-wider text-zinc-500">Physical</span>

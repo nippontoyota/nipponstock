@@ -1,38 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
-import { getVehicleIncentive } from '../lib/vehicleIncentives';
-
-interface Counts { u5: number; u6: number }
 
 const SESSION_KEY = 'consumer_offer_dismissed';
 const ROLES_SHOWN = ['SO', 'TEAM_LEADER', 'SALES_MANAGER'];
 
 export default function ConsumerOfferPopup({ role, offersPath = '/sales/offers' }: { role: string; offersPath?: string }) {
   const [visible, setVisible] = useState(false);
-  const [counts, setCounts] = useState<Counts>({ u5: 0, u6: 0 });
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!ROLES_SHOWN.includes(role)) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
     setVisible(true);
-    api.get('/blocking/offer-vehicles')
-      .then((res) => {
-        const vehicles: { model: string; suffix: string; colour: string; chassisNumber: string; chassisYear: number }[] = res.data;
-        const u5 = vehicles.filter((v) => {
-          if (v.model !== 'D22' || v.suffix !== 'D22U5' || v.chassisYear !== 2025) return false;
-          const inc = getVehicleIncentive(v.chassisNumber);
-          return inc?.customerScheme === '2,30,688';
-        }).length;
-        const u6 = vehicles.filter((v) => {
-          if (v.model !== 'D22' || v.suffix !== 'D22U6' || v.colour === 'WBG' || v.chassisYear !== 2025) return false;
-          const inc = getVehicleIncentive(v.chassisNumber);
-          return inc?.customerScheme === '2,46,164';
-        }).length;
-        setCounts({ u5, u6 });
-      })
-      .catch(() => {});
   }, [role]);
 
   const dismiss = () => {
@@ -88,9 +67,6 @@ export default function ConsumerOfferPopup({ role, offersPath = '/sales/offers' 
             >
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>D22U5</p>
               <p style={{ fontSize: 22, fontWeight: 500, color: '#fff', margin: '0 0 8px' }}>₹2,30,688</p>
-              <span style={{ background: 'rgba(59,130,246,0.15)', borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 500, color: '#93c5fd' }}>
-                {counts.u5} available
-              </span>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: '6px 0 0' }}>Tap to view offers</p>
             </button>
 
@@ -102,9 +78,6 @@ export default function ConsumerOfferPopup({ role, offersPath = '/sales/offers' 
             >
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>D22U6</p>
               <p style={{ fontSize: 22, fontWeight: 500, color: '#fff', margin: '0 0 8px' }}>₹2,46,164</p>
-              <span style={{ background: 'rgba(139,92,246,0.15)', borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 500, color: '#c4b5fd' }}>
-                {counts.u6} available
-              </span>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: '6px 0 0' }}>Tap to view offers</p>
             </button>
 
