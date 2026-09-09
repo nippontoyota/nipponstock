@@ -307,8 +307,9 @@ export default function CEOPage() {
 
   const perfRows = BRANCH_TARGETS.map(({ display, target, mtdTallyHC }) => {
     const d          = perfMap.get(display)!;
-    // Use live mtdTally once it reaches or exceeds the hardcoded baseline; else hardcoded
-    const mtdTally   = d.mtdTally >= mtdTallyHC ? d.mtdTally : mtdTallyHC;
+    // MTD Tally is reported manually — the live DeliveryWorkflow tally count is
+    // unreliable (bulk/backfilled records inflate it), so always use the reported figure.
+    const mtdTally   = mtdTallyHC;
     const vis        = mtdTally + d.fullPayment + d.blockings;
     const pct        = target > 0 ? Math.round((vis / target) * 100) : 0;
     const gap        = vis - target;
@@ -411,9 +412,9 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={Math.max(summary?.mtdTally ?? 0, 217)}                                        color="#F59E0B" icon="receipt_long" />
+          <KPI label="MTD Tally"         value={217}                                                                             color="#F59E0B" icon="receipt_long" />
           <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={Math.max(summary?.mtdTally ?? 0, 217) + (summary?.totalBlockings ?? 0)}        color="#14B8A6" icon="visibility" />
+          <KPI label="Total Visibility"  value={217 + (summary?.totalBlockings ?? 0)}                                          color="#14B8A6" icon="visibility" />
         </div>
       </section>
 
