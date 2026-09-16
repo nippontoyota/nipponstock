@@ -167,18 +167,18 @@ function PivotTable({ rowLabel, data, rowKey, colKey, activeCols, colorFn }: {
 // codes[]: branchCode values in DB. mtdTallyHC: hardcoded until tally upload goes live.
 // Pala (KT01B) merged into Kottayam (KT01A).
 const BRANCH_TARGETS = [
-  { display: 'Muvattupuzha',  target: 130, codes: ['MV01A'],          mtdTallyHC: 5 },
-  { display: 'Pathanamthitta',target:  98, codes: ['PH01A'],          mtdTallyHC: 17 },
-  { display: 'Irinjalakuda',  target:  85, codes: ['IR01A'],          mtdTallyHC: 13 },
-  { display: 'Enjakkal',      target: 132, codes: ['TR01C'],          mtdTallyHC: 17 },
-  { display: 'Kottayam',      target: 198, codes: ['KT01A', 'KT01B'], mtdTallyHC: 19 },
+  { display: 'Muvattupuzha',  target: 130, codes: ['MV01A'],          mtdTallyHC: 6 },
+  { display: 'Pathanamthitta',target:  98, codes: ['PH01A'],          mtdTallyHC: 21 },
+  { display: 'Irinjalakuda',  target:  85, codes: ['IR01A'],          mtdTallyHC: 17 },
+  { display: 'Enjakkal',      target: 132, codes: ['TR01C'],          mtdTallyHC: 19 },
+  { display: 'Kottayam',      target: 198, codes: ['KT01A', 'KT01B'], mtdTallyHC: 20 },
   { display: 'Kollam',        target: 165, codes: ['KL01A'],          mtdTallyHC: 21 },
-  { display: 'Thiruvalla',    target:  66, codes: ['TL01A'],          mtdTallyHC: 14 },
+  { display: 'Thiruvalla',    target:  66, codes: ['TL01A'],          mtdTallyHC: 15 },
   { display: 'Kalamaserry',   target: 231, codes: ['CO01B'],          mtdTallyHC: 31 },
-  { display: 'Kazhakoottam',  target: 138, codes: ['TR01A'],          mtdTallyHC: 37 },
-  { display: 'Trichur',       target: 150, codes: ['TI01A'],          mtdTallyHC: 25 },
+  { display: 'Kazhakoottam',  target: 138, codes: ['TR01A'],          mtdTallyHC: 41 },
+  { display: 'Trichur',       target: 150, codes: ['TI01A'],          mtdTallyHC: 28 },
   { display: 'Kayamkulam',    target: 125, codes: ['KY01A'],          mtdTallyHC: 18 },
-  { display: 'Nettoor',       target: 132, codes: ['CO01A'],          mtdTallyHC: 10 },
+  { display: 'Nettoor',       target: 132, codes: ['CO01A'],          mtdTallyHC: 14 },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -412,9 +412,9 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={227}                                                                             color="#F59E0B" icon="receipt_long" />
+          <KPI label="MTD Tally"         value={251}                                                                             color="#F59E0B" icon="receipt_long" />
           <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={227 + (summary?.totalBlockings ?? 0)}                                          color="#14B8A6" icon="visibility" />
+          <KPI label="Total Visibility"  value={251 + (summary?.totalBlockings ?? 0)}                                          color="#14B8A6" icon="visibility" />
         </div>
       </section>
 
