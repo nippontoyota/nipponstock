@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConsumerOfferPopup from '../components/ConsumerOfferPopup';
+import MarketShareModal from '../components/MarketShareModal';
 
 const sideNav = [
   { to: '/sales', icon: 'analytics', label: 'Live Inventory', end: true },
@@ -13,6 +15,7 @@ export default function SalesShell() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showMarketShare, setShowMarketShare] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -50,6 +53,13 @@ export default function SalesShell() {
               {item.label}
             </NavLink>
           ))}
+          <button
+            onClick={() => setShowMarketShare(true)}
+            className="w-full px-6 py-3 flex items-center gap-3 transition-all duration-300 group font-body font-semibold text-xs uppercase tracking-tight text-zinc-500 hover:bg-zinc-800 hover:text-indigo-200 text-left"
+          >
+            <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">pie_chart</span>
+            Market Share
+          </button>
         </nav>
 
         <div className="px-4 py-6 border-t border-zinc-800/50 space-y-4">
@@ -72,6 +82,7 @@ export default function SalesShell() {
 
       {/* Main Canvas */}
       <ConsumerOfferPopup role={user?.role ?? ''} />
+      <MarketShareModal isOpen={showMarketShare} onClose={() => setShowMarketShare(false)} fullName={user?.fullName} />
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         {/* Top Header */}
         <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3">
