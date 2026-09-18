@@ -601,7 +601,7 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
   const TRACKED_IN_HOUSE = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
 
   const [
-    totalBlockings, outHouse, cash, untouched, others,
+    totalBlockings, outHouse, cash, untouchedNoRecord, untouchedInHouseUntracked, others,
     loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
   ] = await Promise.all([
     prisma.blockingRequest.count({ where: baseHard }),
@@ -609,15 +609,21 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
     prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Cash' } }),
     // Not Updated by FO = no financeRecord at all, non-FP (including null paymentStatus)
     prisma.blockingRequest.count({ where: { ...noFpBlockingWhere, financeRecord: null } }),
-    // Others = No Idea / Leasing / Direct / null purchaseMode + In House with untracked status
+    // Not Updated by FO = also In House with an untracked/blank finance status (FO started but never set a real status)
+    prisma.financeRecord.count({
+      where: {
+        blockingRequest: noFpBlockingWhere,
+        purchaseMode: 'In House',
+        OR: [{ financeStatus: { notIn: TRACKED_IN_HOUSE } }, { financeStatus: null }],
+      },
+    }),
+    // Others = No Idea / Leasing / Direct / null purchaseMode
     prisma.financeRecord.count({
       where: {
         blockingRequest: noFpBlockingWhere,
         OR: [
           { purchaseMode: { notIn: ['In House', 'Out House', 'Cash'] } },
           { purchaseMode: null },
-          { purchaseMode: 'In House', financeStatus: { notIn: TRACKED_IN_HOUSE } },
-          { purchaseMode: 'In House', financeStatus: null },
         ],
       },
     }),
@@ -628,6 +634,7 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
     prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Approved' } }),
     prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Disbursed' } }),
   ]);
+  const untouched = untouchedNoRecord + untouchedInHouseUntracked;
 
   res.json({
     totalBlockings, untouched, outHouse, cash, others,
@@ -700,11 +707,12 @@ router.get('/finance-branch-status', async (_req: AuthRequest, res: Response) =>
 router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Response) => {
   const noFpOr = { OR: [{ paymentStatus: null as null }, { paymentStatus: { not: 'Full Payment Received' as string } }] };
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const, ...noFpOr };
+  const TRACKED_IN_HOUSE = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
 
   const [records, blockings] = await Promise.all([
     prisma.financeRecord.findMany({
       where: { blockingRequest: baseHard },
-      select: { purchaseMode: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
+      select: { purchaseMode: true, financeStatus: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
     }),
     prisma.blockingRequest.findMany({
       where: baseHard,
@@ -714,7 +722,11 @@ router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Respo
 
   const map = new Map<string, number>();
   for (const r of records) {
-    const key = `${r.blockingRequest.branch.name}\x01${r.purchaseMode ?? 'Not Set'}`;
+    // In House with an untracked/blank finance status counts as Not Updated by FO, same as the KPI card.
+    const bucket = r.purchaseMode === 'In House' && (!r.financeStatus || !TRACKED_IN_HOUSE.includes(r.financeStatus))
+      ? 'Not Updated'
+      : r.purchaseMode ?? 'Not Set';
+    const key = `${r.blockingRequest.branch.name}\x01${bucket}`;
     map.set(key, (map.get(key) ?? 0) + 1);
   }
   for (const b of blockings) {
