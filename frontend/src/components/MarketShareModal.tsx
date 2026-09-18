@@ -47,8 +47,8 @@ export default function MarketShareModal({ isOpen, onClose, fullName }: MarketSh
     : `https://market-share.bharath-c.workers.dev/rto-selection.html`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 md:p-4 transition-opacity duration-300">
-      <div className="bg-zinc-950 border border-zinc-800 shadow-2xl w-full max-w-[98vw] h-[96vh] flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8 transition-opacity duration-300">
+      <div className="bg-zinc-950 border border-zinc-800 shadow-2xl w-full h-full max-w-[1600px] flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Bar */}
         <div className="flex items-center justify-between px-6 py-4 bg-zinc-900 border-b border-zinc-800">

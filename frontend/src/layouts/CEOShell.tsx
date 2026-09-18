@@ -10,10 +10,17 @@ export default function CEOShell() {
     <div className="bg-background min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3 border-b border-zinc-800/50">
         <div className="flex items-center gap-4">
-          <img src="/nippon-logo.png" alt="Nippon Toyota" className="h-8 object-contain" />
+          <img onClick={() => navigate('/ceo')} src="/nippon-logo.png" alt="Nippon Toyota" className="h-8 object-contain cursor-pointer hover:opacity-80 transition-opacity" title="Back to Portal" />
           <span className="text-[10px] font-label uppercase tracking-widest text-amber-400 border border-amber-400/30 px-2 py-0.5 rounded">CEO</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => navigate('/ceo')}
+            className="text-amber-500 hover:text-amber-400 transition-colors text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 bg-amber-500/10 px-3 py-1.5 rounded-none"
+          >
+            <span className="material-symbols-outlined text-base">apps</span>
+            App Portal
+          </button>
           <span className="text-xs font-label uppercase tracking-widest text-zinc-400">{user?.fullName}</span>
           <button
             onClick={handleLogout}

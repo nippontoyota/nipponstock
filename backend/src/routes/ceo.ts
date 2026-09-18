@@ -5,6 +5,19 @@ import { authenticate, requireCeo, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(authenticate, requireCeo);
 
+// ── Proxy for Market Share Data ───────────────────────────────────────────────
+router.get('/market-share-data', async (_req: AuthRequest, res: Response) => {
+  try {
+    const response = await fetch("https://market-share.bharath-c.workers.dev/rto_data.json");
+    if (!response.ok) throw new Error("Failed to fetch");
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch market share data" });
+  }
+});
+
+
 // ── 1. Summary KPIs ───────────────────────────────────────────────────────────
 router.get('/summary', async (_req: AuthRequest, res: Response) => {
   const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };

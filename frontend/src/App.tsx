@@ -27,6 +27,7 @@ import FinanceHeadPage from './pages/finance/FinanceHeadPage';
 import ClusterManagerShell from './layouts/ClusterManagerShell';
 import ClusterManagerPage from './pages/cluster/ClusterManagerPage';
 import CEOShell from './layouts/CEOShell';
+import CEOLaunchpad from './pages/ceo/CEOLaunchpad';
 import CEOPage from './pages/ceo/CEOPage';
 import DeliveryShell from './layouts/DeliveryShell';
 import DeliveryInchargePage from './pages/delivery/DeliveryInchargePage';
@@ -135,7 +136,8 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<CEOPage />} />
+        <Route index element={<CEOLaunchpad />} />
+        <Route path="dashboard" element={<CEOPage />} />
       </Route>
 
       {/* Delivery Incharge routes */}
