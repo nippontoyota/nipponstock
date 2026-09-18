@@ -548,8 +548,8 @@ export default function CEOPage() {
           }), { active: 0, fp: 0, outHouse: 0, cash: 0, notUpdated: 0, others: 0, disbursed: 0, approved: 0, loggedAppr: 0, loggedDocs: 0, loginPend: 0 });
 
           const COL_HEADERS: { key: keyof typeof tot; label: string; color: string }[] = [
-            { key: 'active',     label: 'Active Blockings',         color: '#3B82F6' },
             { key: 'fp',         label: 'Full Payment',             color: '#10B981' },
+            { key: 'active',     label: 'Active Blockings',         color: '#3B82F6' },
             { key: 'outHouse',   label: 'Out House Finance',        color: '#A855F7' },
             { key: 'cash',       label: 'Cash',                     color: '#F59E0B' },
             { key: 'notUpdated', label: 'Not Updated by FO',        color: '#EF4444' },
