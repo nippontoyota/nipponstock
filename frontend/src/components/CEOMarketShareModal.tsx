@@ -6,32 +6,32 @@ const CLUSTER_SKELETON = [
   {
     cluster: 'Cochin Cluster (Biju)',
     branches: [
-      { name: 'Kalamassery', dataKey: 'Kalamassery', targetPct: 11 },
-      { name: 'Nettoor', dataKey: 'Nettoor', targetPct: 14 },
-      { name: 'Kayamkulam', dataKey: 'Kayamkulam', targetPct: 8 }
+      { name: 'Kalamassery', dataKey: 'Kalamassery', targetPct: 11, staticTally: 37 },
+      { name: 'Nettoor', dataKey: 'Nettoor', targetPct: 14, staticTally: 16 },
+      { name: 'Kayamkulam', dataKey: 'Kayamkulam', targetPct: 8, staticTally: 19 }
     ]
   },
   {
     cluster: 'Trivandrum Cluster (Praveen)',
     branches: [
-      { name: 'Kazhakoottam & Enjakkal', dataKey: 'Kazhakkottam & Enchakkal', targetPct: 11 },
-      { name: 'Kollam', dataKey: 'Kollam', targetPct: 9 }
+      { name: 'Kazhakoottam & Enjakkal', dataKey: 'Kazhakkottam & Enchakkal', targetPct: 11, staticTally: 68 },
+      { name: 'Kollam', dataKey: 'Kollam', targetPct: 9, staticTally: 23 }
     ]
   },
   {
     cluster: 'Thrissur Cluster (Vinod)',
     branches: [
-      { name: 'Trichur', dataKey: 'Trichur', targetPct: 11 },
-      { name: 'Irinjalakuda', dataKey: 'Irinjalakuda', targetPct: 13 },
-      { name: 'Muvattupuzha', dataKey: 'Muvattupuzha', targetPct: 9 }
+      { name: 'Trichur', dataKey: 'Trichur', targetPct: 11, staticTally: 38 },
+      { name: 'Irinjalakuda', dataKey: 'Irinjalakuda', targetPct: 13, staticTally: 26 },
+      { name: 'Muvattupuzha', dataKey: 'Muvattupuzha', targetPct: 9, staticTally: 11 }
     ]
   },
   {
     cluster: 'Kottayam Cluster (Nirmal)',
     branches: [
-      { name: 'Kottayam', dataKey: 'Kottayam', targetPct: 10 },
-      { name: 'Pathanamthitta', dataKey: 'Pathanamthitta', targetPct: 13 },
-      { name: 'Thiruvalla', dataKey: 'Thiruvalla', targetPct: 14 }
+      { name: 'Kottayam', dataKey: 'Kottayam', targetPct: 10, staticTally: 27 },
+      { name: 'Pathanamthitta', dataKey: 'Pathanamthitta', targetPct: 13, staticTally: 22 },
+      { name: 'Thiruvalla', dataKey: 'Thiruvalla', targetPct: 14, staticTally: 18 }
     ]
   }
 ];
@@ -131,7 +131,8 @@ export default function CEOMarketShareModal({ isOpen, onClose }: { isOpen: boole
                   let clusterTally = 0, clusterTiv = 0, clusterExpected = 0;
                   
                   const liveBranches = clusterData.branches.map(b => {
-                    const { tiv, tally } = getBranchData(b.dataKey);
+                    const { tiv } = getBranchData(b.dataKey);
+                    const tally = b.staticTally; // Use hardcoded internal tally for demo
                     const expected = Math.round(tiv * (b.targetPct / 100));
                     clusterTiv += tiv;
                     clusterTally += tally;
