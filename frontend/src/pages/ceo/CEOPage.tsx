@@ -169,14 +169,14 @@ function PivotTable({ rowLabel, data, rowKey, colKey, activeCols, colorFn }: {
 const BRANCH_TARGETS = [
   { display: 'Muvattupuzha',  target: 130, codes: ['MV01A'],          mtdTallyHC: 8 },
   { display: 'Pathanamthitta',target:  98, codes: ['PH01A'],          mtdTallyHC: 21 },
-  { display: 'Irinjalakuda',  target:  85, codes: ['IR01A'],          mtdTallyHC: 22 },
-  { display: 'Enjakkal',      target: 132, codes: ['TR01C'],          mtdTallyHC: 20 },
-  { display: 'Kottayam',      target: 198, codes: ['KT01A', 'KT01B'], mtdTallyHC: 24 },
+  { display: 'Irinjalakuda',  target:  85, codes: ['IR01A'],          mtdTallyHC: 24 },
+  { display: 'Enjakkal',      target: 132, codes: ['TR01C'],          mtdTallyHC: 23 },
+  { display: 'Kottayam',      target: 198, codes: ['KT01A', 'KT01B'], mtdTallyHC: 25 },
   { display: 'Kollam',        target: 165, codes: ['KL01A'],          mtdTallyHC: 22 },
-  { display: 'Thiruvalla',    target:  66, codes: ['TL01A'],          mtdTallyHC: 17 },
-  { display: 'Kalamaserry',   target: 231, codes: ['CO01B'],          mtdTallyHC: 31 },
+  { display: 'Thiruvalla',    target:  66, codes: ['TL01A'],          mtdTallyHC: 18 },
+  { display: 'Kalamaserry',   target: 231, codes: ['CO01B'],          mtdTallyHC: 35 },
   { display: 'Kazhakoottam',  target: 138, codes: ['TR01A'],          mtdTallyHC: 42 },
-  { display: 'Trichur',       target: 150, codes: ['TI01A'],          mtdTallyHC: 32 },
+  { display: 'Trichur',       target: 150, codes: ['TI01A'],          mtdTallyHC: 36 },
   { display: 'Kayamkulam',    target: 125, codes: ['KY01A'],          mtdTallyHC: 19 },
   { display: 'Nettoor',       target: 132, codes: ['CO01A'],          mtdTallyHC: 14 },
 ];
@@ -412,9 +412,9 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={272}                                                                             color="#F59E0B" icon="receipt_long" />
+          <KPI label="MTD Tally"         value={287}                                                                             color="#F59E0B" icon="receipt_long" />
           <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={272 + (summary?.totalBlockings ?? 0)}                                          color="#14B8A6" icon="visibility" />
+          <KPI label="Total Visibility"  value={287 + (summary?.totalBlockings ?? 0)}                                          color="#14B8A6" icon="visibility" />
         </div>
       </section>
 
