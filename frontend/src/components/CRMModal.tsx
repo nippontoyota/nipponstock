@@ -40,14 +40,24 @@ export default function CRMModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
         {/* Iframe Body */}
         <div className="flex-1 w-full bg-[#120708] relative">
+          {/* Enhanced Professional Loading State */}
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center z-0">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-[#120708]">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-zinc-800 border-t-amber-500"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-amber-500 text-sm">lock</span>
+                </div>
+              </div>
+              <p className="text-zinc-400 font-headline uppercase tracking-widest text-sm mt-6 animate-pulse">
+                Establishing Secure Session...
+              </p>
             </div>
           )}
+          
           <iframe 
             src={crmUrl}
-            className="w-full h-full border-none relative z-10 bg-white"
+            className={`w-full h-full border-none relative z-10 bg-white transition-opacity duration-700 ${loading ? 'opacity-0' : 'opacity-100'}`}
             title="Follow-Up CRM"
             onLoad={() => setLoading(false)}
           />
