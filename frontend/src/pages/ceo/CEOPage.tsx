@@ -167,18 +167,18 @@ function PivotTable({ rowLabel, data, rowKey, colKey, activeCols, colorFn }: {
 // codes[]: branchCode values in DB. mtdTallyHC: hardcoded until tally upload goes live.
 // Pala (KT01B) merged into Kottayam (KT01A).
 const BRANCH_TARGETS = [
-  { display: 'Muvattupuzha',  target: 130, codes: ['MV01A'],          mtdTallyHC: 11 },
-  { display: 'Pathanamthitta',target:  98, codes: ['PH01A'],          mtdTallyHC: 22 },
+  { display: 'Muvattupuzha',  target: 115, codes: ['MV01A'],          mtdTallyHC: 11 },
+  { display: 'Pathanamthitta',target:  86, codes: ['PH01A'],          mtdTallyHC: 22 },
   { display: 'Irinjalakuda',  target:  85, codes: ['IR01A'],          mtdTallyHC: 26 },
-  { display: 'Enjakkal',      target: 132, codes: ['TR01C'],          mtdTallyHC: 25 },
-  { display: 'Kottayam',      target: 198, codes: ['KT01A', 'KT01B'], mtdTallyHC: 27 },
-  { display: 'Kollam',        target: 165, codes: ['KL01A'],          mtdTallyHC: 23 },
+  { display: 'Enjakkal',      target: 145, codes: ['TR01C'],          mtdTallyHC: 25 },
+  { display: 'Kottayam',      target: 193, codes: ['KT01A', 'KT01B'], mtdTallyHC: 27 },
+  { display: 'Kollam',        target: 185, codes: ['KL01A'],          mtdTallyHC: 23 },
   { display: 'Thiruvalla',    target:  66, codes: ['TL01A'],          mtdTallyHC: 18 },
-  { display: 'Kalamaserry',   target: 231, codes: ['CO01B'],          mtdTallyHC: 37 },
-  { display: 'Kazhakoottam',  target: 138, codes: ['TR01A'],          mtdTallyHC: 43 },
+  { display: 'Kalamaserry',   target: 199, codes: ['CO01B'],          mtdTallyHC: 37 },
+  { display: 'Kazhakoottam',  target: 150, codes: ['TR01A'],          mtdTallyHC: 43 },
   { display: 'Trichur',       target: 150, codes: ['TI01A'],          mtdTallyHC: 38 },
-  { display: 'Kayamkulam',    target: 125, codes: ['KY01A'],          mtdTallyHC: 19 },
-  { display: 'Nettoor',       target: 132, codes: ['CO01A'],          mtdTallyHC: 16 },
+  { display: 'Kayamkulam',    target: 116, codes: ['KY01A'],          mtdTallyHC: 19 },
+  { display: 'Nettoor',       target: 160, codes: ['CO01A'],          mtdTallyHC: 16 },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
