@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { getSharedMtdTally } from '../config/branchTargets';
+import { getSharedMtdTally, applyMtdTallyData } from '../config/branchTargets';
 
 
 // Core layout and target definitions
@@ -43,14 +43,19 @@ export default function CEOMarketShareModal({ isOpen, onClose }: { isOpen: boole
   const [apiData, setApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Live Data
+  // Fetch Live Data — also hydrates the shared MTD tally figures directly, since
+  // this modal is opened from the Executive Portal without ever visiting the
+  // CEO dashboard page that normally populates them.
   useEffect(() => {
     if (isOpen && !apiData) {
       setLoading(true);
-      api.get('/ceo/market-share-data')
-        .then(res => {
-          const data = res.data;
-          setApiData(data);
+      Promise.all([
+        api.get('/ceo/market-share-data'),
+        api.get('/ceo/mtd-tally'),
+      ])
+        .then(([marketRes, mtdRes]) => {
+          applyMtdTallyData(mtdRes.data);
+          setApiData(marketRes.data);
           setLoading(false);
         })
         .catch(err => {
