@@ -74,6 +74,9 @@ router.get('/cases', requireDeliveryRole, async (req: AuthRequest, res: Response
   const where: Record<string, unknown> = {};
   if (branchId) where.branchId = branchId;
   if (role !== 'ADMIN') where.stage = { in: stageMaps[role] ?? [] };
+  // Accounts Dept should only see cases whose underlying blocking is still active
+  // (not released/expired/cancelled).
+  if (role === 'ACCOUNTS_DEPT') where.blocking = { status: 'ACTIVE' };
 
   const workflows = await prisma.deliveryWorkflow.findMany({
     where,
