@@ -1,4 +1,4 @@
-import { BRANCH_TARGETS } from '../../config/branchTargets';
+import { BRANCH_TARGETS, applyMtdTallyData } from '../../config/branchTargets';
 import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
@@ -194,7 +194,7 @@ export default function CEOPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [s, sy, mp, mos, mbs, mba, ba, bm, bsc, bd, ra, fs, fbank, mpur, fpa, sa, osa, bsa, bsab, perf, fpNofp, fstNofp] = await Promise.all([
+    const [s, sy, mp, mos, mbs, mba, ba, bm, bsc, bd, ra, fs, fbank, mpur, fpa, sa, osa, bsa, bsab, perf, fpNofp, fstNofp, mtdTally] = await Promise.all([
       api.get('/ceo/summary'),
       api.get('/ceo/stock-vs-year'),
       api.get('/ceo/model-physical-stock'),
@@ -217,7 +217,9 @@ export default function CEOPage() {
       api.get('/ceo/branch-performance'),
       api.get('/ceo/finance-branch-purchase-nofp'),
       api.get('/ceo/finance-branch-status-nofp'),
+      api.get('/ceo/mtd-tally'),
     ]);
+    applyMtdTallyData(mtdTally.data);
     setSummary(s.data); setStockVsYear(sy.data);
     setModelPhysical(mapModelKey(mp.data, 'model'));
     setModelOpenStock(mapModelKey(mos.data, 'model'));
@@ -277,6 +279,9 @@ export default function CEOPage() {
     return entry;
   });
   const activeBarStockCols = Array.from(new Set(branchStockChart.map((r) => String(r['stockStatus']))));
+
+  // Sum of admin-entered MTD tally figures — floor for the KPI cards, synced from Admin → MTD Tally
+  const mtdTallyFloor = BRANCH_TARGETS.reduce((sum, b) => sum + b.mtdTallyHC, 0);
 
   // Branch performance table — match by branchCode (exact), merge Pala into Kottayam
   const perfMap = new Map<string, { blockings: number; fullPayment: number; mtdTally: number }>();
@@ -397,9 +402,9 @@ export default function CEOPage() {
       <section>
         <SectionHead title="Current Business Status" icon="trending_up" />
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="MTD Tally"         value={305}                                                                             color="#F59E0B" icon="receipt_long" />
+          <KPI label="MTD Tally"         value={mtdTallyFloor}                                                                     color="#F59E0B" icon="receipt_long" />
           <KPI label="Active Blockings"  value={summary?.totalBlockings}                                                        color="#3B82F6" icon="directions_car" />
-          <KPI label="Total Visibility"  value={305 + (summary?.totalBlockings ?? 0)}                                          color="#14B8A6" icon="visibility" />
+          <KPI label="Total Visibility"  value={mtdTallyFloor + (summary?.totalBlockings ?? 0)}                                 color="#14B8A6" icon="visibility" />
         </div>
       </section>
 

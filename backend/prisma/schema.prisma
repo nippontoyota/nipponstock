@@ -307,6 +307,16 @@ model VisibilitySnapshot {
   @@index([capturedAt])
 }
 
+// ── Branch MTD Tally (admin-editable, synced to CEO dashboard) ────────────────
+
+model BranchMtdTally {
+  id         String   @id @default(uuid())
+  branchCode String   @unique
+  target     Int      @default(0)
+  mtdTally   Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
 // ── Delivery Workflow ─────────────────────────────────────────────────────────
 
 model DeliveryWorkflow {

@@ -1,17 +1,28 @@
+// Values are hydrated at runtime from GET /ceo/mtd-tally (admin-editable in
+// Admin → MTD Tally). The 0 defaults here only matter before that fetch lands.
 export const BRANCH_TARGETS = [
-  { display: 'Muvattupuzha',  target: 115, codes: ['MV01A'],          mtdTallyHC: 11 },
-  { display: 'Pathanamthitta',target:  86, codes: ['PH01A'],          mtdTallyHC: 22 },
-  { display: 'Irinjalakuda',  target:  85, codes: ['IR01A'],          mtdTallyHC: 26 },
-  { display: 'Enjakkal',      target: 145, codes: ['TR01C'],          mtdTallyHC: 25 },
-  { display: 'Kottayam',      target: 193, codes: ['KT01A', 'KT01B'], mtdTallyHC: 27 },
-  { display: 'Kollam',        target: 185, codes: ['KL01A'],          mtdTallyHC: 23 },
-  { display: 'Thiruvalla',    target:  66, codes: ['TL01A'],          mtdTallyHC: 18 },
-  { display: 'Kalamaserry',   target: 199, codes: ['CO01B'],          mtdTallyHC: 37 },
-  { display: 'Kazhakoottam',  target: 150, codes: ['TR01A'],          mtdTallyHC: 43 },
-  { display: 'Trichur',       target: 150, codes: ['TI01A'],          mtdTallyHC: 38 },
-  { display: 'Kayamkulam',    target: 116, codes: ['KY01A'],          mtdTallyHC: 19 },
-  { display: 'Nettoor',       target: 160, codes: ['CO01A'],          mtdTallyHC: 16 },
+  { display: 'Muvattupuzha',  target: 0, codes: ['MV01A'],          mtdTallyHC: 0 },
+  { display: 'Pathanamthitta',target: 0, codes: ['PH01A'],          mtdTallyHC: 0 },
+  { display: 'Irinjalakuda',  target: 0, codes: ['IR01A'],          mtdTallyHC: 0 },
+  { display: 'Enjakkal',      target: 0, codes: ['TR01C'],          mtdTallyHC: 0 },
+  { display: 'Kottayam',      target: 0, codes: ['KT01A', 'KT01B'], mtdTallyHC: 0 },
+  { display: 'Kollam',        target: 0, codes: ['KL01A'],          mtdTallyHC: 0 },
+  { display: 'Thiruvalla',    target: 0, codes: ['TL01A'],          mtdTallyHC: 0 },
+  { display: 'Kalamaserry',   target: 0, codes: ['CO01B'],          mtdTallyHC: 0 },
+  { display: 'Kazhakoottam',  target: 0, codes: ['TR01A'],          mtdTallyHC: 0 },
+  { display: 'Trichur',       target: 0, codes: ['TI01A'],          mtdTallyHC: 0 },
+  { display: 'Kayamkulam',    target: 0, codes: ['KY01A'],          mtdTallyHC: 0 },
+  { display: 'Nettoor',       target: 0, codes: ['CO01A'],          mtdTallyHC: 0 },
 ];
+
+// Mutates BRANCH_TARGETS in place so every consumer (CEOPage, CEOMarketShareModal)
+// sees the latest admin-entered values without needing its own fetch/state.
+export function applyMtdTallyData(rows: { display: string; target: number; mtdTallyHC: number }[]) {
+  for (const r of rows) {
+    const entry = BRANCH_TARGETS.find((b) => b.display === r.display);
+    if (entry) { entry.target = r.target; entry.mtdTallyHC = r.mtdTallyHC; }
+  }
+}
 
 export function getSharedMtdTally(marketShareBranchName: string): number {
   if (marketShareBranchName === 'Kazhakoottam & Enjakkal') {

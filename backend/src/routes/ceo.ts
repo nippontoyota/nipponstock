@@ -1,9 +1,26 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, requireCeo, AuthRequest } from '../middleware/auth';
+import { BRANCH_GROUPS } from '../lib/branchGroups';
 
 const router = Router();
 router.use(authenticate, requireCeo);
+
+// ── Branch MTD Tally (admin-editable, read here for the dashboard) ───────────
+router.get('/mtd-tally', async (_req: AuthRequest, res: Response) => {
+  const rows = await prisma.branchMtdTally.findMany({
+    where: { branchCode: { in: BRANCH_GROUPS.map((g) => g.branchCode) } },
+  });
+  const byCode = new Map(rows.map((r) => [r.branchCode, r]));
+
+  const result = BRANCH_GROUPS.map((g) => ({
+    display: g.display,
+    codes: g.codes,
+    target: byCode.get(g.branchCode)?.target ?? 0,
+    mtdTallyHC: byCode.get(g.branchCode)?.mtdTally ?? 0,
+  }));
+  res.json(result);
+});
 
 // ── Proxy for Market Share Data ───────────────────────────────────────────────
 router.get('/market-share-data', async (_req: AuthRequest, res: Response) => {
