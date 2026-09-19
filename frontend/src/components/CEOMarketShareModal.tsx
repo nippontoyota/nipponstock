@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
+import { getSharedMtdTally } from '../config/branchTargets';
+
 
 // Core layout and target definitions
 const CLUSTER_SKELETON = [
@@ -132,7 +134,7 @@ export default function CEOMarketShareModal({ isOpen, onClose }: { isOpen: boole
                   
                   const liveBranches = clusterData.branches.map(b => {
                     const { tiv } = getBranchData(b.dataKey);
-                    const tally = b.staticTally; // Use hardcoded internal tally for demo
+                    const tally = getSharedMtdTally(b.name);
                     const expected = Math.round(tiv * (b.targetPct / 100));
                     clusterTiv += tiv;
                     clusterTally += tally;
