@@ -8,14 +8,14 @@ export default function CEOShell() {
 
   return (
     <div className="bg-background min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3 border-b border-zinc-800/50">
+      <header className="sticky top-0 z-[200] bg-zinc-950/90 backdrop-blur-xl flex justify-between items-center w-full px-6 py-3 border-b border-zinc-800/50">
         <div className="flex items-center gap-4">
-          <img onClick={() => navigate('/ceo')} src="/nippon-logo.png" alt="Nippon Toyota" className="h-8 object-contain cursor-pointer hover:opacity-80 transition-opacity" title="Back to Portal" />
+          <img onClick={() => { navigate('/ceo'); window.dispatchEvent(new CustomEvent('close-ceo-modals')); }} src="/nippon-logo.png" alt="Nippon Toyota" className="h-8 object-contain cursor-pointer hover:opacity-80 transition-opacity" title="Back to Portal" />
           <span className="text-[10px] font-label uppercase tracking-widest text-amber-400 border border-amber-400/30 px-2 py-0.5 rounded">CEO</span>
         </div>
         <div className="flex items-center gap-6">
           <button
-            onClick={() => navigate('/ceo')}
+            onClick={() => { navigate('/ceo'); window.dispatchEvent(new CustomEvent('close-ceo-modals')); }}
             className="text-amber-500 hover:text-amber-400 transition-colors text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 bg-amber-500/10 px-3 py-1.5 rounded-none"
           >
             <span className="material-symbols-outlined text-base">apps</span>

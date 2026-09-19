@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CEOMarketShareModal from '../../components/CEOMarketShareModal';
 import CRMModal from '../../components/CRMModal';
@@ -10,6 +10,15 @@ export default function CEOLaunchpad() {
   
   const [showMarketShare, setShowMarketShare] = useState(false);
   const [showCRM, setShowCRM] = useState(false);
+
+  useEffect(() => {
+    const handleClose = () => {
+      setShowCRM(false);
+      setShowMarketShare(false);
+    };
+    window.addEventListener('close-ceo-modals', handleClose);
+    return () => window.removeEventListener('close-ceo-modals', handleClose);
+  }, []);
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-12 py-12 px-6">
