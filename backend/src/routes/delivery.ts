@@ -180,6 +180,7 @@ const updateSchema = z.object({
   payout:          z.number().optional(),
   premium:         z.number().optional(),
   insuranceRemarks:z.string().optional(),
+  insurancePolicyNumber: z.string().optional(),
   tallyNo:         z.string().optional(),
   tallyDate:       z.string().optional(),
   vaahanDone:      z.boolean().optional(),
@@ -217,7 +218,7 @@ router.patch('/:id', requireDeliveryRole, async (req: AuthRequest, res: Response
 
 // POST /delivery/:id/upload/:field  — upload a document
 router.post('/:id/upload/:field', requireDeliveryRole, upload.single('file'), async (req: AuthRequest, res: Response) => {
-  const ALLOWED_FIELDS = ['panCardUrl', 'aadharUrl', 'fileFrontUrl', 'fileBackUrl', 'form21Url'];
+  const ALLOWED_FIELDS = ['panCardUrl', 'aadharUrl', 'fileFrontUrl', 'fileBackUrl', 'form21Url', 'policyUrl'];
   const { field } = req.params;
   if (!ALLOWED_FIELDS.includes(field)) {
     res.status(400).json({ error: 'Invalid field' }); return;

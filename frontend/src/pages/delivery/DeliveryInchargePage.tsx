@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 interface Vehicle { chassisNumber: string; model: string; suffix: string; colour: string; chassisYear: number; }
 interface FPBlocking { id: string; customerName: string | null; consultantName: string | null; teamLeaderName: string | null; vehicle: Vehicle; user: { fullName: string }; fullPaymentAt: string | null; }

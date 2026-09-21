@@ -337,11 +337,13 @@ model DeliveryWorkflow {
   fileBackUrl    String?
 
   // Insurance stage
-  insuranceType    String?   // IN_HOUSE | OUT_HOUSE
-  insuranceCompany String?
-  payout           Float?
-  premium          Float?
-  insuranceRemarks String?
+  insuranceType         String?   // IN_HOUSE | OUT_HOUSE
+  insuranceCompany      String?
+  payout                Float?
+  premium               Float?
+  insuranceRemarks      String?
+  insurancePolicyNumber String?
+  policyUrl             String?
 
   // Stage 2 — Vahaan Entry
   form21Url String?

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
@@ -8,18 +8,20 @@ interface Workflow {
   customerName: string | null; salesOfficer: string | null; teamLeaderName: string | null;
   panCardUrl: string | null; aadharUrl: string | null; fileFrontUrl: string | null; fileBackUrl: string | null;
   insuranceType: string | null; insuranceCompany: string | null; payout: number | null; premium: number | null; insuranceRemarks: string | null;
+  insurancePolicyNumber: string | null; policyUrl: string | null;
   blocking: { vehicle: Vehicle; user: { fullName: string }; customerName: string | null; };
   branch: { name: string; branchCode: string | null };
 }
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export default function InsurancePage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selected, setSelected] = useState<Workflow | null>(null);
   const [insuranceType, setInsuranceType] = useState<'IN_HOUSE' | 'OUT_HOUSE'>('IN_HOUSE');
-  const [form, setForm] = useState({ insuranceCompany: '', payout: '', premium: '', insuranceRemarks: '' });
+  const [form, setForm] = useState({ insuranceCompany: '', payout: '', premium: '', insuranceRemarks: '', insurancePolicyNumber: '' });
   const [saving, setSaving] = useState(false);
+  const policyFileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     const res = await api.get('/delivery/cases');
@@ -36,7 +38,20 @@ export default function InsurancePage() {
       payout: wf.payout?.toString() ?? '',
       premium: wf.premium?.toString() ?? '',
       insuranceRemarks: wf.insuranceRemarks ?? '',
+      insurancePolicyNumber: wf.insurancePolicyNumber ?? '',
     });
+  };
+
+  const uploadPolicy = async (file: File) => {
+    if (!selected) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      await api.post(`/delivery/${selected.id}/upload/policyUrl`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Policy uploaded');
+      const updated = await api.get(`/delivery/${selected.id}`);
+      setSelected(updated.data);
+    } catch { toast.error('Upload failed'); }
   };
 
   const save = async () => {
@@ -47,6 +62,7 @@ export default function InsurancePage() {
         insuranceType,
         insuranceCompany: form.insuranceCompany,
         insuranceRemarks: form.insuranceRemarks,
+        insurancePolicyNumber: form.insurancePolicyNumber,
       };
       if (insuranceType === 'IN_HOUSE') data.payout = parseFloat(form.payout) || 0;
       else data.premium = parseFloat(form.premium) || 0;
@@ -145,6 +161,24 @@ export default function InsurancePage() {
               </div>
 
               <div><label className="label">Insurance Company Name</label><input className="input" value={form.insuranceCompany} onChange={e => setForm(f => ({ ...f, insuranceCompany: e.target.value }))} /></div>
+
+              <div><label className="label">Insurance Policy Number</label><input className="input" value={form.insurancePolicyNumber} onChange={e => setForm(f => ({ ...f, insurancePolicyNumber: e.target.value }))} /></div>
+
+              <div className="bg-surface-container rounded-lg p-3">
+                <p className="text-[10px] font-label font-black uppercase tracking-widest text-on-surface-variant mb-2">Upload Policy</p>
+                {selected.policyUrl ? (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                    <a href={`${API}${selected.policyUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Policy</a>
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>
+                )}
+                <input ref={policyFileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadPolicy(e.target.files[0]); }} />
+                <button type="button" onClick={() => policyFileRef.current?.click()} className="text-[10px] font-label font-bold uppercase tracking-widest text-primary hover:underline">
+                  {selected.policyUrl ? 'Re-upload Policy' : 'Upload Policy'}
+                </button>
+              </div>
 
               {insuranceType === 'IN_HOUSE' ? (
                 <div><label className="label">Payout (₹)</label><input className="input" type="number" value={form.payout} onChange={e => setForm(f => ({ ...f, payout: e.target.value }))} /></div>
