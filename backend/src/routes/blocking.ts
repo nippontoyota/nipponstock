@@ -653,21 +653,26 @@ router.get('/all', requireAdmin, async (req: AuthRequest, res: Response) => {
     };
   }
 
+  // Hard cap regardless of what the client requests — a client asking for the
+  // "export everything" page size (e.g. limit=99999) must not be able to force
+  // an unbounded full-table load into memory.
+  const cappedLimit = Math.min(parseInt(limit) || 50, 2000);
+
   const [blockings, total] = await Promise.all([
     prisma.blockingRequest.findMany({
       where,
-      skip: (parseInt(page) - 1) * parseInt(limit),
-      take: parseInt(limit),
+      skip: (parseInt(page) - 1) * cappedLimit,
+      take: cappedLimit,
       orderBy: { createdAt: 'desc' },
       include: {
-        vehicle: true,
+        vehicle: { select: { model: true, suffix: true, colour: true, chassisYear: true, chassisNumber: true, stockStatus: true } },
         user: { select: { fullName: true, loginId: true } },
         branch: { select: { name: true } },
       },
     }),
     prisma.blockingRequest.count({ where }),
   ]);
-  res.json({ blockings, total, page: parseInt(page), limit: parseInt(limit) });
+  res.json({ blockings, total, page: parseInt(page), limit: cappedLimit });
 });
 
 // GET /blocking/:id

@@ -40,6 +40,7 @@ export default function AllBlockingsPage() {
   const [extendDate, setExtendDate] = useState('');
   const [retailId, setRetailId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const femFileRef = useRef<HTMLInputElement>(null);
   const [uploadingFem, setUploadingFem] = useState(false);
   const [femResult, setFemResult] = useState<FemResult | null>(null);
@@ -115,16 +116,27 @@ export default function AllBlockingsPage() {
   };
 
   const downloadExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
     const tid = toast.loading('Fetching all records…');
     try {
-      // Export all blockings regardless of on-screen filters
-      const allParams = new URLSearchParams({ page: '1', limit: '99999' });
-      if (filters.search) allParams.set('search', filters.search);
-      if (filters.chassis) allParams.set('chassis', filters.chassis);
-      if (filters.blockedFrom) allParams.set('blockedFrom', filters.blockedFrom);
-      if (filters.blockedTo) allParams.set('blockedTo', filters.blockedTo);
-      const { data } = await api.get(`/blocking/all?${allParams}`);
-      const all: Blocking[] = data.blockings;
+      // Export all blockings regardless of on-screen filters — fetched in bounded
+      // pages (server caps each page at 2000) rather than one unbounded request,
+      // since a single limit=99999 call was heavy enough to OOM the backend.
+      const EXPORT_PAGE_SIZE = 2000;
+      const all: Blocking[] = [];
+      let exportPage = 1;
+      while (true) {
+        const pageParams = new URLSearchParams({ page: String(exportPage), limit: String(EXPORT_PAGE_SIZE) });
+        if (filters.search) pageParams.set('search', filters.search);
+        if (filters.chassis) pageParams.set('chassis', filters.chassis);
+        if (filters.blockedFrom) pageParams.set('blockedFrom', filters.blockedFrom);
+        if (filters.blockedTo) pageParams.set('blockedTo', filters.blockedTo);
+        const { data } = await api.get(`/blocking/all?${pageParams}`);
+        all.push(...data.blockings);
+        if (data.blockings.length < EXPORT_PAGE_SIZE || all.length >= data.total) break;
+        exportPage++;
+      }
       if (all.length === 0) { toast.dismiss(tid); toast.error('No data to export'); return; }
 
       const rows = all.map((b) => ({
@@ -161,6 +173,8 @@ export default function AllBlockingsPage() {
     } catch {
       toast.dismiss(tid);
       toast.error('Export failed');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -232,10 +246,11 @@ export default function AllBlockingsPage() {
           )}
           <button
             onClick={downloadExcel}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-headline font-bold uppercase tracking-widest rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-base">table_view</span>
-            Download Excel
+            {exporting ? 'Exporting…' : 'Download Excel'}
           </button>
         </div>
       </div>
