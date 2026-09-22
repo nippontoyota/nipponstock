@@ -68,7 +68,7 @@ router.get('/cases', requireDeliveryRole, async (req: AuthRequest, res: Response
   const stageMaps: Record<string, string[]> = {
     DELIVERY_INCHARGE: ['DI_DOCUMENTS', 'DI_VAHAAN_ENTRY', 'DI_VAHAAN_DONE'],
     INSURANCE: ['INSURANCE'],
-    ACCOUNTS_DEPT: ['ACCOUNTS_TALLY', 'ACCOUNTS_ROAD_TAX'],
+    ACCOUNTS_DEPT: ['ACCOUNTS_TALLY', 'ACCOUNTS_ROAD_TAX', 'COMPLETED'],
   };
 
   const where: Record<string, unknown> = {};
@@ -218,7 +218,7 @@ router.patch('/:id', requireDeliveryRole, async (req: AuthRequest, res: Response
 
 // POST /delivery/:id/upload/:field  — upload a document
 router.post('/:id/upload/:field', requireDeliveryRole, upload.single('file'), async (req: AuthRequest, res: Response) => {
-  const ALLOWED_FIELDS = ['panCardUrl', 'aadharUrl', 'fileFrontUrl', 'fileBackUrl', 'form21Url', 'policyUrl'];
+  const ALLOWED_FIELDS = ['panCardUrl', 'aadharUrl', 'fileFrontUrl', 'fileBackUrl', 'doUrl', 'form21Url', 'disclaimerUrl', 'policyUrl', 'fastagUrl', 'roadTaxUrl'];
   const { field } = req.params;
   if (!ALLOWED_FIELDS.includes(field)) {
     res.status(400).json({ error: 'Invalid field' }); return;

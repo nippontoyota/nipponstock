@@ -9,8 +9,9 @@ interface FPBlocking { id: string; customerName: string | null; consultantName: 
 interface Workflow {
   id: string; blockingId: string; stage: string; branchId: string;
   customerName: string | null; salesOfficer: string | null; teamLeaderName: string | null;
-  panCardUrl: string | null; aadharUrl: string | null; fileFrontUrl: string | null; fileBackUrl: string | null;
-  form21Url: string | null;
+  panCardUrl: string | null; aadharUrl: string | null; fileFrontUrl: string | null; fileBackUrl: string | null; doUrl: string | null;
+  form21Url: string | null; disclaimerUrl: string | null;
+  fastagUrl: string | null;
   blocking: { vehicle: Vehicle; user: { fullName: string }; customerName: string | null; };
 }
 
@@ -27,7 +28,7 @@ export default function DeliveryInchargePage() {
   const [tab, setTab] = useState<'new' | 'active'>('new');
   const [form, setForm] = useState({ customerName: '', salesOfficer: '', teamLeaderName: '' });
   const [saving, setSaving] = useState(false);
-  const fileRefs = { panCardUrl: useRef<HTMLInputElement>(null), aadharUrl: useRef<HTMLInputElement>(null), fileFrontUrl: useRef<HTMLInputElement>(null), fileBackUrl: useRef<HTMLInputElement>(null), form21Url: useRef<HTMLInputElement>(null) };
+  const fileRefs = { panCardUrl: useRef<HTMLInputElement>(null), aadharUrl: useRef<HTMLInputElement>(null), fileFrontUrl: useRef<HTMLInputElement>(null), fileBackUrl: useRef<HTMLInputElement>(null), doUrl: useRef<HTMLInputElement>(null), form21Url: useRef<HTMLInputElement>(null), disclaimerUrl: useRef<HTMLInputElement>(null) };
 
   const load = async () => {
     const [fp, wf] = await Promise.all([api.get('/delivery/full-payment-ready'), api.get('/delivery/cases')]);
@@ -183,8 +184,8 @@ export default function DeliveryInchargePage() {
                   <div><label className="label">Sales Officer</label><input className="input" value={form.salesOfficer} onChange={e => setForm(f => ({ ...f, salesOfficer: e.target.value }))} /></div>
                   <div><label className="label">Team Leader</label><input className="input" value={form.teamLeaderName} onChange={e => setForm(f => ({ ...f, teamLeaderName: e.target.value }))} /></div>
                   <div className="grid grid-cols-2 gap-3 pt-2">
-                    {(['panCardUrl', 'aadharUrl', 'fileFrontUrl', 'fileBackUrl'] as const).map(field => {
-                      const labels: Record<string, string> = { panCardUrl: 'PAN Card', aadharUrl: 'Aadhar', fileFrontUrl: 'File Front Page', fileBackUrl: 'File Back Page' };
+                    {(['panCardUrl', 'aadharUrl', 'fileFrontUrl', 'fileBackUrl', 'doUrl'] as const).map(field => {
+                      const labels: Record<string, string> = { panCardUrl: 'PAN Card', aadharUrl: 'Aadhar', fileFrontUrl: 'File Front Page', fileBackUrl: 'File Back Page', doUrl: 'DO' };
                       const uploaded = selected[field];
                       return (
                         <div key={field} className="bg-surface-container rounded-lg p-3">
@@ -209,29 +210,59 @@ export default function DeliveryInchargePage() {
               )}
 
               {selected.stage === 'DI_VAHAAN_ENTRY' && (
-                <div className="bg-surface-container rounded-lg p-4">
-                  <p className="text-[10px] font-label font-black uppercase tracking-widest text-on-surface-variant mb-3">Form 21</p>
-                  {selected.form21Url ? (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                      <a href={`${API}${selected.form21Url}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Form 21</a>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>
-                  )}
-                  <input ref={fileRefs.form21Url} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadFile('form21Url', e.target.files[0]); }} />
-                  <button onClick={() => fileRefs.form21Url.current?.click()} className="text-xs font-label font-bold uppercase tracking-widest text-primary hover:underline">
-                    {selected.form21Url ? 'Re-upload Form 21' : 'Upload Form 21'}
-                  </button>
-                </div>
+                <>
+                  <div className="bg-surface-container rounded-lg p-4">
+                    <p className="text-[10px] font-label font-black uppercase tracking-widest text-on-surface-variant mb-3">Form 21</p>
+                    {selected.form21Url ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                        <a href={`${API}${selected.form21Url}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Form 21</a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>
+                    )}
+                    <input ref={fileRefs.form21Url} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadFile('form21Url', e.target.files[0]); }} />
+                    <button onClick={() => fileRefs.form21Url.current?.click()} className="text-xs font-label font-bold uppercase tracking-widest text-primary hover:underline">
+                      {selected.form21Url ? 'Re-upload Form 21' : 'Upload Form 21'}
+                    </button>
+                  </div>
+                  <div className="bg-surface-container rounded-lg p-4">
+                    <p className="text-[10px] font-label font-black uppercase tracking-widest text-on-surface-variant mb-3">Disclaimer</p>
+                    {selected.disclaimerUrl ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                        <a href={`${API}${selected.disclaimerUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Disclaimer</a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>
+                    )}
+                    <input ref={fileRefs.disclaimerUrl} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadFile('disclaimerUrl', e.target.files[0]); }} />
+                    <button onClick={() => fileRefs.disclaimerUrl.current?.click()} className="text-xs font-label font-bold uppercase tracking-widest text-primary hover:underline">
+                      {selected.disclaimerUrl ? 'Re-upload Disclaimer' : 'Upload Disclaimer'}
+                    </button>
+                  </div>
+                </>
               )}
 
               {selected.stage === 'DI_VAHAAN_DONE' && (
-                <div className="bg-surface-container rounded-lg p-4 text-center">
-                  <span className="material-symbols-outlined text-4xl text-primary mb-2 block">how_to_reg</span>
-                  <p className="font-headline font-bold text-on-surface mb-1">Vahaan Entry Done?</p>
-                  <p className="text-xs text-on-surface-variant">Click Save to confirm Vahaan is done and forward to Accounts for Tally entry.</p>
-                </div>
+                <>
+                  <div className="bg-surface-container rounded-lg p-4">
+                    <p className="text-[10px] font-label font-black uppercase tracking-widest text-on-surface-variant mb-3">Fastag (Uploaded by Accounts)</p>
+                    {selected.fastagUrl ? (
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                        <a href={`${API}${selected.fastagUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Fastag</a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500">Not uploaded yet.</p>
+                    )}
+                  </div>
+                  <div className="bg-surface-container rounded-lg p-4 text-center">
+                    <span className="material-symbols-outlined text-4xl text-primary mb-2 block">how_to_reg</span>
+                    <p className="font-headline font-bold text-on-surface mb-1">Vahaan Entry Done?</p>
+                    <p className="text-xs text-on-surface-variant">Click Save to confirm Vahaan is done and forward to Accounts for Tally entry.</p>
+                  </div>
+                </>
               )}
             </div>
 

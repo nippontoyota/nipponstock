@@ -335,6 +335,7 @@ model DeliveryWorkflow {
   aadharUrl      String?
   fileFrontUrl   String?
   fileBackUrl    String?
+  doUrl          String?
 
   // Insurance stage
   insuranceType         String?   // IN_HOUSE | OUT_HOUSE
@@ -346,17 +347,20 @@ model DeliveryWorkflow {
   policyUrl             String?
 
   // Stage 2 — Vahaan Entry
-  form21Url String?
+  form21Url     String?
+  disclaimerUrl String?
 
   // Accounts — Tally
   tallyNo   String?
   tallyDate DateTime?
+  fastagUrl String?
 
   // Stage 3 — Vahaan Done
   vaahanDone Boolean @default(false)
 
   // Accounts — Road Tax
   roadTaxReceiptNo String?
+  roadTaxUrl       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
