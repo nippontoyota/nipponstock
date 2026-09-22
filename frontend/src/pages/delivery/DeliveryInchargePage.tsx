@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { docUrl } from '../../lib/docUrl';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
@@ -193,7 +194,7 @@ export default function DeliveryInchargePage() {
                           {uploaded ? (
                             <div className="flex items-center gap-2">
                               <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                              <a href={`${API}${uploaded}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View</a>
+                              <a href={docUrl(API, uploaded)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View</a>
                             </div>
                           ) : (
                             <span className="text-xs text-zinc-500">Not uploaded</span>
@@ -216,7 +217,7 @@ export default function DeliveryInchargePage() {
                     {selected.form21Url ? (
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                        <a href={`${API}${selected.form21Url}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Form 21</a>
+                        <a href={docUrl(API, selected.form21Url)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Form 21</a>
                       </div>
                     ) : (
                       <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>
@@ -231,7 +232,7 @@ export default function DeliveryInchargePage() {
                     {selected.disclaimerUrl ? (
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                        <a href={`${API}${selected.disclaimerUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Disclaimer</a>
+                        <a href={docUrl(API, selected.disclaimerUrl)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Uploaded Disclaimer</a>
                       </div>
                     ) : (
                       <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>
@@ -251,7 +252,7 @@ export default function DeliveryInchargePage() {
                     {selected.fastagUrl ? (
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                        <a href={`${API}${selected.fastagUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Fastag</a>
+                        <a href={docUrl(API, selected.fastagUrl)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Fastag</a>
                       </div>
                     ) : (
                       <p className="text-xs text-zinc-500">Not uploaded yet.</p>

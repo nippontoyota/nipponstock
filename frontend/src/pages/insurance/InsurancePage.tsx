@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { docUrl } from '../../lib/docUrl';
 
 interface Vehicle { chassisNumber: string; model: string; suffix: string; colour: string; chassisYear: number; }
 interface Workflow {
@@ -139,7 +140,7 @@ export default function InsurancePage() {
                 <p className="text-[10px] font-label font-black uppercase tracking-widest text-on-surface-variant mb-2">Documents</p>
                 <div className="flex flex-wrap gap-2">
                   {docFields.map(({ key, label }) => (
-                    <a key={key} href={selected[key] ? `${API}${selected[key]}` : undefined} target="_blank" rel="noreferrer"
+                    <a key={key} href={docUrl(API, selected[key])} target="_blank" rel="noreferrer"
                       className={`text-xs px-3 py-1 rounded-full border ${selected[key] ? 'border-green-500/50 text-green-400 hover:bg-green-900/20' : 'border-zinc-700 text-zinc-500 cursor-not-allowed'}`}>
                       {label} {selected[key] ? '✓' : '✗'}
                     </a>
@@ -169,7 +170,7 @@ export default function InsurancePage() {
                 {selected.policyUrl ? (
                   <div className="flex items-center gap-2 mb-2">
                     <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                    <a href={`${API}${selected.policyUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Policy</a>
+                    <a href={docUrl(API, selected.policyUrl)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Policy</a>
                   </div>
                 ) : (
                   <p className="text-xs text-zinc-500 mb-2">No file uploaded yet.</p>

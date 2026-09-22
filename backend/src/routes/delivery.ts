@@ -1,27 +1,16 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { randomUUID } from 'crypto';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { uploadDeliveryDoc } from '../lib/supabaseStorage';
 
 const router = Router();
 router.use(authenticate);
 
-// Disk storage for delivery documents
-const uploadDir = path.join(process.cwd(), 'uploads', 'delivery');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${randomUUID()}${ext}`);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+// Documents upload to Supabase Storage (not local disk) — Render's web service
+// filesystem is ephemeral and wipes local files on every deploy.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const DELIVERY_ROLES = ['DELIVERY_INCHARGE', 'INSURANCE', 'ACCOUNTS_DEPT', 'ADMIN'];
 
@@ -227,7 +216,13 @@ router.post('/:id/upload/:field', requireDeliveryRole, upload.single('file'), as
     res.status(400).json({ error: 'No file uploaded' }); return;
   }
 
-  const url = `/uploads/delivery/${req.file.filename}`;
+  let url: string;
+  try {
+    url = await uploadDeliveryDoc(req.file.buffer, req.file.originalname, req.file.mimetype);
+  } catch (err) {
+    res.status(502).json({ error: 'Upload to storage failed', detail: String(err) }); return;
+  }
+
   const updated = await prisma.deliveryWorkflow.update({
     where: { id: req.params.id },
     data: { [field]: url },
