@@ -2,6 +2,9 @@ import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, requireCeo, AuthRequest } from '../middleware/auth';
 import { BRANCH_GROUPS } from '../lib/branchGroups';
+import { getActiveHardBlockings } from '../lib/ceoCache';
+
+const TRACKED_IN_HOUSE_STATUSES = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
 
 const router = Router();
 router.use(authenticate, requireCeo);
@@ -130,10 +133,7 @@ router.get('/model-open-stock', async (_req: AuthRequest, res: Response) => {
 
 // ── 4. Model wise Blocking vs Stock Status (active hard blocks) ───────────────
 router.get('/model-blocking-stock', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: { vehicle: { select: { model: true, stockStatus: true } } },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
   for (const b of blockings) {
@@ -153,10 +153,7 @@ router.get('/model-blocking-stock', async (_req: AuthRequest, res: Response) => 
 
 // ── 5. Model wise Blocking vs Payment Status (active hard blocks) ─────────────
 router.get('/model-blocking-payment', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: { vehicle: { select: { model: true } }, paymentStatus: true },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
   for (const b of blockings) {
@@ -176,10 +173,7 @@ router.get('/model-blocking-payment', async (_req: AuthRequest, res: Response) =
 
 // ── 5b. Branch × Payment Status (active hard blocks) ─────────────────────────
 router.get('/branch-blocking-payment', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: { branch: { select: { name: true } }, paymentStatus: true },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
   for (const b of blockings) {
@@ -199,10 +193,7 @@ router.get('/branch-blocking-payment', async (_req: AuthRequest, res: Response) 
 
 // ── 6. Branch × Ageing pivot (active hard blocks) ────────────────────────────
 router.get('/branch-blocking-ageing', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: { hardBlockAt: true, branch: { select: { name: true } } },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const now = new Date();
   const ageBucket = (days: number) => {
@@ -233,10 +224,7 @@ router.get('/branch-blocking-ageing', async (_req: AuthRequest, res: Response) =
 
 // ── 6b. Model wise Blocked Vehicles Ageing (days from block date) ─────────────
 router.get('/model-blocking-ageing', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: { hardBlockAt: true, vehicle: { select: { model: true } } },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const now = new Date();
   const ageBucket = (days: number) => {
@@ -267,13 +255,7 @@ router.get('/model-blocking-ageing', async (_req: AuthRequest, res: Response) =>
 
 // ── 7. Branch × Model blocking pivot ─────────────────────────────────────────
 router.get('/branch-model-blocking', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: {
-      branch: { select: { name: true } },
-      vehicle: { select: { model: true } },
-    },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
   for (const b of blockings) {
@@ -291,13 +273,7 @@ router.get('/branch-model-blocking', async (_req: AuthRequest, res: Response) =>
 
 // ── 8. Branch × Stock Status (for bar chart) ──────────────────────────────────
 router.get('/branch-stock-blocking', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: { blockType: 'HARD', status: 'ACTIVE' },
-    select: {
-      branch: { select: { name: true } },
-      vehicle: { select: { stockStatus: true } },
-    },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
   for (const b of blockings) {
@@ -419,16 +395,7 @@ router.get('/open-stock-ageing', async (_req: AuthRequest, res: Response) => {
 
 // ── 11b. Active Blockings Ageing — Physical BND/CTDMS (model × age bucket) ───
 router.get('/blocking-stock-ageing', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: {
-      blockType: 'HARD',
-      status: 'ACTIVE',
-      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
-    },
-    select: {
-      vehicle: { select: { model: true, assignmentDate: true, createdAt: true } },
-    },
-  });
+  const blockings = (await getActiveHardBlockings()).filter((b) => ['BND', 'CTDMS'].includes(b.vehicle.stockStatus ?? ''));
 
   const now = new Date();
   const map = new Map<string, number>();
@@ -450,17 +417,7 @@ router.get('/blocking-stock-ageing', async (_req: AuthRequest, res: Response) =>
 
 // ── 11c. Active Blockings Ageing — BND/CTDMS by Branch × Age Bucket ──────────
 router.get('/blocking-stock-ageing-branch', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: {
-      blockType: 'HARD',
-      status: 'ACTIVE',
-      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
-    },
-    select: {
-      branch: { select: { name: true } },
-      vehicle: { select: { assignmentDate: true, createdAt: true } },
-    },
-  });
+  const blockings = (await getActiveHardBlockings()).filter((b) => ['BND', 'CTDMS'].includes(b.vehicle.stockStatus ?? ''));
 
   const now = new Date();
   const map = new Map<string, number>();
@@ -528,27 +485,13 @@ router.get('/release-analysis', async (_req: AuthRequest, res: Response) => {
 
 // ── 11b. Model × Purchase Mode ────────────────────────────────────────────────
 router.get('/model-purchase', async (_req: AuthRequest, res: Response) => {
-  const [records, noRecord] = await Promise.all([
-    prisma.financeRecord.findMany({
-      where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' } },
-      select: {
-        purchaseMode: true,
-        blockingRequest: { select: { vehicle: { select: { model: true } } } },
-      },
-    }),
-    prisma.blockingRequest.findMany({
-      where: { blockType: 'HARD', status: 'ACTIVE', financeRecord: null },
-      select: { vehicle: { select: { model: true } } },
-    }),
-  ]);
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    const key = `${r.blockingRequest.vehicle.model}\x01${r.purchaseMode ?? 'Not Set'}`;
-    map.set(key, (map.get(key) ?? 0) + 1);
-  }
-  for (const b of noRecord) {
-    const key = `${b.vehicle.model}\x01Not Updated`;
+  for (const b of blockings) {
+    const key = b.financeRecord
+      ? `${b.vehicle.model}\x01${b.financeRecord.purchaseMode ?? 'Not Set'}`
+      : `${b.vehicle.model}\x01Not Updated`;
     map.set(key, (map.get(key) ?? 0) + 1);
   }
 
@@ -562,18 +505,12 @@ router.get('/model-purchase', async (_req: AuthRequest, res: Response) => {
 
 // ── 11c. Model × Finance Status (In House only) ───────────────────────────────
 router.get('/model-finance-status', async (_req: AuthRequest, res: Response) => {
-  const records = await prisma.financeRecord.findMany({
-    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, purchaseMode: 'In House' },
-    select: {
-      financeStatus: true,
-      blockingRequest: { select: { vehicle: { select: { model: true } } } },
-    },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    if (!r.financeStatus) continue;
-    const key = `${r.blockingRequest.vehicle.model}\x01${r.financeStatus}`;
+  for (const b of blockings) {
+    if (b.financeRecord?.purchaseMode !== 'In House' || !b.financeRecord.financeStatus) continue;
+    const key = `${b.vehicle.model}\x01${b.financeRecord.financeStatus}`;
     map.set(key, (map.get(key) ?? 0) + 1);
   }
 
@@ -587,19 +524,11 @@ router.get('/model-finance-status', async (_req: AuthRequest, res: Response) => 
 
 // ── 12. Full Payment Ageing (BND/CTDMS physical stock only) ──────────────────
 router.get('/full-payment-ageing', async (_req: AuthRequest, res: Response) => {
-  const blockings = await prisma.blockingRequest.findMany({
-    where: {
-      blockType: 'HARD',
-      status: 'ACTIVE',
-      paymentStatus: 'Full Payment Received',
-      fullPaymentAt: { not: null },
-      vehicle: { stockStatus: { in: ['BND', 'CTDMS'] } },
-    },
-    select: {
-      fullPaymentAt: true,
-      branch: { select: { name: true } },
-    },
-  });
+  const blockings = (await getActiveHardBlockings()).filter((b) =>
+    b.paymentStatus === 'Full Payment Received' &&
+    b.fullPaymentAt !== null &&
+    ['BND', 'CTDMS'].includes(b.vehicle.stockStatus ?? '')
+  );
 
   const now = new Date();
   const map = new Map<string, number>();
@@ -620,50 +549,36 @@ router.get('/full-payment-ageing', async (_req: AuthRequest, res: Response) => {
 
 // ── 13. Finance KPI Summary ───────────────────────────────────────────────────
 router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
-  const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
+  const blockings = await getActiveHardBlockings();
+  const totalBlockings = blockings.length;
 
-  // Prisma `paymentStatus: { not: 'X' }` generates SQL `<>` which silently drops NULLs.
-  // Use an explicit OR to include blockings where paymentStatus is null.
-  const noFpOr = { OR: [{ paymentStatus: null }, { paymentStatus: { not: 'Full Payment Received' } }] };
-  const noFpBlockingWhere = { ...baseHard, ...noFpOr } as const;
-  const noFpFinWhere = { blockingRequest: noFpBlockingWhere };
+  // "No FP" = active hard blockings not yet at Full Payment Received (including
+  // null paymentStatus) — mirrors the old explicit-OR handling for SQL NULLs.
+  const noFp = blockings.filter((b) => b.paymentStatus !== 'Full Payment Received');
 
-  const TRACKED_IN_HOUSE = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
+  const outHouse = noFp.filter((b) => b.financeRecord?.purchaseMode === 'Out House').length;
+  const cash = noFp.filter((b) => b.financeRecord?.purchaseMode === 'Cash').length;
+  // Not Updated by FO = no financeRecord at all...
+  const untouchedNoRecord = noFp.filter((b) => !b.financeRecord).length;
+  // ...or In House with an untracked/blank finance status (FO started but never set a real status)
+  const untouchedInHouseUntracked = noFp.filter((b) =>
+    b.financeRecord?.purchaseMode === 'In House' &&
+    (!b.financeRecord.financeStatus || !TRACKED_IN_HOUSE_STATUSES.includes(b.financeRecord.financeStatus))
+  ).length;
+  // Others = No Idea / Leasing / Direct / null purchaseMode (financeRecord must exist)
+  const others = noFp.filter((b) =>
+    b.financeRecord && !['In House', 'Out House', 'Cash'].includes(b.financeRecord.purchaseMode ?? '')
+  ).length;
 
-  const [
-    totalBlockings, outHouse, cash, untouchedNoRecord, untouchedInHouseUntracked, others,
-    loginPendingNoFp, loggedApprovalPendingNoFp, loggedDocsPendingNoFp, approvedNoFp, disbursedNoFp,
-  ] = await Promise.all([
-    prisma.blockingRequest.count({ where: baseHard }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Out House' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'Cash' } }),
-    // Not Updated by FO = no financeRecord at all, non-FP (including null paymentStatus)
-    prisma.blockingRequest.count({ where: { ...noFpBlockingWhere, financeRecord: null } }),
-    // Not Updated by FO = also In House with an untracked/blank finance status (FO started but never set a real status)
-    prisma.financeRecord.count({
-      where: {
-        blockingRequest: noFpBlockingWhere,
-        purchaseMode: 'In House',
-        OR: [{ financeStatus: { notIn: TRACKED_IN_HOUSE } }, { financeStatus: null }],
-      },
-    }),
-    // Others = No Idea / Leasing / Direct / null purchaseMode
-    prisma.financeRecord.count({
-      where: {
-        blockingRequest: noFpBlockingWhere,
-        OR: [
-          { purchaseMode: { notIn: ['In House', 'Out House', 'Cash'] } },
-          { purchaseMode: null },
-        ],
-      },
-    }),
-    // In House tracked status buckets — filter purchaseMode to avoid double-counting non-InHouse records
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Login Pending' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Logged Approval Pending' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Logged Document Pending' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Approved' } }),
-    prisma.financeRecord.count({ where: { ...noFpFinWhere, purchaseMode: 'In House', financeStatus: 'Disbursed' } }),
-  ]);
+  const inHouseNoFp = (status: string) => noFp.filter((b) =>
+    b.financeRecord?.purchaseMode === 'In House' && b.financeRecord.financeStatus === status
+  ).length;
+  const loginPendingNoFp = inHouseNoFp('Login Pending');
+  const loggedApprovalPendingNoFp = inHouseNoFp('Logged Approval Pending');
+  const loggedDocsPendingNoFp = inHouseNoFp('Logged Document Pending');
+  const approvedNoFp = inHouseNoFp('Approved');
+  const disbursedNoFp = inHouseNoFp('Disbursed');
+
   const untouched = untouchedNoRecord + untouchedInHouseUntracked;
 
   res.json({
@@ -679,28 +594,14 @@ router.get('/finance-summary', async (_req: AuthRequest, res: Response) => {
 
 // ── 13. Finance Branch × Purchase Mode ───────────────────────────────────────
 router.get('/finance-branch-purchase', async (_req: AuthRequest, res: Response) => {
-  const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const };
-  const [records, blockings] = await Promise.all([
-    prisma.financeRecord.findMany({
-      where: { blockingRequest: baseHard },
-      select: { purchaseMode: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
-    }),
-    prisma.blockingRequest.findMany({
-      where: baseHard,
-      select: { branch: { select: { name: true } }, financeRecord: { select: { id: true } } },
-    }),
-  ]);
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    const key = `${r.blockingRequest.branch.name}\x01${r.purchaseMode ?? 'Not Set'}`;
-    map.set(key, (map.get(key) ?? 0) + 1);
-  }
   for (const b of blockings) {
-    if (!b.financeRecord) {
-      const key = `${b.branch.name}\x01Not Updated`;
-      map.set(key, (map.get(key) ?? 0) + 1);
-    }
+    const key = b.financeRecord
+      ? `${b.branch.name}\x01${b.financeRecord.purchaseMode ?? 'Not Set'}`
+      : `${b.branch.name}\x01Not Updated`;
+    map.set(key, (map.get(key) ?? 0) + 1);
   }
 
   const rows: { branch: string; purchaseMode: string; count: number }[] = [];
@@ -713,15 +614,12 @@ router.get('/finance-branch-purchase', async (_req: AuthRequest, res: Response) 
 
 // ── 14. Finance Branch × Finance Status ──────────────────────────────────────
 router.get('/finance-branch-status', async (_req: AuthRequest, res: Response) => {
-  const records = await prisma.financeRecord.findMany({
-    where: { blockingRequest: { blockType: 'HARD', status: 'ACTIVE' }, purchaseMode: 'In House' },
-    select: { financeStatus: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    if (!r.financeStatus) continue;
-    const key = `${r.blockingRequest.branch.name}\x01${r.financeStatus}`;
+  for (const b of blockings) {
+    if (b.financeRecord?.purchaseMode !== 'In House' || !b.financeRecord.financeStatus) continue;
+    const key = `${b.branch.name}\x01${b.financeRecord.financeStatus}`;
     map.set(key, (map.get(key) ?? 0) + 1);
   }
 
@@ -735,35 +633,22 @@ router.get('/finance-branch-status', async (_req: AuthRequest, res: Response) =>
 
 // ── 14b. Finance Branch × Purchase Mode (No FP) ─────────────────────────────
 router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Response) => {
-  const noFpOr = { OR: [{ paymentStatus: null as null }, { paymentStatus: { not: 'Full Payment Received' as string } }] };
-  const baseHard = { blockType: 'HARD' as const, status: 'ACTIVE' as const, ...noFpOr };
-  const TRACKED_IN_HOUSE = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
-
-  const [records, blockings] = await Promise.all([
-    prisma.financeRecord.findMany({
-      where: { blockingRequest: baseHard },
-      select: { purchaseMode: true, financeStatus: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
-    }),
-    prisma.blockingRequest.findMany({
-      where: baseHard,
-      select: { branch: { select: { name: true } }, financeRecord: { select: { id: true } } },
-    }),
-  ]);
+  const noFp = (await getActiveHardBlockings()).filter((b) => b.paymentStatus !== 'Full Payment Received');
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    // In House with an untracked/blank finance status counts as Not Updated by FO, same as the KPI card.
-    const bucket = r.purchaseMode === 'In House' && (!r.financeStatus || !TRACKED_IN_HOUSE.includes(r.financeStatus))
-      ? 'Not Updated'
-      : r.purchaseMode ?? 'Not Set';
-    const key = `${r.blockingRequest.branch.name}\x01${bucket}`;
-    map.set(key, (map.get(key) ?? 0) + 1);
-  }
-  for (const b of blockings) {
+  for (const b of noFp) {
+    let key: string;
     if (!b.financeRecord) {
-      const key = `${b.branch.name}\x01Not Updated`;
-      map.set(key, (map.get(key) ?? 0) + 1);
+      key = `${b.branch.name}\x01Not Updated`;
+    } else {
+      // In House with an untracked/blank finance status counts as Not Updated by FO, same as the KPI card.
+      const bucket = b.financeRecord.purchaseMode === 'In House' &&
+        (!b.financeRecord.financeStatus || !TRACKED_IN_HOUSE_STATUSES.includes(b.financeRecord.financeStatus))
+        ? 'Not Updated'
+        : b.financeRecord.purchaseMode ?? 'Not Set';
+      key = `${b.branch.name}\x01${bucket}`;
     }
+    map.set(key, (map.get(key) ?? 0) + 1);
   }
 
   const rows: { branch: string; purchaseMode: string; count: number }[] = [];
@@ -776,19 +661,12 @@ router.get('/finance-branch-purchase-nofp', async (_req: AuthRequest, res: Respo
 
 // ── 14c. Finance Branch × Finance Status (No FP) ────────────────────────────
 router.get('/finance-branch-status-nofp', async (_req: AuthRequest, res: Response) => {
-  const noFpOr = { OR: [{ paymentStatus: null as null }, { paymentStatus: { not: 'Full Payment Received' as string } }] };
-  const records = await prisma.financeRecord.findMany({
-    where: {
-      blockingRequest: { blockType: 'HARD', status: 'ACTIVE', ...noFpOr },
-      purchaseMode: 'In House',
-    },
-    select: { financeStatus: true, blockingRequest: { select: { branch: { select: { name: true } } } } },
-  });
+  const noFp = (await getActiveHardBlockings()).filter((b) => b.paymentStatus !== 'Full Payment Received');
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    if (!r.financeStatus) continue;
-    const key = `${r.blockingRequest.branch.name}\x01${r.financeStatus}`;
+  for (const b of noFp) {
+    if (b.financeRecord?.purchaseMode !== 'In House' || !b.financeRecord.financeStatus) continue;
+    const key = `${b.branch.name}\x01${b.financeRecord.financeStatus}`;
     map.set(key, (map.get(key) ?? 0) + 1);
   }
 
@@ -802,17 +680,12 @@ router.get('/finance-branch-status-nofp', async (_req: AuthRequest, res: Respons
 
 // ── 15. Finance Bank × Count ──────────────────────────────────────────────────
 router.get('/finance-bank', async (_req: AuthRequest, res: Response) => {
-  const records = await prisma.financeRecord.findMany({
-    where: {
-      blockingRequest: { blockType: 'HARD', status: 'ACTIVE' },
-      bankName: { not: null },
-    },
-    select: { bankName: true },
-  });
+  const blockings = await getActiveHardBlockings();
 
   const map = new Map<string, number>();
-  for (const r of records) {
-    const bank = r.bankName!;
+  for (const b of blockings) {
+    if (!b.financeRecord?.bankName) continue;
+    const bank = b.financeRecord.bankName;
     map.set(bank, (map.get(bank) ?? 0) + 1);
   }
 
@@ -829,10 +702,7 @@ router.get('/branch-performance', async (_req: AuthRequest, res: Response) => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [blockings, tally] = await Promise.all([
-    prisma.blockingRequest.findMany({
-      where: { blockType: 'HARD', status: 'ACTIVE' },
-      select: { branch: { select: { name: true, branchCode: true } }, paymentStatus: true },
-    }),
+    getActiveHardBlockings(),
     prisma.deliveryWorkflow.findMany({
       where: { tallyDate: { gte: startOfMonth } },
       select: { branch: { select: { name: true, branchCode: true } } },
