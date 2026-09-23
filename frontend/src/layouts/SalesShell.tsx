@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import ConsumerOfferPopup from '../components/ConsumerOfferPopup';
 import MarketShareModal from '../components/MarketShareModal';
 
 const sideNav = [
@@ -81,7 +80,6 @@ export default function SalesShell() {
       </aside>
 
       {/* Main Canvas */}
-      <ConsumerOfferPopup role={user?.role ?? ''} />
       <MarketShareModal isOpen={showMarketShare} onClose={() => setShowMarketShare(false)} fullName={user?.fullName} />
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         {/* Top Header */}
