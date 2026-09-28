@@ -23,6 +23,17 @@ interface FinanceSummary {
   disbursed: number;
 }
 
+interface DashboardOverview {
+  totalBlockings: number;
+  fullPaymentCollected: number;
+  finance: {
+    outHouse: number; cash: number; untouched: number; others: number;
+    loginPendingNoFp: number; loggedApprovalPendingNoFp: number; loggedDocsPendingNoFp: number;
+    approvedNoFp: number; disbursedNoFp: number;
+  };
+  branchPerf: { display: string; target: number; mtdTally: number; fullPayment: number; blockings: number; vis: number; pct: number; gap: number }[];
+}
+
 interface StockRow    { branch: string; stockStatus: string;   count: number; }
 interface PayRow      { branch: string; paymentStatus: string; count: number; }
 interface AgeRow      { branch: string; ageBucket: string;     count: number; }
@@ -170,6 +181,7 @@ export default function ClusterManagerPage() {
   const { user } = useAuth();
   const cluster = user?.clusterNumber;
 
+  const [overview, setOverview]   = useState<DashboardOverview | null>(null);
   const [mtd, setMtd]             = useState<MTDSummary | null>(null);
   const [stockData, setStockData] = useState<StockRow[]>([]);
   const [payData, setPayData]     = useState<PayRow[]>([]);
@@ -264,7 +276,8 @@ export default function ClusterManagerPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [m, s, p, a, fs, fp, fst, fpa, sa, bsa, hm] = await Promise.all([
+    const [ov, m, s, p, a, fs, fp, fst, fpa, sa, bsa, hm] = await Promise.all([
+      api.get('/cluster-manager/dashboard-overview'),
       api.get('/cluster-manager/summary'),
       api.get('/cluster-manager/branch-stock'),
       api.get('/cluster-manager/branch-payment'),
@@ -277,6 +290,7 @@ export default function ClusterManagerPage() {
       api.get('/cluster-manager/blocking-stock-ageing'),
       api.get('/stock/heatmap'),
     ]);
+    setOverview(ov.data);
     setMtd(m.data);
     setStockData(s.data);
     setPayData(p.data);
@@ -311,6 +325,18 @@ export default function ClusterManagerPage() {
   const activeBlockingStockAgeCols = STOCK_AGE_COLS.filter((c) => blockingStockAgeData.some((r) => r.ageBucket === c));
   const stockAgePivot         = buildModelPivot(stockAgeData,        activeStockAgeCols);
   const blockingStockAgePivot = buildModelPivot(blockingStockAgeData, activeBlockingStockAgeCols);
+
+  // ── Current Business Status + Branch Performance derived values ─────────────
+  const mtdTallyFloor = (overview?.branchPerf ?? []).reduce((sum, r) => sum + r.mtdTally, 0);
+  const totalVisibility = mtdTallyFloor + (overview?.totalBlockings ?? 0);
+  const perfTotals = (overview?.branchPerf ?? []).reduce(
+    (acc, r) => ({
+      target: acc.target + r.target, mtdTally: acc.mtdTally + r.mtdTally,
+      fullPayment: acc.fullPayment + r.fullPayment, blockings: acc.blockings + r.blockings,
+      vis: acc.vis + r.vis, gap: acc.gap + r.gap,
+    }),
+    { target: 0, mtdTally: 0, fullPayment: 0, blockings: 0, vis: 0, gap: 0 }
+  );
 
   if (loading) {
     return (
@@ -358,6 +384,89 @@ export default function ClusterManagerPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Current Business Status ─────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Current Business Status" icon="trending_up" />
+        <div className="grid grid-cols-3 gap-4">
+          <KPI label="MTD Tally"        value={mtdTallyFloor}                     color="#F59E0B" icon="receipt_long" />
+          <KPI label="Active Blockings" value={overview?.totalBlockings}          color="#3B82F6" icon="directions_car" />
+          <KPI label="Total Visibility" value={totalVisibility}                   color="#14B8A6" icon="visibility" />
+        </div>
+      </section>
+
+      {/* ── Finance Overview ─────────────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Finance Overview" icon="account_balance" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPI label="Active Blockings"      value={overview?.totalBlockings}          color="#3B82F6" icon="directions_car" />
+          <KPI label="Full Payment Received" value={overview?.fullPaymentCollected}    color="#10B981" icon="check_circle" />
+          <KPI label="Out House Finance"     value={overview?.finance.outHouse}        color="#A855F7" icon="account_balance" />
+          <KPI label="Cash"                  value={overview?.finance.cash}            color="#F59E0B" icon="payments" />
+          <KPI label="Not Updated by FO"     value={overview?.finance.untouched}       color="#EF4444" icon="hourglass_empty" />
+          <KPI label="Others (Leasing / No Idea)" value={overview?.finance.others}    color="#6B7280" icon="help" />
+          <KPI label="Disbursed"             value={overview?.finance.disbursedNoFp}   color="#10B981" icon="price_check" />
+          <KPI label="Approved"              value={overview?.finance.approvedNoFp}    color="#8B5CF6" icon="verified" />
+        </div>
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <KPI label="Logged / Approval Pending" value={overview?.finance.loggedApprovalPendingNoFp} color="#F97316" icon="approval" />
+          <KPI label="Logged / Docs Pending"     value={overview?.finance.loggedDocsPendingNoFp}     color="#EAB308" icon="description" />
+          <KPI label="Login Pending"             value={overview?.finance.loginPendingNoFp}          color="#F59E0B" icon="pending" />
+        </div>
+      </section>
+
+      {/* ── Branch Performance — MTD ─────────────────────────────────────────── */}
+      <section>
+        <SectionHead title="Branch Performance — MTD" icon="leaderboard" />
+        <div className="bg-surface-container-low rounded-xl overflow-auto">
+          <table className="w-full text-sm font-body">
+            <thead className="bg-surface-container">
+              <tr>
+                <th className={`${thCls} text-left`}>Branch</th>
+                <th className={thCls}>Target</th>
+                <th className={thCls}>MTD Tally</th>
+                <th className={thCls} style={{ color: '#10B981' }}>Full Payment</th>
+                <th className={thCls} style={{ color: '#3B82F6' }}>Blockings</th>
+                <th className={thCls} style={{ color: '#14B8A6' }}>Visibility</th>
+                <th className={thCls}>% Vis / Target</th>
+                <th className={thCls}>Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(overview?.branchPerf ?? []).map((r, i) => {
+                const pctColor = r.pct >= 100 ? '#10B981' : r.pct >= 75 ? '#F59E0B' : '#EF4444';
+                return (
+                  <tr key={r.display} style={{ borderBottom: '1px solid rgba(67,70,86,0.08)', background: i % 2 === 0 ? 'transparent' : 'rgba(67,70,86,0.03)' }}>
+                    <td className={tdBranchCls}>{r.display}</td>
+                    <td className={tdCls}>{r.target}</td>
+                    <td className={tdCls}>{r.mtdTally || <span className="text-zinc-600">—</span>}</td>
+                    <td className={`${tdCls} text-green-400`}>{r.fullPayment || <span className="text-zinc-600">—</span>}</td>
+                    <td className={`${tdCls} text-blue-400`}>{r.blockings || <span className="text-zinc-600">—</span>}</td>
+                    <td className={`${tdCls} font-semibold`} style={{ color: '#14B8A6' }}>{r.vis}</td>
+                    <td className={tdCls} style={{ color: pctColor, fontWeight: 700 }}>{r.pct}%</td>
+                    <td className={tdCls} style={{ color: r.gap >= 0 ? '#10B981' : '#EF4444', fontWeight: 600 }}>{r.gap >= 0 ? `+${r.gap}` : r.gap}</td>
+                  </tr>
+                );
+              })}
+              {(overview?.branchPerf ?? []).length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-on-surface-variant text-sm">No branches in this cluster</td></tr>
+              )}
+              {(overview?.branchPerf ?? []).length > 0 && (
+                <tr className="bg-surface-container">
+                  <td className={`${tdBranchCls} text-primary`}>Total</td>
+                  <td className={tdTotCls}>{perfTotals.target}</td>
+                  <td className={tdTotCls}>{perfTotals.mtdTally || '—'}</td>
+                  <td className={`${tdTotCls} text-green-400`}>{perfTotals.fullPayment}</td>
+                  <td className={`${tdTotCls} text-blue-400`}>{perfTotals.blockings}</td>
+                  <td className={tdTotCls} style={{ color: '#14B8A6' }}>{perfTotals.vis}</td>
+                  <td className={tdTotCls}>{perfTotals.target > 0 ? `${Math.round((perfTotals.vis / perfTotals.target) * 100)}%` : '—'}</td>
+                  <td className={tdTotCls} style={{ color: perfTotals.gap >= 0 ? '#10B981' : '#EF4444' }}>{perfTotals.gap >= 0 ? `+${perfTotals.gap}` : perfTotals.gap}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* ── MTD KPI Row ─────────────────────────────────────────────────────── */}
       <section>

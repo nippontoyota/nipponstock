@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, requireClusterManager, AuthRequest } from '../middleware/auth';
+import { BRANCH_GROUPS } from '../lib/branchGroups';
 
 const router = Router();
 router.use(authenticate, requireClusterManager);
@@ -13,6 +14,8 @@ const CLUSTER_BRANCHES: Record<number, string[]> = {
   4: ['KT01A', 'PH01A', 'TL01A', 'KT01B'],
 };
 
+const TRACKED_IN_HOUSE_STATUSES = ['Login Pending', 'Logged Approval Pending', 'Logged Document Pending', 'Approved', 'Disbursed'];
+
 async function getClusterBranchIds(clusterNumber: number): Promise<string[]> {
   const codes = CLUSTER_BRANCHES[clusterNumber] ?? [];
   if (!codes.length) return [];
@@ -22,6 +25,98 @@ async function getClusterBranchIds(clusterNumber: number): Promise<string[]> {
   });
   return branches.map((b) => b.id);
 }
+
+// ── Current Business Status + Finance Overview + Branch Performance — MTD ────
+// Mirrors the same three CEO dashboard sections (ceo.ts finance-summary and
+// branch-performance), scoped to just this cluster manager's branches.
+router.get('/dashboard-overview', async (req: AuthRequest, res: Response) => {
+  const clusterNumber = req.user!.clusterNumber;
+  if (!clusterNumber) { res.status(403).json({ error: 'No cluster assigned' }); return; }
+
+  const codes = CLUSTER_BRANCHES[clusterNumber] ?? [];
+  const emptyResponse = {
+    totalBlockings: 0, fullPaymentCollected: 0,
+    finance: { outHouse: 0, cash: 0, untouched: 0, others: 0, loginPendingNoFp: 0, loggedApprovalPendingNoFp: 0, loggedDocsPendingNoFp: 0, approvedNoFp: 0, disbursedNoFp: 0 },
+    branchPerf: [] as unknown[],
+  };
+  if (!codes.length) { res.json(emptyResponse); return; }
+
+  // Only the BRANCH_GROUPS entries that overlap this cluster's branch codes.
+  const clusterGroups = BRANCH_GROUPS.filter((g) => g.codes.some((c) => codes.includes(c)));
+  const allCodes = clusterGroups.flatMap((g) => g.codes);
+  const groupBranchCodes = clusterGroups.map((g) => g.branchCode);
+
+  const [mtdRows, blockings] = await Promise.all([
+    prisma.branchMtdTally.findMany({ where: { branchCode: { in: groupBranchCodes } } }),
+    prisma.blockingRequest.findMany({
+      where: { blockType: 'HARD', status: 'ACTIVE', branch: { branchCode: { in: allCodes } } },
+      select: {
+        paymentStatus: true,
+        branch: { select: { branchCode: true } },
+        financeRecord: { select: { purchaseMode: true, financeStatus: true } },
+      },
+    }),
+  ]);
+
+  const totalBlockings = blockings.length;
+  const fullPaymentCollected = blockings.filter((b) => b.paymentStatus === 'Full Payment Received').length;
+  const noFp = blockings.filter((b) => b.paymentStatus !== 'Full Payment Received');
+
+  const outHouse = noFp.filter((b) => b.financeRecord?.purchaseMode === 'Out House').length;
+  const cash = noFp.filter((b) => b.financeRecord?.purchaseMode === 'Cash').length;
+  const untouchedNoRecord = noFp.filter((b) => !b.financeRecord).length;
+  const untouchedInHouseUntracked = noFp.filter((b) =>
+    b.financeRecord?.purchaseMode === 'In House' &&
+    (!b.financeRecord.financeStatus || !TRACKED_IN_HOUSE_STATUSES.includes(b.financeRecord.financeStatus))
+  ).length;
+  const others = noFp.filter((b) =>
+    b.financeRecord && !['In House', 'Out House', 'Cash'].includes(b.financeRecord.purchaseMode ?? '')
+  ).length;
+  const inHouseNoFp = (status: string) => noFp.filter((b) =>
+    b.financeRecord?.purchaseMode === 'In House' && b.financeRecord.financeStatus === status
+  ).length;
+
+  // Branch Performance — MTD, grouped exactly like the CEO table (Pala folded into Kottayam, etc.)
+  const byBranchCode = new Map<string, { blockings: number; fullPayment: number }>();
+  for (const b of blockings) {
+    const code = b.branch.branchCode ?? '';
+    const e = byBranchCode.get(code) ?? { blockings: 0, fullPayment: 0 };
+    if (b.paymentStatus === 'Full Payment Received') e.fullPayment++; else e.blockings++;
+    byBranchCode.set(code, e);
+  }
+  const mtdByCode = new Map(mtdRows.map((r) => [r.branchCode, r]));
+
+  const branchPerf = clusterGroups.map((g) => {
+    const target = mtdByCode.get(g.branchCode)?.target ?? 0;
+    const mtdTally = mtdByCode.get(g.branchCode)?.mtdTally ?? 0;
+    const agg = g.codes.reduce(
+      (acc, c) => {
+        const e = byBranchCode.get(c);
+        if (e) { acc.blockings += e.blockings; acc.fullPayment += e.fullPayment; }
+        return acc;
+      },
+      { blockings: 0, fullPayment: 0 }
+    );
+    const vis = mtdTally + agg.fullPayment + agg.blockings;
+    const pct = target > 0 ? Math.round((vis / target) * 100) : 0;
+    const gap = vis - target;
+    return { display: g.display, target, mtdTally, fullPayment: agg.fullPayment, blockings: agg.blockings, vis, pct, gap };
+  }).sort((a, b) => a.pct - b.pct);
+
+  res.json({
+    totalBlockings,
+    fullPaymentCollected,
+    finance: {
+      outHouse, cash, untouched: untouchedNoRecord + untouchedInHouseUntracked, others,
+      loginPendingNoFp: inHouseNoFp('Login Pending'),
+      loggedApprovalPendingNoFp: inHouseNoFp('Logged Approval Pending'),
+      loggedDocsPendingNoFp: inHouseNoFp('Logged Document Pending'),
+      approvedNoFp: inHouseNoFp('Approved'),
+      disbursedNoFp: inHouseNoFp('Disbursed'),
+    },
+    branchPerf,
+  });
+});
 
 // ── MTD KPI Summary ────────────────────────────────────────────────────────────
 router.get('/summary', async (req: AuthRequest, res: Response) => {
