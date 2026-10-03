@@ -32,13 +32,30 @@ import adminRouter from './routes/admin';
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:3000',
+  'https://market-share.bharath-c.workers.dev'
+];
+
 const io = new Server(server, {
-  cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true },
+  cors: { origin: allowedOrigins, credentials: true },
 });
 
 setIO(io);
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -62,6 +79,21 @@ app.use('/delivery', deliveryRouter);
 app.use('/admin', adminRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+import prisma from './lib/prisma';
+app.get('/public/mtd-tally', async (_req, res) => {
+  const { BRANCH_GROUPS } = await import('./lib/branchGroups');
+  const rows = await prisma.branchMtdTally.findMany({
+    where: { branchCode: { in: BRANCH_GROUPS.map((g) => g.branchCode) } },
+  });
+  const byCode = new Map(rows.map((r) => [r.branchCode, r]));
+
+  const result: Record<string, number> = {};
+  for (const g of BRANCH_GROUPS) {
+    result[g.display] = byCode.get(g.branchCode)?.mtdTally ?? 0;
+  }
+  res.json(result);
+});
 
 // Global error handler — catches errors passed via next(err) or thrown in async routes
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

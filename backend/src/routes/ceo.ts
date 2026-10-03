@@ -28,7 +28,8 @@ router.get('/mtd-tally', async (_req: AuthRequest, res: Response) => {
 // ── Proxy for Market Share Data ───────────────────────────────────────────────
 router.get('/market-share-data', async (_req: AuthRequest, res: Response) => {
   try {
-    const response = await fetch("https://market-share.bharath-c.workers.dev/rto_data.json");
+    const baseUrl = process.env.VITE_MARKET_SHARE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/rto_data.json`);
     if (!response.ok) throw new Error("Failed to fetch");
     const data = await response.json();
     res.json(data);

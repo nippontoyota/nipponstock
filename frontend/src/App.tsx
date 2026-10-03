@@ -39,6 +39,18 @@ import AccountsDeptPage from './pages/accounts/AccountsDeptPage';
 import SOShell from './layouts/SOShell';
 import SOPage from './pages/so/SOPage';
 
+
+function UnknownRoleFallback() {
+  const { logout } = useAuth();
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white">
+      <h1 className="text-2xl font-bold mb-4">Unauthorized Role</h1>
+      <p className="mb-8">Your account does not have a recognized role mapped in the router.</p>
+      <button onClick={logout} className="px-6 py-2 bg-rose-600 rounded hover:bg-rose-500">Sign Out</button>
+    </div>
+  );
+}
+
 function RequireAuth({ children, role }: { children: JSX.Element; role?: string | string[] }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -81,7 +93,7 @@ export default function App() {
       <Route
         path="/sales"
         element={
-          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER']}>
+          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER', 'BRANCH_MANAGER']}>
             <SalesShell />
           </RequireAuth>
         }
@@ -206,9 +218,8 @@ export default function App() {
             user.role === 'ACCOUNTS_DEPT'      ? <Navigate to="/accounts"     replace /> :
             user.role === 'SO'                 ? <Navigate to="/so"           replace /> :
             user.role === 'TEAM_LEADER'        ? <Navigate to="/sales"        replace /> :
-                                                 <Navigate to="/sales"        replace />
-          ) : (
-            <Navigate to="/login" replace />
+            user.role === 'BRANCH_MANAGER'     ? <Navigate to="/sales"        replace /> :
+                                                 <UnknownRoleFallback /> ) : ( <Navigate to="/login" replace />
           )
         }
       />

@@ -42,9 +42,13 @@ export default function MarketShareModal({ isOpen, onClose, fullName }: MarketSh
   const rto = getRtoFromUsername(fullName);
 
   // If we can't map their username, we safely default to just the cluster selector page
-  const iframeSrc = rto 
-    ? `https://market-share.bharath-c.workers.dev/rto-detail?rto=${encodeURIComponent(rto)}&view=cluster`
-    : `https://market-share.bharath-c.workers.dev/rto-selection.html`;
+  const baseUrl = import.meta.env.VITE_MARKET_SHARE_URL || 'http://localhost:3000';
+  const timestamp = new Date().getTime();
+  const targetPath = rto 
+    ? `/rto-detail.html?rto=${encodeURIComponent(rto)}&view=cluster&t=${timestamp}`
+    : `/rto-selection.html?t=${timestamp}`;
+
+  const iframeSrc = `${baseUrl}/api/sso?token=nippon-branch-token-2026&redirect=${encodeURIComponent(targetPath)}`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8 transition-opacity duration-300">
