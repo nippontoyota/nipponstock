@@ -93,7 +93,7 @@ export default function App() {
       <Route
         path="/sales"
         element={
-          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER', 'BRANCH_MANAGER']}>
+          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER']}>
             <SalesShell />
           </RequireAuth>
         }
@@ -218,7 +218,7 @@ export default function App() {
             user.role === 'ACCOUNTS_DEPT'      ? <Navigate to="/accounts"     replace /> :
             user.role === 'SO'                 ? <Navigate to="/so"           replace /> :
             user.role === 'TEAM_LEADER'        ? <Navigate to="/sales"        replace /> :
-            user.role === 'BRANCH_MANAGER'     ? <Navigate to="/sales"        replace /> :
+            user.role === 'SALES_MANAGER'     ? <Navigate to="/sales"        replace /> :
                                                  <UnknownRoleFallback /> ) : ( <Navigate to="/login" replace />
           )
         }
