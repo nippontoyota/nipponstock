@@ -97,7 +97,7 @@ export default function SOPage() {
 
   // Incentives from open vehicles
   const incentives = openVehicles.map((v) => getVehicleIncentive(v.chassisNumber)).filter(Boolean);
-  const soValues = [...new Set(incentives.map((i) => i!.so))];
+  const teamIncentiveValues = [...new Set(incentives.map((i) => i!.teamIncentive))];
   const customerSchemeValues = [...new Set(incentives.map((i) => i!.customerScheme))];
   const hasIncentiveData = incentives.length > 0;
 
@@ -273,25 +273,17 @@ export default function SOPage() {
                 <span className="text-sm font-label">Loading incentive data…</span>
               </div>
             ) : hasIncentiveData ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="col-span-2 md:col-span-1 bg-primary/10 border border-primary/30 rounded-xl p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Your SO Incentive</p>
-                  <p className="text-3xl font-headline font-black text-primary">₹{soValues.join(' / ')}</p>
-                  {soValues.length > 1 && (
-                    <p className="text-[10px] text-zinc-500 mt-1 font-label">varies by unit</p>
-                  )}
-                </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-surface-container rounded-xl p-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">Customer Scheme</p>
                   <p className="text-2xl font-headline font-bold text-on-surface">₹{customerSchemeValues.join(' / ')}</p>
                 </div>
-                <div className="bg-surface-container rounded-xl p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">TL Incentive</p>
-                  <p className="text-2xl font-headline font-bold text-on-surface">₹{[...new Set(incentives.map((i) => i!.tl))].join(' / ')}</p>
-                </div>
-                <div className="bg-surface-container rounded-xl p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">SM Incentive</p>
-                  <p className="text-2xl font-headline font-bold text-on-surface">₹{[...new Set(incentives.map((i) => i!.sm))].join(' / ')}</p>
+                <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Team Incentive</p>
+                  <p className="text-3xl font-headline font-black text-primary">₹{teamIncentiveValues.join(' / ')}</p>
+                  {teamIncentiveValues.length > 1 && (
+                    <p className="text-[10px] text-zinc-500 mt-1 font-label">varies by unit</p>
+                  )}
                 </div>
               </div>
             ) : (

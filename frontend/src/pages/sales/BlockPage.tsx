@@ -316,9 +316,7 @@ export default function BlockPage() {
                   <p className="font-headline font-bold text-sm uppercase tracking-widest text-yellow-300 mb-1">Did You Know?</p>
                   <p className="font-body text-sm text-on-surface leading-relaxed">
                     If you retail this vehicle — Consumer Scheme: <strong className="text-yellow-300">₹{incentive.customerScheme}</strong>
-                    {incentive.so && <> · SO gets <strong className="text-yellow-300">₹{incentive.so}</strong></>}
-                    {incentive.tl && <> · TL gets <strong className="text-yellow-300">₹{incentive.tl}</strong></>}
-                    {incentive.sm && <> · SM gets <strong className="text-yellow-300">₹{incentive.sm}</strong></>}
+                    {incentive.teamIncentive && <> · Team Incentive: <strong className="text-yellow-300">₹{incentive.teamIncentive}</strong></>}
                   </p>
                 </div>
               </div>
