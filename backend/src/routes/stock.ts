@@ -198,9 +198,12 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
         where: { chassisNumber: parsed.data.chassisNumber },
         select: { id: true },
       });
+      // chassisYear is only taken from the sheet for new vehicles — re-imports must not
+      // overwrite a year that was corrected after the first import.
+      const { chassisYear: _ignoredYear, ...updateData } = parsed.data;
       await prisma.vehicle.upsert({
         where: { chassisNumber: parsed.data.chassisNumber },
-        update: { ...parsed.data },
+        update: updateData,
         create: { ...parsed.data, status: 'OPEN' },
       });
       success++;
@@ -255,9 +258,10 @@ router.post('/import-masked', requireAdmin, upload.single('file'), async (req: A
 
     try {
       const existing = await prisma.vehicle.findUnique({ where: { chassisNumber: parsed.data.chassisNumber }, select: { id: true } });
+      const { chassisYear: _ignoredYear, ...updateData } = parsed.data;
       await prisma.vehicle.upsert({
         where: { chassisNumber: parsed.data.chassisNumber },
-        update: { ...parsed.data, hiddenFromHeatmap: false },
+        update: { ...updateData, hiddenFromHeatmap: false },
         create: { ...parsed.data, status: 'OPEN', hiddenFromHeatmap: false },
       });
       success++;
