@@ -295,6 +295,27 @@ router.post('/offer-soft', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// An order ID may belong to only one active hard blocking at a time.
+// All-zero values (e.g. 0000000) are the placeholder used when the real order ID isn't
+// known yet — dozens of active blockings already use it — so they are exempt.
+async function findActiveHardBlockingWithOrderId(orderId: string, excludeBlockingId?: string) {
+  const trimmed = orderId.trim();
+  if (!trimmed || /^0+$/.test(trimmed)) return null;
+  return prisma.blockingRequest.findFirst({
+    where: {
+      blockType: 'HARD',
+      status: 'ACTIVE',
+      orderId: { equals: trimmed, mode: 'insensitive' },
+      ...(excludeBlockingId ? { id: { not: excludeBlockingId } } : {}),
+    },
+    select: { id: true, vehicle: { select: { chassisNumber: true, model: true } }, branch: { select: { name: true } } },
+  });
+}
+
+function duplicateOrderIdMessage(orderId: string, dup: { branch: { name: string } }) {
+  return `Order ID ${orderId.trim()} is already used by an active hard blocking (${dup.branch.name}). Please check the Order ID.`;
+}
+
 // POST /blocking/hard — convert soft to hard block
 router.post('/hard', async (req: AuthRequest, res: Response) => {
   const isTeamLeader = req.user!.role === 'TEAM_LEADER';
@@ -342,6 +363,12 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
   // Check soft block still valid (5 min)
   if (existing.expiryAt && existing.expiryAt < new Date()) {
     res.status(409).json({ error: 'Soft block has expired — please start again' });
+    return;
+  }
+
+  const duplicate = await findActiveHardBlockingWithOrderId(formData.orderId, blockingId);
+  if (duplicate) {
+    res.status(409).json({ error: duplicateOrderIdMessage(formData.orderId, duplicate) });
     return;
   }
 
@@ -519,6 +546,15 @@ router.patch('/:id/details', async (req: AuthRequest, res: Response) => {
   if (!isOwner && !isAdmin && !isSmEditingTl) { res.status(403).json({ error: 'Forbidden' }); return; }
 
   if (existing.status !== 'ACTIVE') { res.status(409).json({ error: 'Booking is not active' }); return; }
+
+  // Only re-check when the order ID is actually being changed to a new value.
+  if (parsed.data.orderId !== undefined && parsed.data.orderId.trim() !== (existing.orderId ?? '').trim()) {
+    const duplicate = await findActiveHardBlockingWithOrderId(parsed.data.orderId, existing.id);
+    if (duplicate) {
+      res.status(409).json({ error: duplicateOrderIdMessage(parsed.data.orderId, duplicate) });
+      return;
+    }
+  }
 
   const data: Record<string, unknown> = {};
   if (parsed.data.customerName !== undefined) data.customerName = parsed.data.customerName;

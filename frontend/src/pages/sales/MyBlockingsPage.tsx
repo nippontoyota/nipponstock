@@ -208,8 +208,8 @@ export default function MyBlockingsPage() {
       if (selected?.id === editTarget.id) setSelected(merged);
       setEditTarget(null);
       toast.success('Details updated');
-    } catch {
-      toast.error('Failed to update details');
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Failed to update details');
     } finally {
       setSavingEdit(false);
     }
