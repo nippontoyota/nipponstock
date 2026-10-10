@@ -15,7 +15,8 @@ export default function CEOMarketShareModal({ isOpen, onClose }: { isOpen: boole
   if (!isOpen) return null;
 
   const timestamp = new Date().getTime();
-  const marketShareUrl = `http://localhost:3000/api/sso?token=nippon-ceo-token-2026&t=${timestamp}`;
+  const baseUrl = import.meta.env.VITE_MARKET_SHARE_URL || 'http://localhost:3000';
+  const marketShareUrl = `${baseUrl}/api/sso?token=nippon-ceo-token-2026&t=${timestamp}`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-8 transition-opacity duration-300">
