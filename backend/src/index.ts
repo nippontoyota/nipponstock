@@ -35,7 +35,8 @@ const server = http.createServer(app);
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:5173',
   'http://localhost:3000',
-  'https://market-share.bharath-c.workers.dev'
+  'https://market-share.bharath-c.workers.dev',
+  'https://market-share-omega.vercel.app'
 ];
 
 const io = new Server(server, {
