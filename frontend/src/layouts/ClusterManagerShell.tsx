@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import DatabaseModal from '../components/DatabaseModal';
 
 const nav = [
   { to: '/cluster', icon: 'bar_chart', label: 'Dashboard', end: true },
@@ -9,6 +11,7 @@ const nav = [
 export default function ClusterManagerShell() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showDatabase, setShowDatabase] = useState(false);
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
@@ -34,6 +37,12 @@ export default function ClusterManagerShell() {
                 {item.label}
               </NavLink>
             ))}
+            <button
+              onClick={() => setShowDatabase(true)}
+              className="text-zinc-400 font-medium hover:text-indigo-100 transition-colors duration-200 flex items-center gap-1.5 cursor-pointer uppercase"
+            >
+              Database
+            </button>
           </nav>
         </div>
         <div className="flex items-center gap-4">
@@ -52,6 +61,8 @@ export default function ClusterManagerShell() {
         <Outlet />
       </main>
 
+      <DatabaseModal isOpen={showDatabase} onClose={() => setShowDatabase(false)} />
+
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-zinc-950/90 backdrop-blur-xl px-6 py-4 flex justify-around items-center z-50">
         {nav.map((item) => (
@@ -67,6 +78,13 @@ export default function ClusterManagerShell() {
             <span className="text-[8px] uppercase font-label font-bold">{item.label}</span>
           </NavLink>
         ))}
+        <button
+          onClick={() => setShowDatabase(true)}
+          className="flex flex-col items-center gap-1 text-zinc-500 hover:text-primary"
+        >
+          <span className="material-symbols-outlined">database</span>
+          <span className="text-[8px] uppercase font-label font-bold">Database</span>
+        </button>
         <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-zinc-500">
           <span className="material-symbols-outlined">logout</span>
           <span className="text-[8px] uppercase font-label font-bold">Exit</span>
