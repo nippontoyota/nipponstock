@@ -30,7 +30,7 @@ interface Blocking {
   expiryAt: string | null;
   fullPaymentAt: string | null;
   hardBlockAt: string | null;
-  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string };
+  vehicle: { model: string; suffix: string; colour: string; chassisYear: number; chassisNumber: string; stockStatus: string | null; stockyardLocation: string; stockyardLiveLocation: string };
   branch: { name: string };
   financeRecord: FinanceRecord | null;
   user: { id: string; fullName: string; role: string };
@@ -261,6 +261,7 @@ export default function MyBlockingsPage() {
                   'Chassis No': b.vehicle.chassisNumber,
                   'Stock Status': b.vehicle.stockStatus ?? '',
                   'Stockyard Location': b.vehicle.stockyardLocation ?? '',
+                  'Live Location': b.vehicle.stockyardLiveLocation ?? '',
                   'Order ID': b.orderId ?? '',
                   'Consultant': b.consultantName ?? '',
                   'Team Leader': b.teamLeaderName ?? '',
@@ -387,6 +388,12 @@ export default function MyBlockingsPage() {
                         )}
                       </div>
                       <p className="text-sm text-on-surface-variant">{b.vehicle.colour} · {b.vehicle.suffix}</p>
+                      {b.vehicle.stockyardLiveLocation && (
+                        <p className="flex items-center gap-1 text-xs text-primary mt-1">
+                          <span className="material-symbols-outlined text-sm">location_on</span>
+                          Live: {b.vehicle.stockyardLiveLocation}
+                        </p>
+                      )}
                     </div>
                     <span className={`badge ${b.status === 'ACTIVE' ? 'bg-primary/10 text-primary' : b.status === 'DELIVERED' ? 'bg-green-900/30 text-green-400' : 'bg-tertiary-container/10 text-tertiary'}`}>
                       {b.status}
@@ -524,6 +531,7 @@ export default function MyBlockingsPage() {
               {[
                 ['Chassis No.', selected.vehicle.chassisNumber],
                 ['Stockyard Location', selected.vehicle.stockyardLocation || '—'],
+                ['Live Location', selected.vehicle.stockyardLiveLocation || '—'],
                 ['Customer', selected.customerName],
                 ['Consultant', selected.consultantName],
                 ['Order ID', selected.orderId],
