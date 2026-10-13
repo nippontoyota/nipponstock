@@ -392,9 +392,11 @@ router.post('/hard', async (req: AuthRequest, res: Response) => {
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
+      // The vehicle's chassisYear is already correct from stock; the year the client sends here
+      // is often just "current year" (Offers page always does), so never write it to the vehicle.
       await tx.vehicle.update({
         where: { id: existing.vehicleId },
-        data: { chassisYear, status: 'HARD_BLOCKED' },
+        data: { status: 'HARD_BLOCKED' },
       });
 
       const { expectedBillingDate, ...restFormData } = formData as typeof formData & { expectedBillingDate?: string };
