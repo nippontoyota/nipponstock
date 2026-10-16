@@ -21,75 +21,12 @@ async function revealChassis(vehicleId: string): Promise<void> {
   console.log(`[reveal] ${vehicle.chassisNumber} → ${entry.realChassis}`);
 }
 
-// On Full Payment for an MDDP INN/FRN/IMV blocking:
-//   swap the blocking to a matching CTDMS/BND vehicle and reveal its actual chassis.
-// On Full Payment for a CTDMS INN/FRN/IMV blocking:
-//   just reveal the actual chassis.
-async function swapAndReveal(blockingId: string, vehicleId: string): Promise<void> {
-  const vehicle = await prisma.vehicle.findUnique({
-    where: { id: vehicleId },
-    select: { id: true, model: true, suffix: true, colour: true, stockStatus: true, chassisNumber: true },
-  });
+// On Full Payment for a CTDMS/BND INN/FRN/IMV blocking, reveal the actual chassis.
+// (MDDP units are not swapped to CTDMS any more.)
+async function revealOnFullPayment(vehicleId: string): Promise<void> {
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { model: true, stockStatus: true } });
   if (!vehicle || !MASKED_MODELS.includes(vehicle.model)) return;
-
-  if (vehicle.stockStatus === 'MDDP') {
-    // Fetch branch name of the full-payment blocking so we can stamp it on evicted records
-    const fpBlocking = await prisma.blockingRequest.findUnique({
-      where: { id: blockingId },
-      select: { branch: { select: { name: true, branchCode: true } } },
-    });
-    const branchLabel = fpBlocking?.branch
-      ? `${fpBlocking.branch.name}${fpBlocking.branch.branchCode ? ` (${fpBlocking.branch.branchCode})` : ''}`
-      : 'Unknown branch';
-
-    const replacement = await prisma.vehicle.findFirst({
-      where: {
-        model: vehicle.model,
-        suffix: vehicle.suffix,
-        colour: vehicle.colour,
-        stockStatus: { in: ['CTDMS', 'BND'] },
-        status: { not: 'DELIVERED' },
-        id: { not: vehicleId },
-        blockings: { none: { status: 'ACTIVE', paymentStatus: 'Full Payment Received' } },
-      },
-      orderBy: { assignmentDate: 'asc' },
-    });
-    if (!replacement) { console.log(`[swap] no CTDMS/BND for ${vehicle.model}/${vehicle.suffix}/${vehicle.colour}`); return; }
-
-    // Re-point existing CTDMS blockings to the MDDP vehicle (they keep their reservation)
-    // Include MDDP chassis in the note so the donor knows exactly which vehicle they received
-    const evictedBlockings = await prisma.blockingRequest.findMany({
-      where: { vehicleId: replacement.id, status: 'ACTIVE' },
-      select: { id: true },
-    });
-    if (evictedBlockings.length > 0) {
-      await Promise.all(
-        evictedBlockings.map((b) =>
-          prisma.blockingRequest.update({
-            where: { id: b.id },
-            data: {
-              vehicleId: vehicle.id, // give them the MDDP vehicle
-              adminNotes: `CTDMS vehicle taken for Full Payment case — ${branchLabel}. Reassigned to MDDP unit (chassis: ${vehicle.chassisNumber}).`,
-            },
-          })
-        )
-      );
-    }
-
-    // Move the FP blocking to the CTDMS vehicle
-    await prisma.blockingRequest.update({ where: { id: blockingId }, data: { vehicleId: replacement.id } });
-
-    // CTDMS → HARD_BLOCKED for FP case; MDDP → HARD_BLOCKED if someone was re-pointed there, else OPEN
-    await Promise.all([
-      prisma.vehicle.update({ where: { id: replacement.id }, data: { status: 'HARD_BLOCKED' } }),
-      prisma.vehicle.update({ where: { id: vehicle.id }, data: { status: evictedBlockings.length > 0 ? 'HARD_BLOCKED' : 'OPEN' } }),
-    ]);
-    console.log(`[swap] ${vehicle.model}/${vehicle.suffix}/${vehicle.colour} MDDP→CTDMS ${replacement.id} | ${evictedBlockings.length} blocking(s) re-pointed to MDDP ${vehicle.chassisNumber} for ${branchLabel}`);
-    // Reveal both: the CTDMS chassis for the FP customer, and the MDDP chassis for the donor
-    await Promise.all([revealChassis(replacement.id), revealChassis(vehicle.id)]);
-  } else if (vehicle.stockStatus === 'CTDMS' || vehicle.stockStatus === 'BND') {
-    await revealChassis(vehicleId);
-  }
+  if (vehicle.stockStatus === 'CTDMS' || vehicle.stockStatus === 'BND') await revealChassis(vehicleId);
 }
 
 // Canonical payment status values — enforced at every write point
@@ -628,7 +565,7 @@ router.patch('/:id/payment-status', async (req: AuthRequest, res: Response) => {
   });
 
   if (parsed.data.paymentStatus === 'Full Payment Received') {
-    await swapAndReveal(req.params.id, updated.vehicle.id);
+    await revealOnFullPayment(updated.vehicle.id);
     emitHeatmapUpdate();
   }
 
@@ -769,7 +706,7 @@ router.patch('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   });
 
   if (parsed.data.paymentStatus === 'Full Payment Received' && existing.paymentStatus !== 'Full Payment Received') {
-    await swapAndReveal(req.params.id, updated.vehicle.id);
+    await revealOnFullPayment(updated.vehicle.id);
     emitHeatmapUpdate();
   }
 
