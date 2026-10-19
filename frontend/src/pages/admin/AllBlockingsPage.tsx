@@ -35,7 +35,6 @@ export default function AllBlockingsPage() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ status: '', search: '', chassis: '', blockedFrom: '', blockedTo: '' });
   const [selected, setSelected] = useState<Blocking | null>(null);
-  const canExtendExpiry = selected ? !['INN', 'FRN', 'IMV'].includes(selected.vehicle?.model ?? '') : false;
   const [editForm, setEditForm] = useState<{ customerName: string; consultantName: string; paymentStatus: string; adminNotes: string }>({ customerName: '', consultantName: '', paymentStatus: '', adminNotes: '' });
   const [extendDate, setExtendDate] = useState('');
   const [retailId, setRetailId] = useState('');
@@ -422,7 +421,7 @@ export default function AllBlockingsPage() {
               </div>
               <div><label className="label">Admin Notes</label><textarea className="input" rows={2} value={editForm.adminNotes} onChange={(e) => setEditForm((f) => ({ ...f, adminNotes: e.target.value }))} /></div>
 
-              {canExtendExpiry && selected.status === 'ACTIVE' && (
+              {selected.status === 'ACTIVE' && (
                 <div>
                   <label className="label">Extend Expiry Date</label>
                   <div className="flex gap-2">
