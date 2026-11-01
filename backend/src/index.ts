@@ -28,6 +28,8 @@ import clusterManagerRouter from './routes/clusterManager';
 import ceoRouter from './routes/ceo';
 import deliveryRouter from './routes/delivery';
 import adminRouter from './routes/admin';
+import maintenanceRouter from './routes/maintenance';
+import { maintenanceGuard } from './services/maintenance';
 
 const app = express();
 const server = http.createServer(app);
@@ -60,9 +62,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(maintenanceGuard);
+
 // Static uploads (if local storage is used)
 app.use('/uploads', express.static('uploads'));
 
+app.use('/maintenance', maintenanceRouter);
 app.use('/auth', authRouter);
 app.use('/stock', stockRouter);
 app.use('/blocking', blockingRouter);

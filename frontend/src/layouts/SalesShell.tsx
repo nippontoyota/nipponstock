@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../api';
 import MarketShareModal from '../components/MarketShareModal';
+import MaintenanceScreen from '../components/MaintenanceScreen';
 
 const sideNav = [
   { to: '/sales', icon: 'analytics', label: 'Live Inventory', end: true },
@@ -17,6 +19,24 @@ export default function SalesShell() {
   const [showMarketShare, setShowMarketShare] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  // Maintenance mode (switched on by an admin): Sales Managers and Team Leaders see a full-screen
+  // maintenance page instead of the app. Checked on load, every 30s, and whenever the API says 503.
+  const [maintenance, setMaintenance] = useState(false);
+  const checkMaintenance = useCallback(() => {
+    api.get('/maintenance').then((r) => setMaintenance(!!r.data.enabled)).catch(() => {});
+  }, []);
+  useEffect(() => {
+    checkMaintenance();
+    const timer = setInterval(checkMaintenance, 30_000);
+    const onFlag = () => setMaintenance(true);
+    window.addEventListener('maintenance-mode', onFlag);
+    return () => { clearInterval(timer); window.removeEventListener('maintenance-mode', onFlag); };
+  }, [checkMaintenance]);
+
+  if (maintenance) {
+    return <MaintenanceScreen fullName={user?.fullName} onCheckAgain={checkMaintenance} onLogout={handleLogout} />;
+  }
 
   return (
     <div className="bg-background min-h-screen flex">

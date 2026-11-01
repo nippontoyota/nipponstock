@@ -17,6 +17,9 @@ api.interceptors.response.use(
   (err) => {
     // Only auto-logout on 401 for protected routes, NOT for the login route itself
     const url = err.config?.url ?? '';
+    if (err.response?.status === 503 && err.response?.data?.maintenance) {
+      window.dispatchEvent(new Event('maintenance-mode'));
+    }
     if (err.response?.status === 401 && !url.includes('/auth/')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

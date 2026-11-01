@@ -11,14 +11,29 @@ export default function ConfigPage() {
   const [newModel, setNewModel] = useState('');
   const [newDays, setNewDays] = useState('');
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [maintenance, setMaintenance] = useState(false);
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
 
   const fetchAll = async () => {
-    const [c, g] = await Promise.all([api.get('/config/models'), api.get('/config/global')]);
+    const [c, g, m] = await Promise.all([api.get('/config/models'), api.get('/config/global'), api.get('/maintenance')]);
     setConfigs(c.data);
     setGlobalDays(g.data.defaultDays);
     setGlobalInput(String(g.data.defaultDays));
+    setMaintenance(!!m.data.enabled);
   };
   useEffect(() => { fetchAll(); }, []);
+
+  const toggleMaintenance = async () => {
+    const next = !maintenance;
+    if (next && !confirm('Turn ON maintenance mode? Sales Managers and Team Leaders will be locked out of the app until you turn it off.')) return;
+    setSavingMaintenance(true);
+    try {
+      await api.put('/maintenance', { enabled: next });
+      setMaintenance(next);
+      toast.success(next ? 'Maintenance mode is ON' : 'Maintenance mode is OFF');
+    } catch { toast.error('Failed to change maintenance mode'); }
+    finally { setSavingMaintenance(false); }
+  };
 
   const saveGlobal = async () => {
     const days = parseInt(globalInput);
@@ -46,6 +61,25 @@ export default function ConfigPage() {
       <div>
         <h1 className="text-4xl font-headline font-bold tracking-tighter text-on-surface uppercase mb-1">Configuration</h1>
         <p className="text-on-surface-variant font-body text-sm">Set blocking duration rules per model and globally.</p>
+      </div>
+
+      {/* Maintenance mode */}
+      <div className="bg-surface-container-low rounded-xl p-8 space-y-4" style={{ borderLeft: `3px solid ${maintenance ? '#f59e0b' : '#10B981'}` }}>
+        <div>
+          <h4 className="text-[10px] font-label font-black text-primary uppercase tracking-[0.3em] mb-1">Maintenance</h4>
+          <h2 className="font-headline text-lg font-bold tracking-tight text-on-surface">Maintenance Mode</h2>
+          <p className="text-xs text-on-surface-variant mt-1">
+            When ON, Sales Managers and Team Leaders see an "Under Maintenance" screen and cannot use the app. Everyone else is unaffected.
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-body text-on-surface">
+            Status: <span className={`font-bold ${maintenance ? 'text-amber-400' : 'text-green-400'}`}>{maintenance ? 'ON — Sales Managers & Team Leaders are locked out' : 'OFF'}</span>
+          </p>
+          <button onClick={toggleMaintenance} disabled={savingMaintenance} className={`${maintenance ? 'btn-secondary' : 'btn-primary'} whitespace-nowrap disabled:opacity-50`}>
+            {savingMaintenance ? 'Saving…' : maintenance ? 'Turn OFF' : 'Turn ON'}
+          </button>
+        </div>
       </div>
 
       {/* Global default */}
