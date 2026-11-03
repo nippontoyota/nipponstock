@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { differenceInHours } from 'date-fns';
+import ClusterMarketShareModal from '../../components/ClusterMarketShareModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface MTDSummary {
@@ -195,6 +196,7 @@ export default function ClusterManagerPage() {
   const [heatmapCells, setHeatmapCells] = useState<HeatmapCell[]>([]);
   const [loading, setLoading]       = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [showMarketShare, setShowMarketShare] = useState(false);
 
   const downloadHeatmap = () => {
     if (heatmapCells.length === 0) return;
@@ -359,6 +361,13 @@ export default function ClusterManagerPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowMarketShare(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container text-xs font-bold uppercase tracking-widest font-headline transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">pie_chart</span>
+            Market Share
+          </button>
           <button
             onClick={downloadHeatmap}
             disabled={heatmapCells.length === 0}
@@ -819,6 +828,8 @@ export default function ClusterManagerPage() {
           </table>
         </div>
       </section>
+
+      <ClusterMarketShareModal isOpen={showMarketShare} onClose={() => setShowMarketShare(false)} />
     </div>
   );
 }
