@@ -9,6 +9,7 @@ const sideNav = [
   { to: '/sales', icon: 'analytics', label: 'Live Inventory', end: true },
   { to: '/sales/block', icon: 'directions_car', label: 'Reserve Vehicle' },
   { to: '/sales/my-blockings', icon: 'lock_clock', label: 'Active Blockings' },
+  { to: '/sales/referrals', icon: 'person_add', label: 'NICE Referrals' },
   { to: '/sales/offers', icon: 'local_offer', label: 'Offers' },
 ];
 

@@ -22,6 +22,7 @@ import HeatmapPage from './pages/sales/HeatmapPage';
 import BlockPage from './pages/sales/BlockPage';
 import MyBlockingsPage from './pages/sales/MyBlockingsPage';
 import OffersPage from './pages/sales/OffersPage';
+import ReferralsPage from './pages/sales/ReferralsPage';
 
 import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
 import FinanceHeadPage from './pages/finance/FinanceHeadPage';
@@ -93,7 +94,7 @@ export default function App() {
       <Route
         path="/sales"
         element={
-          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER']}>
+          <RequireAuth role={['SALES_MANAGER', 'TEAM_LEADER', 'ADMIN']}>
             <SalesShell />
           </RequireAuth>
         }
@@ -101,6 +102,7 @@ export default function App() {
         <Route index element={<HeatmapPage />} />
         <Route path="block" element={<BlockPage />} />
         <Route path="my-blockings" element={<MyBlockingsPage />} />
+        <Route path="referrals" element={<ReferralsPage />} />
         <Route path="offers" element={<OffersPage />} />
       </Route>
 

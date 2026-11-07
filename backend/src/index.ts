@@ -29,6 +29,7 @@ import ceoRouter from './routes/ceo';
 import deliveryRouter from './routes/delivery';
 import adminRouter from './routes/admin';
 import maintenanceRouter from './routes/maintenance';
+import webhooksRouter from './routes/webhooks';
 import { maintenanceGuard } from './services/maintenance';
 
 const app = express();
@@ -83,6 +84,7 @@ app.use('/cluster-manager', clusterManagerRouter);
 app.use('/ceo', ceoRouter);
 app.use('/delivery', deliveryRouter);
 app.use('/admin', adminRouter);
+app.use('/webhooks', webhooksRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
