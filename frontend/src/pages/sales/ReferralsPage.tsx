@@ -86,11 +86,11 @@ export default function ReferralsPage() {
                   <th className="px-5 py-3.5">Customer Name</th>
                   <th className="px-5 py-3.5">Phone Number</th>
                   <th className="px-5 py-3.5">Interested Model</th>
+                  <th className="px-5 py-3.5">Employee ID</th>
                   <th className="px-5 py-3.5">Referred By</th>
                   <th className="px-5 py-3.5">Branch</th>
                   <th className="px-5 py-3.5">Department</th>
                   <th className="px-5 py-3.5">Date</th>
-                  <th className="px-5 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/60">
@@ -129,12 +129,16 @@ export default function ReferralsPage() {
                       </span>
                     </td>
 
+                    {/* Employee ID */}
+                    <td className="px-5 py-3.5">
+                      <span className="font-mono font-bold text-white text-sm bg-zinc-800/80 px-2.5 py-1 rounded border border-zinc-700/60 inline-block">
+                        {r.referring_employee_id || '—'}
+                      </span>
+                    </td>
+
                     {/* Referred By */}
-                    <td className="px-5 py-3.5 text-zinc-300">
-                      <div className="font-medium text-white">{r.referring_employee_name}</div>
-                      {r.referring_employee_id && (
-                        <div className="text-[10px] text-zinc-500 font-mono">ID: {r.referring_employee_id}</div>
-                      )}
+                    <td className="px-5 py-3.5 text-white font-medium text-sm">
+                      {r.referring_employee_name || '—'}
                     </td>
 
                     {/* Branch */}
@@ -150,17 +154,6 @@ export default function ReferralsPage() {
                     {/* Date */}
                     <td className="px-5 py-3.5 text-zinc-400 whitespace-nowrap">
                       {formatDate(r.submitted_at)}
-                    </td>
-
-                    {/* Action */}
-                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => toast('Send to feature coming soon', { icon: '↗️' })}
-                        className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white hover:bg-zinc-100 text-zinc-900 shadow-sm transition-all inline-flex items-center gap-1.5 active:scale-95"
-                      >
-                        <span className="material-symbols-outlined text-sm">send</span>
-                        Send to
-                      </button>
                     </td>
                   </tr>
                 ))}
