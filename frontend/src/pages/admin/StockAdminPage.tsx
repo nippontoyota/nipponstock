@@ -7,6 +7,7 @@ interface Vehicle {
   colour: string; stockyardLocation: string; stockyardLiveLocation: string; dateOfArrival: string; status: string;
   stockStatus?: string | null;
   hiddenFromHeatmap: boolean;
+  remarks?: string | null;
   blockings: { user: { fullName: string } }[];
 }
 
@@ -184,6 +185,15 @@ export default function StockAdminPage() {
     const a = document.createElement('a');
     a.href = url; a.download = 'stock_export.xlsx'; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const saveRemarks = async (v: Vehicle, value: string) => {
+    if (value.trim() === (v.remarks ?? '')) return;
+    try {
+      await api.patch(`/stock/${v.id}/remarks`, { remarks: value });
+      setVehicles((prev) => prev.map((x) => (x.id === v.id ? { ...x, remarks: value.trim() || null } : x)));
+      toast.success('Remarks saved');
+    } catch { toast.error('Failed to save remarks'); }
   };
 
   const handleToggleVisibility = async (v: Vehicle) => {
@@ -425,7 +435,7 @@ export default function StockAdminPage() {
           <table className="w-full text-sm font-body">
             <thead className="bg-surface-container">
               <tr>
-                {['Chassis No.', 'Year', 'Model', 'Suffix', 'Colour', 'Stock Status', 'Yard Location', 'Live Location', 'Arrived', 'Status', 'Blocked By', '', 'Heatmap'].map((h) => (
+                {['Chassis No.', 'Year', 'Model', 'Suffix', 'Colour', 'Stock Status', 'Yard Location', 'Live Location', 'Arrived', 'Status', 'Blocked By', '', 'Heatmap', 'Remarks'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-label font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -479,6 +489,18 @@ export default function StockAdminPage() {
                       <span className="material-symbols-outlined text-sm">{v.hiddenFromHeatmap ? 'visibility_off' : 'visibility'}</span>
                       {v.hiddenFromHeatmap ? 'Hidden' : 'Visible'}
                     </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      key={`${v.id}-${v.remarks ?? ''}`}
+                      type="text"
+                      defaultValue={v.remarks ?? ''}
+                      maxLength={1000}
+                      placeholder="Add remarks…"
+                      onBlur={(e) => saveRemarks(v, e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      className="w-56 bg-surface-container rounded px-2 py-1 text-xs text-on-surface placeholder:text-zinc-600 border border-transparent focus:border-primary/40 focus:outline-none"
+                    />
                   </td>
                 </tr>
               ))}

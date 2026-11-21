@@ -1,0 +1,1 @@
+ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS "remarks" TEXT;

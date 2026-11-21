@@ -166,6 +166,7 @@ model Vehicle {
   modelDisc         String?
   assignmentDate    DateTime?
   yardOut           DateTime?
+  remarks           String?
 
   physicalStockBranch   Branch? @relation("PhysicalStockBranch", fields: [physicalStockBranchId], references: [id])
   physicalStockBranchId String?

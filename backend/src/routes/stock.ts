@@ -337,6 +337,7 @@ router.get('/export', requireAdmin, async (_req: AuthRequest, res: Response) => 
     branch: v.blockings[0]?.branch.name ?? '',
     expiryAt: v.blockings[0]?.expiryAt?.toISOString() ?? '',
     hidden: v.hiddenFromHeatmap,
+    remarks: v.remarks ?? '',
   }));
 
   const wb = XLSX.utils.book_new();
@@ -655,6 +656,23 @@ router.post('/ctdms-fem', requireAdmin, upload.single('file'), async (_req: Auth
   }
 
   res.json({ total: rows.length, successful, failed, details });
+});
+
+// Save admin remarks for a vehicle — admin only
+router.patch('/:id/remarks', requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = z.object({ remarks: z.string().max(1000) }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Remarks must be text up to 1000 characters' }); return; }
+    const remarks = parsed.data.remarks.trim();
+    const updated = await prisma.vehicle.update({
+      where: { id: req.params.id },
+      data: { remarks: remarks || null },
+      select: { id: true, remarks: true },
+    });
+    res.json(updated);
+  } catch {
+    res.status(500).json({ error: 'Failed to save remarks' });
+  }
 });
 
 // Toggle heatmap visibility — admin only
